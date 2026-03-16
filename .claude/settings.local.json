@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:effect.website)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:effect-ts.github.io)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(security help:*)",
+      "Bash(security delete-generic-password:*)",
+      "Bash(bun add:*)",
+      "Bash(bunx tsc:*)",
+      "Bash(bun run:*)"
+    ]
+  }
+}

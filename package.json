@@ -1,12 +1,21 @@
 {
   "name": "secenv",
-  "module": "index.ts",
+  "module": "src/main.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "secenv": "./src/main.ts"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.73.2",
+    "@effect/platform": "^0.94.5",
+    "@effect/platform-bun": "^0.87.1",
+    "effect": "^3.19.19"
   }
 }

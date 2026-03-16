@@ -104,3 +104,9 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+
+## Effect libraries
+
+check this out for more info:
+`https://effect.website/llms-full.txt`
