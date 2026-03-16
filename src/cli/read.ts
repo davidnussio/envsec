@@ -5,8 +5,8 @@ import { rootCommand } from "./root.js"
 
 const key = Args.text({ name: "key" })
 
-export const readCommand = Command.make(
-  "read",
+export const getCommand = Command.make(
+  "get",
   { key },
   ({ key }) =>
     Effect.gen(function* () {
