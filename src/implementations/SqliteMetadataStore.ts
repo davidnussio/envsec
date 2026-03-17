@@ -1,17 +1,21 @@
 import { Effect, Layer } from "effect"
-import Database from "better-sqlite3"
-import { mkdirSync } from "node:fs"
+import initSqlJs, { type Database } from "sql.js"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { MetadataStore } from "../services/MetadataStore.js"
 import { MetadataStoreError, SecretNotFoundError } from "../errors.js"
 
-const dbPath = join(homedir(), ".secenv", "store.sqlite")
+const dbDir = join(homedir(), ".secenv")
+const dbPath = join(dbDir, "store.sqlite")
 
-const initDb = () => {
-  mkdirSync(join(homedir(), ".secenv"), { recursive: true })
-  const db = new Database(dbPath)
-  db.exec(`
+const initDb = async (): Promise<Database> => {
+  mkdirSync(dbDir, { recursive: true })
+  const SQL = await initSqlJs()
+  const db = existsSync(dbPath)
+    ? new SQL.Database(readFileSync(dbPath))
+    : new SQL.Database()
+  db.run(`
     CREATE TABLE IF NOT EXISTS secrets (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       env        TEXT NOT NULL,
@@ -22,11 +26,16 @@ const initDb = () => {
       UNIQUE(env, key)
     )
   `)
+  persist(db)
   return db
 }
 
+const persist = (db: Database) => {
+  writeFileSync(dbPath, Buffer.from(db.export()))
+}
+
 const make = Effect.gen(function* () {
-  const db = yield* Effect.try({
+  const db = yield* Effect.tryPromise({
     try: () => initDb(),
     catch: (error) =>
       new MetadataStoreError({
@@ -43,13 +52,15 @@ const make = Effect.gen(function* () {
     ) {
       yield* Effect.try({
         try: () => {
-          db.prepare(
+          db.run(
             `INSERT INTO secrets (env, key, type)
              VALUES (?, ?, ?)
              ON CONFLICT(env, key) DO UPDATE SET
                type = excluded.type,
                updated_at = datetime('now')`,
-          ).run(env, key, type)
+            [env, key, type],
+          )
+          persist(db)
         },
         catch: (error) =>
           new MetadataStoreError({
@@ -64,14 +75,24 @@ const make = Effect.gen(function* () {
       key: string,
     ) {
       const row = yield* Effect.try({
-        try: () =>
-          db
-            .prepare(
-              `SELECT key, type, created_at, updated_at FROM secrets WHERE env = ? AND key = ?`,
-            )
-            .get(env, key) as
-            | { key: string; type: string; created_at: string; updated_at: string }
-            | null,
+        try: () => {
+          const stmt = db.prepare(
+            `SELECT key, type, created_at, updated_at FROM secrets WHERE env = ? AND key = ?`,
+          )
+          stmt.bind([env, key])
+          if (!stmt.step()) {
+            stmt.free()
+            return null
+          }
+          const result = stmt.getAsObject() as {
+            key: string
+            type: string
+            created_at: string
+            updated_at: string
+          }
+          stmt.free()
+          return result
+        },
         catch: (error) =>
           new MetadataStoreError({
             operation: "get",
@@ -96,7 +117,8 @@ const make = Effect.gen(function* () {
     ) {
       yield* Effect.try({
         try: () => {
-          db.prepare(`DELETE FROM secrets WHERE env = ? AND key = ?`).run(env, key)
+          db.run(`DELETE FROM secrets WHERE env = ? AND key = ?`, [env, key])
+          persist(db)
         },
         catch: (error) =>
           new MetadataStoreError({
@@ -111,12 +133,20 @@ const make = Effect.gen(function* () {
       pattern: string,
     ) {
       return yield* Effect.try({
-        try: () =>
-          db
-            .prepare(
-              `SELECT key, type FROM secrets WHERE env = ? AND key GLOB ?`,
+        try: () => {
+          const results: Array<{ key: string; type: string }> = []
+          const stmt = db.prepare(
+            `SELECT key, type FROM secrets WHERE env = ? AND key GLOB ?`,
+          )
+          stmt.bind([env, pattern])
+          while (stmt.step()) {
+            results.push(
+              stmt.getAsObject() as { key: string; type: string },
             )
-            .all(env, pattern) as Array<{ key: string; type: string }>,
+          }
+          stmt.free()
+          return results
+        },
         catch: (error) =>
           new MetadataStoreError({
             operation: "search",
@@ -127,16 +157,28 @@ const make = Effect.gen(function* () {
 
     list: Effect.fn("SqliteMetadataStore.list")(function* (env: string) {
       return yield* Effect.try({
-        try: () =>
-          db
-            .prepare(
-              `SELECT key, type, updated_at FROM secrets WHERE env = ? ORDER BY key`,
-            )
-            .all(env) as Array<{
+        try: () => {
+          const results: Array<{
             key: string
             type: string
             updated_at: string
-          }>,
+          }> = []
+          const stmt = db.prepare(
+            `SELECT key, type, updated_at FROM secrets WHERE env = ? ORDER BY key`,
+          )
+          stmt.bind([env])
+          while (stmt.step()) {
+            results.push(
+              stmt.getAsObject() as {
+                key: string
+                type: string
+                updated_at: string
+              },
+            )
+          }
+          stmt.free()
+          return results
+        },
         catch: (error) =>
           new MetadataStoreError({
             operation: "list",
