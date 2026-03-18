@@ -70,7 +70,7 @@ export const loadCommand = Command.make(
 
         if (exists && !force) {
           yield* Console.log(
-            `⚠ Skipped "${secretKey}": already exists (use --force to overwrite)`
+            `⚠️  Skipped "${secretKey}": already exists (use --force to overwrite)`
           );
           skipped++;
           continue;
@@ -86,7 +86,7 @@ export const loadCommand = Command.make(
       }
 
       yield* Console.log(
-        `Done: ${added} added, ${overwritten} overwritten, ${skipped} skipped`
+        `✅ Done: ${added} added, ${overwritten} overwritten, ${skipped} skipped`
       );
     })
 );

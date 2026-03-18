@@ -17,7 +17,7 @@ const handler = ({ key }: { key: string }) =>
     const ctx = context.value;
 
     yield* SecretStore.remove(ctx, key);
-    yield* Console.log(`Secret "${key}" removed from context "${ctx}"`);
+    yield* Console.log(`🗑️  Secret "${key}" removed from context "${ctx}"`);
   });
 
 export const deleteCommand = Command.make("delete", { key }, handler);

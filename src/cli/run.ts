@@ -35,7 +35,7 @@ export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
     }
 
     if (placeholders.length > 0) {
-      yield* Console.log(`Resolved ${placeholders.length} secret(s)`);
+      yield* Console.log(`🔑 Resolved ${placeholders.length} secret(s)`);
     }
 
     try {

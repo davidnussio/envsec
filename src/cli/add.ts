@@ -80,6 +80,6 @@ export const addCommand = Command.make(
       }
 
       yield* SecretStore.set(ctx, key, secret);
-      yield* Console.log(`Secret "${key}" stored in context "${ctx}"`);
+      yield* Console.log(`✅ Secret "${key}" stored in context "${ctx}"`);
     })
 );

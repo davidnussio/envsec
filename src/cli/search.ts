@@ -16,12 +16,12 @@ export const searchCommand = Command.make(
         const results = yield* SecretStore.searchContexts(pattern);
 
         if (results.length === 0) {
-          yield* Console.log("No contexts found.");
+          yield* Console.log("📭 No contexts found.");
           return;
         }
 
         for (const item of results) {
-          yield* Console.log(`${item.context}  (${item.count} secrets)`);
+          yield* Console.log(`📦 ${item.context}  (${item.count} secrets)`);
         }
         return;
       }
@@ -29,12 +29,12 @@ export const searchCommand = Command.make(
       const results = yield* SecretStore.search(context.value, pattern);
 
       if (results.length === 0) {
-        yield* Console.log("No secrets found.");
+        yield* Console.log("🔍 No secrets found.");
         return;
       }
 
       for (const item of results) {
-        yield* Console.log(item.key);
+        yield* Console.log(`🔐 ${item.key}`);
       }
     })
 );
