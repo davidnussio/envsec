@@ -46,6 +46,11 @@ No extra dependencies. Uses the built-in Windows Credential Manager via `cmdkey`
 ## Installation
 
 ```bash
+mise use -g npm:envsec
+
+```
+
+```bash
 npm install -g envsec
 ```
 
