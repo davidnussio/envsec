@@ -1,8 +1,8 @@
-import { Command, Options } from "@effect/cli"
+import { Command, Options } from "@effect/cli";
 
 const env = Options.text("env").pipe(
   Options.withAlias("e"),
-  Options.withDescription("Environment name (e.g. dev, staging, prod)"),
-)
+  Options.withDescription("Environment name (e.g. dev, staging, prod)")
+);
 
-export const rootCommand = Command.make("secenv", { env })
+export const rootCommand = Command.make("secenv", { env });

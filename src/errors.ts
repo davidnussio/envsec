@@ -1,4 +1,4 @@
-import { Schema } from "effect"
+import { Schema } from "effect";
 
 export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>()(
   "SecretNotFoundError",
@@ -6,7 +6,7 @@ export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>
     key: Schema.String,
     env: Schema.String,
     message: Schema.String,
-  },
+  }
 ) {}
 
 export class KeychainError extends Schema.TaggedError<KeychainError>()(
@@ -15,7 +15,7 @@ export class KeychainError extends Schema.TaggedError<KeychainError>()(
     command: Schema.String,
     stderr: Schema.String,
     message: Schema.String,
-  },
+  }
 ) {}
 
 export class MetadataStoreError extends Schema.TaggedError<MetadataStoreError>()(
@@ -23,7 +23,7 @@ export class MetadataStoreError extends Schema.TaggedError<MetadataStoreError>()
   {
     operation: Schema.String,
     message: Schema.String,
-  },
+  }
 ) {}
 
 export class InvalidKeyError extends Schema.TaggedError<InvalidKeyError>()(
@@ -31,5 +31,5 @@ export class InvalidKeyError extends Schema.TaggedError<InvalidKeyError>()(
   {
     key: Schema.String,
     message: Schema.String,
-  },
+  }
 ) {}

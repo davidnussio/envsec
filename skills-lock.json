@@ -5,6 +5,11 @@
       "source": "makisuo/skills",
       "sourceType": "github",
       "computedHash": "241513d240f805e1651f86311089b521592cdf298eafaa3ba5ccc089ea0c97c6"
+    },
+    "ultracite": {
+      "source": "haydenbleasel/ultracite",
+      "sourceType": "github",
+      "computedHash": "2c53f9413e9ddb97f937b529a4919ae30621fc02076be9a24fe7d70ece7a73d8"
     }
   }
 }

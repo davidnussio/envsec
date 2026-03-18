@@ -14,7 +14,10 @@
   },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "prepare": "husky"
   },
   "keywords": [
     "secrets",
@@ -46,8 +49,11 @@
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.7",
     "@types/node": "^22",
     "@types/sql.js": "^1.4.9",
-    "typescript": "^5"
+    "husky": "^9.1.7",
+    "typescript": "^5",
+    "ultracite": "7.3.2"
   }
 }
