@@ -62,7 +62,14 @@ export const addCommand = Command.make(
   { key, value: valueOption },
   ({ key, value }) =>
     Effect.gen(function* () {
-      const { env } = yield* rootCommand;
+      const { context } = yield* rootCommand;
+
+      if (Option.isNone(context)) {
+        return yield* Effect.fail(
+          new Error("Missing required option --context (-c)")
+        );
+      }
+      const ctx = context.value;
 
       const secret = Option.isSome(value)
         ? value.value
@@ -72,7 +79,7 @@ export const addCommand = Command.make(
         return yield* Effect.fail(new Error("Secret value cannot be empty"));
       }
 
-      yield* SecretStore.set(env, key, secret);
-      yield* Effect.log(`Secret "${key}" stored in env "${env}"`);
+      yield* SecretStore.set(ctx, key, secret);
+      yield* Effect.log(`Secret "${key}" stored in context "${ctx}"`);
     })
 );

@@ -13,44 +13,54 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
     const metadata = yield* MetadataStore;
 
     const set = Effect.fn("SecretStore.set")(function* (
-      env: string,
+      context: string,
       key: string,
       value: string
     ) {
-      const parsed = yield* parseSecretKey(key, env);
+      const parsed = yield* parseSecretKey(key, context);
       yield* keychain.set(parsed.service, parsed.account, value);
-      yield* metadata.upsert(env, key);
+      yield* metadata.upsert(context, key);
     });
 
     const get = Effect.fn("SecretStore.get")(function* (
-      env: string,
+      context: string,
       key: string
     ) {
-      yield* metadata.get(env, key);
-      const parsed = yield* parseSecretKey(key, env);
+      yield* metadata.get(context, key);
+      const parsed = yield* parseSecretKey(key, context);
       return yield* keychain.get(parsed.service, parsed.account);
     });
 
     const remove = Effect.fn("SecretStore.remove")(function* (
-      env: string,
+      context: string,
       key: string
     ) {
-      const parsed = yield* parseSecretKey(key, env);
+      const parsed = yield* parseSecretKey(key, context);
       yield* keychain.remove(parsed.service, parsed.account);
-      yield* metadata.remove(env, key);
+      yield* metadata.remove(context, key);
     });
 
     const search = Effect.fn("SecretStore.search")(function* (
-      env: string,
+      context: string,
       pattern: string
     ) {
-      return yield* metadata.search(env, pattern);
+      return yield* metadata.search(context, pattern);
     });
 
-    const list = Effect.fn("SecretStore.list")(function* (env: string) {
-      return yield* metadata.list(env);
+    const list = Effect.fn("SecretStore.list")(function* (context: string) {
+      return yield* metadata.list(context);
     });
 
-    return { set, get, remove, search, list };
+    const searchContexts = Effect.fn("SecretStore.searchContexts")(function* (
+      pattern: string
+    ) {
+      return yield* metadata.searchContexts(pattern);
+    });
+
+    const listContexts = Effect.fn("SecretStore.listContexts")(function* () {
+      return yield* metadata.listContexts();
+    });
+
+    return { set, get, remove, search, list, searchContexts, listContexts };
   }),
 }) {}

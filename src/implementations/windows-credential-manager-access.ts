@@ -130,7 +130,7 @@ const make = KeychainAccess.of({
     if (result.exitCode !== 0) {
       return yield* new SecretNotFoundError({
         key: account,
-        env: service,
+        context: service,
         message: `Secret not found: ${service}/${account}`,
       });
     }

@@ -6,9 +6,9 @@ Secure environment secrets management using native OS credential stores.
 
 - Store secrets in your OS native credential store (not plain text files)
 - Cross-platform: macOS, Linux, Windows
-- Organize secrets by environment (dev, staging, prod, etc.)
+- Organize secrets by context (e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`)
 - Track secret metadata (key names, timestamps) via SQLite
-- Search secrets with glob patterns
+- Search contexts and secrets with glob patterns
 - Run commands with secret interpolation
 - Export secrets to `.env` files
 - Load secrets from `.env` files (with conflict detection)
@@ -54,47 +54,59 @@ npx secenv
 
 ## Usage
 
-All commands require an environment specified with `--env` (or `-e`):
+Most commands require a context specified with `--context` (or `-c`).
+A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
 
 ### Add a secret
 
 ```bash
 # Store a value inline
-secenv -e dev add api.key --value "sk-abc123"
+secenv -c myapp.dev add api.key --value "sk-abc123"
 
 # Or use the short alias
-secenv -e dev add api.key -v "sk-abc123"
+secenv -c myapp.dev add api.key -v "sk-abc123"
 
 # Omit --value for an interactive masked prompt
-secenv -e dev add api.key
+secenv -c myapp.dev add api.key
 ```
 
 ### Get a secret
 
 ```bash
-secenv -e dev get api.key
+secenv -c myapp.dev get api.key
 ```
 
-### List all secrets
+### List all secrets in a context
 
 ```bash
-secenv -e dev list
+secenv -c myapp.dev list
+```
+
+### List all contexts
+
+```bash
+# Without --context, lists all available contexts with secret counts
+secenv list
 ```
 
 ### Search secrets
 
 ```bash
-secenv -e dev search "api.*"
+# Search secrets within a context
+secenv -c myapp.dev search "api.*"
+
+# Search contexts by pattern (without --context)
+secenv search "myapp.*"
 ```
 
 ### Generate a .env file
 
 ```bash
-# Creates .env with all secrets from the environment
-secenv -e dev env-file
+# Creates .env with all secrets from the context
+secenv -c myapp.dev env-file
 
 # Specify a custom output path
-secenv -e dev env-file --output .env.local
+secenv -c myapp.dev env-file --output .env.local
 ```
 
 Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`).
@@ -102,14 +114,14 @@ Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`).
 ### Load secrets from a .env file
 
 ```bash
-# Import secrets from .env into the environment
-secenv -e dev load
+# Import secrets from .env into the context
+secenv -c myapp.dev load
 
 # Specify a custom input file
-secenv -e dev load --input .env.local
+secenv -c myapp.dev load --input .env.local
 
 # Overwrite existing secrets without warning
-secenv -e dev load --force
+secenv -c myapp.dev load --force
 ```
 
 Keys are converted from `UPPER_SNAKE_CASE` to `dotted.lowercase` (e.g. `API_TOKEN` → `api.token`). If a key already exists, it is skipped with a warning unless `--force` (`-f`) is provided.
@@ -118,19 +130,19 @@ Keys are converted from `UPPER_SNAKE_CASE` to `dotted.lowercase` (e.g. `API_TOKE
 
 ```bash
 # Placeholders {key} are resolved with secret values before execution
-secenv -e dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
+secenv -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
 
 # Any {dotted.key} in the command string is replaced with its value
-secenv -e prod run 'psql {db.connection_string}'
+secenv -c myapp.prod run 'psql {db.connection_string}'
 ```
 
 ### Delete a secret
 
 ```bash
-secenv -e dev delete api.key
+secenv -c myapp.dev delete api.key
 
 # or use the alias
-secenv -e dev del api.key
+secenv -c myapp.dev del api.key
 ```
 
 ## How it works

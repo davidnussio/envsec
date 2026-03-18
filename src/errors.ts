@@ -4,7 +4,7 @@ export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>
   "SecretNotFoundError",
   {
     key: Schema.String,
-    env: Schema.String,
+    context: Schema.String,
     message: Schema.String,
   }
 ) {}

@@ -35,5 +35,15 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
       Array<{ key: string; updated_at: string }>,
       MetadataStoreError
     >;
+    readonly searchContexts: (
+      pattern: string
+    ) => Effect.Effect<
+      Array<{ context: string; count: number }>,
+      MetadataStoreError
+    >;
+    readonly listContexts: () => Effect.Effect<
+      Array<{ context: string; count: number }>,
+      MetadataStoreError
+    >;
   }
 >() {}

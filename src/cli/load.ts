@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -37,7 +37,14 @@ export const loadCommand = Command.make(
   { input, force },
   ({ input, force }) =>
     Effect.gen(function* () {
-      const { env } = yield* rootCommand;
+      const { context } = yield* rootCommand;
+
+      if (Option.isNone(context)) {
+        return yield* Effect.fail(
+          new Error("Missing required option --context (-c)")
+        );
+      }
+      const ctx = context.value;
 
       const content = yield* Effect.try({
         try: () => readFileSync(input, "utf-8"),
@@ -57,7 +64,7 @@ export const loadCommand = Command.make(
 
         const secretKey = parsed.key.toLowerCase().replaceAll("_", ".");
 
-        const exists = yield* SecretStore.list(env).pipe(
+        const exists = yield* SecretStore.list(ctx).pipe(
           Effect.map((items) => items.some((item) => item.key === secretKey))
         );
 
@@ -75,7 +82,7 @@ export const loadCommand = Command.make(
           added++;
         }
 
-        yield* SecretStore.set(env, secretKey, parsed.value);
+        yield* SecretStore.set(ctx, secretKey, parsed.value);
       }
 
       yield* Effect.log(

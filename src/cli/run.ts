@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { Args, Command } from "@effect/cli";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -12,7 +12,14 @@ const cmd = Args.text({ name: "command" }).pipe(
 
 export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
   Effect.gen(function* () {
-    const { env } = yield* rootCommand;
+    const { context } = yield* rootCommand;
+
+    if (Option.isNone(context)) {
+      return yield* Effect.fail(
+        new Error("Missing required option --context (-c)")
+      );
+    }
+    const ctx = context.value;
 
     // Find all {key} placeholders
     const placeholders = [...cmd.matchAll(/\{([^}]+)\}/g)];
@@ -23,7 +30,7 @@ export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
       if (key === undefined) {
         continue;
       }
-      const value = yield* SecretStore.get(env, key);
+      const value = yield* SecretStore.get(ctx, key);
       resolved = resolved.replaceAll(`{${key}}`, String(value));
     }
 

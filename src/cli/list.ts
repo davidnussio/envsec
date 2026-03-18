@@ -1,12 +1,27 @@
 import { Command } from "@effect/cli";
-import { Console, Effect } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
 export const listCommand = Command.make("list", {}, () =>
   Effect.gen(function* () {
-    const { env } = yield* rootCommand;
-    const results = yield* SecretStore.list(env);
+    const { context } = yield* rootCommand;
+
+    if (Option.isNone(context)) {
+      const contexts = yield* SecretStore.listContexts();
+
+      if (contexts.length === 0) {
+        yield* Console.log("No contexts found.");
+        return;
+      }
+
+      for (const item of contexts) {
+        yield* Console.log(`${item.context}  (${item.count} secrets)`);
+      }
+      return;
+    }
+
+    const results = yield* SecretStore.list(context.value);
 
     if (results.length === 0) {
       yield* Console.log("No secrets found.");

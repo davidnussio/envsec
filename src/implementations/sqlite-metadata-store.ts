@@ -100,7 +100,7 @@ const make = Effect.gen(function* () {
       if (!row) {
         return yield* new SecretNotFoundError({
           key,
-          env,
+          context: env,
           message: `Secret metadata not found: ${env}/${key}`,
         });
       }
@@ -176,6 +176,59 @@ const make = Effect.gen(function* () {
           new MetadataStoreError({
             operation: "list",
             message: `Failed to list metadata for ${env}: ${error}`,
+          }),
+      });
+    }),
+
+    searchContexts: Effect.fn("SqliteMetadataStore.searchContexts")(function* (
+      pattern: string
+    ) {
+      return yield* Effect.try({
+        try: () => {
+          const results: Array<{ context: string; count: number }> = [];
+          const stmt = db.prepare(
+            "SELECT env, COUNT(*) as count FROM secrets WHERE env GLOB ? GROUP BY env ORDER BY env"
+          );
+          stmt.bind([pattern]);
+          while (stmt.step()) {
+            const row = stmt.getAsObject() as {
+              env: string;
+              count: number;
+            };
+            results.push({ context: row.env, count: row.count });
+          }
+          stmt.free();
+          return results;
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "searchContexts",
+            message: `Failed to search contexts for ${pattern}: ${error}`,
+          }),
+      });
+    }),
+
+    listContexts: Effect.fn("SqliteMetadataStore.listContexts")(function* () {
+      return yield* Effect.try({
+        try: () => {
+          const results: Array<{ context: string; count: number }> = [];
+          const stmt = db.prepare(
+            "SELECT env, COUNT(*) as count FROM secrets GROUP BY env ORDER BY env"
+          );
+          while (stmt.step()) {
+            const row = stmt.getAsObject() as {
+              env: string;
+              count: number;
+            };
+            results.push({ context: row.env, count: row.count });
+          }
+          stmt.free();
+          return results;
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "listContexts",
+            message: `Failed to list contexts: ${error}`,
           }),
       });
     }),
