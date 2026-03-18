@@ -4,7 +4,7 @@
   "description": "Secure environment secrets management using native OS credential stores",
   "type": "module",
   "bin": {
-    "secenv": "./dist/main.js"
+    "envsec": "./dist/main.js"
   },
   "files": [
     "dist"
