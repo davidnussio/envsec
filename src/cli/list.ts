@@ -14,9 +14,7 @@ export const listCommand = Command.make("list", {}, () =>
     }
 
     for (const item of results) {
-      yield* Console.log(
-        `${item.key}  (${item.type})  updated: ${item.updated_at}`
-      );
+      yield* Console.log(`${item.key}  updated: ${item.updated_at}`);
     }
   })
 );

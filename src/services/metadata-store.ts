@@ -4,7 +4,6 @@ import type { MetadataStoreError, SecretNotFoundError } from "../errors.js";
 export interface SecretMetadata {
   readonly created_at: string;
   readonly key: string;
-  readonly type: string;
   readonly updated_at: string;
 }
 
@@ -13,8 +12,7 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
   {
     readonly upsert: (
       env: string,
-      key: string,
-      type: string
+      key: string
     ) => Effect.Effect<void, MetadataStoreError>;
     readonly get: (
       env: string,
@@ -30,14 +28,11 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
     readonly search: (
       env: string,
       pattern: string
-    ) => Effect.Effect<
-      Array<{ key: string; type: string }>,
-      MetadataStoreError
-    >;
+    ) => Effect.Effect<Array<{ key: string }>, MetadataStoreError>;
     readonly list: (
       env: string
     ) => Effect.Effect<
-      Array<{ key: string; type: string; updated_at: string }>,
+      Array<{ key: string; updated_at: string }>,
       MetadataStoreError
     >;
   }

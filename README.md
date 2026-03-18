@@ -7,7 +7,7 @@ Secure environment secrets management using native OS credential stores.
 - Store secrets in your OS native credential store (not plain text files)
 - Cross-platform: macOS, Linux, Windows
 - Organize secrets by environment (dev, staging, prod, etc.)
-- Track secret types (string, number, boolean) and metadata via SQLite
+- Track secret metadata (key names, timestamps) via SQLite
 - Search secrets with glob patterns
 - Run commands with secret interpolation
 - Export secrets to `.env` files
@@ -59,14 +59,14 @@ All commands require an environment specified with `--env` (or `-e`):
 ### Add a secret
 
 ```bash
-# Store a string
-secenv -e dev add api.key --word "sk-abc123"
+# Store a value inline
+secenv -e dev add api.key --value "sk-abc123"
 
-# Store a number
-secenv -e dev add server.port --digit 3000
+# Or use the short alias
+secenv -e dev add api.key -v "sk-abc123"
 
-# Store a boolean
-secenv -e dev add feature.enabled --bool
+# Omit --value for an interactive masked prompt
+secenv -e dev add api.key
 ```
 
 ### Get a secret
@@ -143,7 +143,7 @@ Secrets are stored in the native OS credential store. The backend is selected au
 | Linux   | Secret Service API (D-Bus)     | `secret-tool` (libsecret)           |
 | Windows | Credential Manager             | `cmdkey` + PowerShell (advapi32)    |
 
-Metadata (key names, types, timestamps) is kept in a SQLite database at `~/.secenv/store.sqlite`. Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
+Metadata (key names, timestamps) is kept in a SQLite database at `~/.secenv/store.sqlite`. Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
 
 ## License
 

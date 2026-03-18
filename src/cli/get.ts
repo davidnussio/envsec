@@ -9,6 +9,6 @@ export const getCommand = Command.make("get", { key }, ({ key }) =>
   Effect.gen(function* () {
     const { env } = yield* rootCommand;
     const value = yield* SecretStore.get(env, key);
-    yield* Console.log(String(value));
+    yield* Console.log(value);
   })
 );

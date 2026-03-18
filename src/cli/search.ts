@@ -19,7 +19,7 @@ export const searchCommand = Command.make(
       }
 
       for (const item of results) {
-        yield* Console.log(`${item.key}  (${item.type})`);
+        yield* Console.log(item.key);
       }
     })
 );

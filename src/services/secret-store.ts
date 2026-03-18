@@ -15,30 +15,20 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
     const set = Effect.fn("SecretStore.set")(function* (
       env: string,
       key: string,
-      value: string,
-      type: string
+      value: string
     ) {
       const parsed = yield* parseSecretKey(key, env);
       yield* keychain.set(parsed.service, parsed.account, value);
-      yield* metadata.upsert(env, key, type);
+      yield* metadata.upsert(env, key);
     });
 
     const get = Effect.fn("SecretStore.get")(function* (
       env: string,
       key: string
     ) {
-      const meta = yield* metadata.get(env, key);
+      yield* metadata.get(env, key);
       const parsed = yield* parseSecretKey(key, env);
-      const raw = yield* keychain.get(parsed.service, parsed.account);
-
-      switch (meta.type) {
-        case "number":
-          return Number(raw);
-        case "boolean":
-          return raw === "true";
-        default:
-          return raw;
-      }
+      return yield* keychain.get(parsed.service, parsed.account);
     });
 
     const remove = Effect.fn("SecretStore.remove")(function* (

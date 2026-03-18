@@ -20,7 +20,7 @@ const initDb = async (): Promise<Database> => {
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       env        TEXT NOT NULL,
       key        TEXT NOT NULL,
-      type       TEXT NOT NULL CHECK(type IN ('string', 'number', 'boolean')),
+      type       TEXT NOT NULL DEFAULT 'string',
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(env, key)
@@ -47,18 +47,16 @@ const make = Effect.gen(function* () {
   return MetadataStore.of({
     upsert: Effect.fn("SqliteMetadataStore.upsert")(function* (
       env: string,
-      key: string,
-      type: string
+      key: string
     ) {
       yield* Effect.try({
         try: () => {
           db.run(
             `INSERT INTO secrets (env, key, type)
-             VALUES (?, ?, ?)
+             VALUES (?, ?, 'string')
              ON CONFLICT(env, key) DO UPDATE SET
-               type = excluded.type,
                updated_at = datetime('now')`,
-            [env, key, type]
+            [env, key]
           );
           persist(db);
         },
@@ -77,7 +75,7 @@ const make = Effect.gen(function* () {
       const row = yield* Effect.try({
         try: () => {
           const stmt = db.prepare(
-            "SELECT key, type, created_at, updated_at FROM secrets WHERE env = ? AND key = ?"
+            "SELECT key, created_at, updated_at FROM secrets WHERE env = ? AND key = ?"
           );
           stmt.bind([env, key]);
           if (!stmt.step()) {
@@ -86,7 +84,6 @@ const make = Effect.gen(function* () {
           }
           const result = stmt.getAsObject() as {
             key: string;
-            type: string;
             created_at: string;
             updated_at: string;
           };
@@ -134,13 +131,13 @@ const make = Effect.gen(function* () {
     ) {
       return yield* Effect.try({
         try: () => {
-          const results: Array<{ key: string; type: string }> = [];
+          const results: Array<{ key: string }> = [];
           const stmt = db.prepare(
-            "SELECT key, type FROM secrets WHERE env = ? AND key GLOB ?"
+            "SELECT key FROM secrets WHERE env = ? AND key GLOB ?"
           );
           stmt.bind([env, pattern]);
           while (stmt.step()) {
-            results.push(stmt.getAsObject() as { key: string; type: string });
+            results.push(stmt.getAsObject() as { key: string });
           }
           stmt.free();
           return results;
@@ -158,18 +155,16 @@ const make = Effect.gen(function* () {
         try: () => {
           const results: Array<{
             key: string;
-            type: string;
             updated_at: string;
           }> = [];
           const stmt = db.prepare(
-            "SELECT key, type, updated_at FROM secrets WHERE env = ? ORDER BY key"
+            "SELECT key, updated_at FROM secrets WHERE env = ? ORDER BY key"
           );
           stmt.bind([env]);
           while (stmt.step()) {
             results.push(
               stmt.getAsObject() as {
                 key: string;
-                type: string;
                 updated_at: string;
               }
             );

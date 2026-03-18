@@ -75,7 +75,7 @@ export const loadCommand = Command.make(
           added++;
         }
 
-        yield* SecretStore.set(env, secretKey, parsed.value, "string");
+        yield* SecretStore.set(env, secretKey, parsed.value);
       }
 
       yield* Effect.log(
