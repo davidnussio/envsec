@@ -85,7 +85,7 @@ export const loadCommand = Command.make(
         yield* SecretStore.set(ctx, secretKey, parsed.value);
       }
 
-      yield* Effect.log(
+      yield* Console.log(
         `Done: ${added} added, ${overwritten} overwritten, ${skipped} skipped`
       );
     })

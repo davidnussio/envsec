@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -27,7 +27,7 @@ export const envFileCommand = Command.make(
       const secrets = yield* SecretStore.list(ctx);
 
       if (secrets.length === 0) {
-        yield* Effect.log(`No secrets found for context "${ctx}"`);
+        yield* Console.log(`No secrets found for context "${ctx}"`);
         return;
       }
 
@@ -39,6 +39,6 @@ export const envFileCommand = Command.make(
       }
 
       writeFileSync(output, `${lines.join("\n")}\n`, "utf-8");
-      yield* Effect.log(`Written ${secrets.length} secret(s) to ${output}`);
+      yield* Console.log(`Written ${secrets.length} secret(s) to ${output}`);
     })
 );

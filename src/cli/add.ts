@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -80,6 +80,6 @@ export const addCommand = Command.make(
       }
 
       yield* SecretStore.set(ctx, key, secret);
-      yield* Effect.log(`Secret "${key}" stored in context "${ctx}"`);
+      yield* Console.log(`Secret "${key}" stored in context "${ctx}"`);
     })
 );

@@ -1,5 +1,5 @@
 import { Args, Command } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -17,7 +17,7 @@ const handler = ({ key }: { key: string }) =>
     const ctx = context.value;
 
     yield* SecretStore.remove(ctx, key);
-    yield* Effect.log(`Secret "${key}" removed from context "${ctx}"`);
+    yield* Console.log(`Secret "${key}" removed from context "${ctx}"`);
   });
 
 export const deleteCommand = Command.make("delete", { key }, handler);

@@ -8,4 +8,10 @@ const context = Options.text("context").pipe(
   Options.optional
 );
 
-export const rootCommand = Command.make("secenv", { context });
+const debug = Options.boolean("debug").pipe(
+  Options.withAlias("d"),
+  Options.withDescription("Enable debug logging"),
+  Options.withDefault(false)
+);
+
+export const rootCommand = Command.make("secenv", { context, debug });

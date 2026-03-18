@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { Args, Command } from "@effect/cli";
-import { Effect, Option } from "effect";
+import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import { rootCommand } from "./root.js";
 
@@ -35,7 +35,7 @@ export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
     }
 
     if (placeholders.length > 0) {
-      yield* Effect.log(`Resolved ${placeholders.length} secret(s)`);
+      yield* Console.log(`Resolved ${placeholders.length} secret(s)`);
     }
 
     try {
