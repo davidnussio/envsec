@@ -1,7 +1,8 @@
 import { execSync } from "node:child_process";
-import { Args, Command } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
+import { resolveCommand } from "./resolve-command.js";
 import { rootCommand } from "./root.js";
 
 const cmd = Args.text({ name: "command" }).pipe(
@@ -10,34 +11,35 @@ const cmd = Args.text({ name: "command" }).pipe(
   )
 );
 
-export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
+const save = Options.boolean("save").pipe(
+  Options.withAlias("s"),
+  Options.withDescription("Save this command for later use"),
+  Options.withDefault(false)
+);
+
+const name = Options.text("name").pipe(
+  Options.withAlias("n"),
+  Options.withDescription("Name for the saved command"),
+  Options.optional
+);
+
+const readLine = (prompt: string): Effect.Effect<string, Error> =>
+  Effect.async((resume) => {
+    process.stdout.write(prompt);
+    process.stdin.resume();
+    process.stdin.setEncoding("utf-8");
+
+    const onData = (chunk: string) => {
+      process.stdin.removeListener("data", onData);
+      process.stdin.pause();
+      resume(Effect.succeed(chunk.toString().trim()));
+    };
+
+    process.stdin.on("data", onData);
+  });
+
+const executeCommand = (resolved: string): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
-    const { context } = yield* rootCommand;
-
-    if (Option.isNone(context)) {
-      return yield* Effect.fail(
-        new Error("Missing required option --context (-c)")
-      );
-    }
-    const ctx = context.value;
-
-    // Find all {key} placeholders
-    const placeholders = [...cmd.matchAll(/\{([^}]+)\}/g)];
-
-    let resolved = cmd;
-    for (const match of placeholders) {
-      const key = match[1];
-      if (key === undefined) {
-        continue;
-      }
-      const value = yield* SecretStore.get(ctx, key);
-      resolved = resolved.replaceAll(`{${key}}`, String(value));
-    }
-
-    if (placeholders.length > 0) {
-      yield* Console.log(`🔑 Resolved ${placeholders.length} secret(s)`);
-    }
-
     try {
       execSync(resolved, {
         stdio: "inherit",
@@ -50,5 +52,38 @@ export const runCommand = Command.make("run", { cmd }, ({ cmd }) =>
           : 1;
       yield* Effect.fail(new Error(`Command exited with code ${status}`));
     }
-  })
+  });
+
+export const runCommand = Command.make(
+  "run",
+  { cmd, save, name },
+  ({ cmd, save, name }) =>
+    Effect.gen(function* () {
+      const { context } = yield* rootCommand;
+
+      if (Option.isNone(context)) {
+        return yield* Effect.fail(
+          new Error("Missing required option --context (-c)")
+        );
+      }
+      const ctx = context.value;
+
+      if (save) {
+        const cmdName = Option.isSome(name)
+          ? name.value
+          : yield* readLine("Command name: ");
+
+        if (cmdName.trim() === "") {
+          return yield* Effect.fail(
+            new Error("Command name cannot be empty when using --save")
+          );
+        }
+
+        yield* SecretStore.saveCommand(cmdName, cmd, ctx);
+        yield* Console.log(`💾 Command "${cmdName}" saved`);
+      }
+
+      const resolved = yield* resolveCommand(cmd, ctx);
+      yield* executeCommand(resolved);
+    })
 );

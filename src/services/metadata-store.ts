@@ -1,5 +1,9 @@
 import { Context, type Effect } from "effect";
-import type { MetadataStoreError, SecretNotFoundError } from "../errors.js";
+import type {
+  CommandNotFoundError,
+  MetadataStoreError,
+  SecretNotFoundError,
+} from "../errors.js";
 
 export interface SecretMetadata {
   readonly created_at: string;
@@ -45,5 +49,34 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
       Array<{ context: string; count: number }>,
       MetadataStoreError
     >;
+    readonly saveCommand: (
+      name: string,
+      command: string,
+      context: string
+    ) => Effect.Effect<void, MetadataStoreError>;
+    readonly getCommand: (
+      name: string
+    ) => Effect.Effect<
+      CommandMetadata,
+      CommandNotFoundError | MetadataStoreError
+    >;
+    readonly searchCommands: (
+      pattern: string,
+      field: "name" | "command" | "all"
+    ) => Effect.Effect<CommandMetadata[], MetadataStoreError>;
+    readonly listCommands: () => Effect.Effect<
+      CommandMetadata[],
+      MetadataStoreError
+    >;
+    readonly removeCommand: (
+      name: string
+    ) => Effect.Effect<void, MetadataStoreError>;
   }
 >() {}
+
+export interface CommandMetadata {
+  readonly command: string;
+  readonly context: string;
+  readonly created_at: string;
+  readonly name: string;
+}

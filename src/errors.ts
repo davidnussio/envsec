@@ -33,3 +33,11 @@ export class InvalidKeyError extends Schema.TaggedError<InvalidKeyError>()(
     message: Schema.String,
   }
 ) {}
+
+export class CommandNotFoundError extends Schema.TaggedError<CommandNotFoundError>()(
+  "CommandNotFoundError",
+  {
+    name: Schema.String,
+    message: Schema.String,
+  }
+) {}

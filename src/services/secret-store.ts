@@ -61,6 +61,50 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       return yield* metadata.listContexts();
     });
 
-    return { set, get, remove, search, list, searchContexts, listContexts };
+    const saveCommand = Effect.fn("SecretStore.saveCommand")(function* (
+      name: string,
+      command: string,
+      context: string
+    ) {
+      yield* metadata.saveCommand(name, command, context);
+    });
+
+    const getCommand = Effect.fn("SecretStore.getCommand")(function* (
+      name: string
+    ) {
+      return yield* metadata.getCommand(name);
+    });
+
+    const searchCommands = Effect.fn("SecretStore.searchCommands")(function* (
+      pattern: string,
+      field: "name" | "command" | "all"
+    ) {
+      return yield* metadata.searchCommands(pattern, field);
+    });
+
+    const listCommands = Effect.fn("SecretStore.listCommands")(function* () {
+      return yield* metadata.listCommands();
+    });
+
+    const removeCommand = Effect.fn("SecretStore.removeCommand")(function* (
+      name: string
+    ) {
+      yield* metadata.removeCommand(name);
+    });
+
+    return {
+      set,
+      get,
+      remove,
+      search,
+      list,
+      searchContexts,
+      listContexts,
+      saveCommand,
+      getCommand,
+      searchCommands,
+      listCommands,
+      removeCommand,
+    };
   }),
 }) {}

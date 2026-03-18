@@ -10,6 +10,7 @@ Secure environment secrets management using native OS credential stores.
 - Track secret metadata (key names, timestamps) via SQLite
 - Search contexts and secrets with glob patterns
 - Run commands with secret interpolation
+- Save and rerun commands with `cmd` (search, list, run, delete)
 - Export secrets to `.env` files
 - Load secrets from `.env` files (with conflict detection)
 
@@ -134,6 +135,50 @@ secenv -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
 
 # Any {dotted.key} in the command string is replaced with its value
 secenv -c myapp.prod run 'psql {db.connection_string}'
+
+# Save the command for later use with --save (-s) and --name (-n)
+secenv -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manifest}'
+
+# If you use --save without --name, you'll be prompted interactively
+secenv -c myapp.dev run --save 'psql {db.connection_string}'
+```
+
+If any placeholder references a secret that doesn't exist, the command won't execute and you'll see a clear error:
+
+```
+❌ Missing secrets in context "myapp.dev":
+  - api.url
+  - api.token
+
+Add them with: secenv -c myapp.dev add <key>
+```
+
+### Saved commands
+
+Saved commands live under the `cmd` subcommand, keeping them separate from secret operations.
+
+```bash
+# List all saved commands
+secenv cmd list
+
+# Run a saved command (uses the context it was saved with)
+secenv cmd run deploy
+
+# Override the context at execution time
+secenv cmd run deploy --override-context myapp.prod
+secenv cmd run deploy -o myapp.prod
+
+# Search saved commands (searches both names and command strings)
+secenv cmd search psql
+
+# Search only by name
+secenv cmd search deploy -n
+
+# Search only by command string
+secenv cmd search kubectl -m
+
+# Delete a saved command
+secenv cmd delete deploy
 ```
 
 ### Delete a secret

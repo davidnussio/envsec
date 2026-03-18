@@ -4,6 +4,7 @@ import { Command } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { Effect, Layer, Logger, LogLevel } from "effect";
 import { addCommand } from "./cli/add.js";
+import { cmdCommand } from "./cli/cmd.js";
 import { delCommand, deleteCommand } from "./cli/delete.js";
 import { envFileCommand } from "./cli/env-file.js";
 import { getCommand } from "./cli/get.js";
@@ -28,6 +29,7 @@ const command = rootCommand.pipe(
     runCommand,
     envFileCommand,
     loadCommand,
+    cmdCommand,
   ])
 );
 

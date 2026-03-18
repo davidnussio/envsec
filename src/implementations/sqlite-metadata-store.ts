@@ -3,8 +3,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Effect, Layer } from "effect";
 import initSqlJs, { type Database } from "sql.js";
-import { MetadataStoreError, SecretNotFoundError } from "../errors.js";
-import { MetadataStore } from "../services/metadata-store.js";
+import {
+  CommandNotFoundError,
+  MetadataStoreError,
+  SecretNotFoundError,
+} from "../errors.js";
+import {
+  type CommandMetadata,
+  MetadataStore,
+} from "../services/metadata-store.js";
 
 const dbDir = join(homedir(), ".secenv");
 const dbPath = join(dbDir, "store.sqlite");
@@ -24,6 +31,15 @@ const initDb = async (): Promise<Database> => {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(env, key)
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS commands (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL UNIQUE,
+      command    TEXT NOT NULL,
+      context    TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
   persist(db);
@@ -229,6 +245,137 @@ const make = Effect.gen(function* () {
           new MetadataStoreError({
             operation: "listContexts",
             message: `Failed to list contexts: ${error}`,
+          }),
+      });
+    }),
+
+    saveCommand: Effect.fn("SqliteMetadataStore.saveCommand")(function* (
+      name: string,
+      command: string,
+      context: string
+    ) {
+      yield* Effect.try({
+        try: () => {
+          db.run(
+            `INSERT INTO commands (name, command, context)
+             VALUES (?, ?, ?)
+             ON CONFLICT(name) DO UPDATE SET
+               command = excluded.command,
+               context = excluded.context`,
+            [name, command, context]
+          );
+          persist(db);
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "saveCommand",
+            message: `Failed to save command "${name}": ${error}`,
+          }),
+      });
+    }),
+
+    getCommand: Effect.fn("SqliteMetadataStore.getCommand")(function* (
+      name: string
+    ) {
+      const row = yield* Effect.try({
+        try: () => {
+          const stmt = db.prepare(
+            "SELECT name, command, context, created_at FROM commands WHERE name = ?"
+          );
+          stmt.bind([name]);
+          if (!stmt.step()) {
+            stmt.free();
+            return null;
+          }
+          const result = stmt.getAsObject() as unknown as CommandMetadata;
+          stmt.free();
+          return result;
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "getCommand",
+            message: `Failed to get command "${name}": ${error}`,
+          }),
+      });
+
+      if (!row) {
+        return yield* new CommandNotFoundError({
+          name,
+          message: `Command not found: "${name}"`,
+        });
+      }
+
+      return row;
+    }),
+
+    searchCommands: Effect.fn("SqliteMetadataStore.searchCommands")(function* (
+      pattern: string,
+      field: "name" | "command" | "all"
+    ) {
+      return yield* Effect.try({
+        try: () => {
+          const results: CommandMetadata[] = [];
+          const glob = `*${pattern}*`;
+          let query: string;
+          if (field === "name") {
+            query =
+              "SELECT name, command, context, created_at FROM commands WHERE name GLOB ? ORDER BY name";
+          } else if (field === "command") {
+            query =
+              "SELECT name, command, context, created_at FROM commands WHERE command GLOB ? ORDER BY name";
+          } else {
+            query =
+              "SELECT name, command, context, created_at FROM commands WHERE name GLOB ? OR command GLOB ? ORDER BY name";
+          }
+          const stmt = db.prepare(query);
+          stmt.bind(field === "all" ? [glob, glob] : [glob]);
+          while (stmt.step()) {
+            results.push(stmt.getAsObject() as unknown as CommandMetadata);
+          }
+          stmt.free();
+          return results;
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "searchCommands",
+            message: `Failed to search commands for "${pattern}": ${error}`,
+          }),
+      });
+    }),
+
+    listCommands: Effect.fn("SqliteMetadataStore.listCommands")(function* () {
+      return yield* Effect.try({
+        try: () => {
+          const results: CommandMetadata[] = [];
+          const stmt = db.prepare(
+            "SELECT name, command, context, created_at FROM commands ORDER BY name"
+          );
+          while (stmt.step()) {
+            results.push(stmt.getAsObject() as unknown as CommandMetadata);
+          }
+          stmt.free();
+          return results;
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "listCommands",
+            message: `Failed to list commands: ${error}`,
+          }),
+      });
+    }),
+
+    removeCommand: Effect.fn("SqliteMetadataStore.removeCommand")(function* (
+      name: string
+    ) {
+      yield* Effect.try({
+        try: () => {
+          db.run("DELETE FROM commands WHERE name = ?", [name]);
+          persist(db);
+        },
+        catch: (error) =>
+          new MetadataStoreError({
+            operation: "removeCommand",
+            message: `Failed to remove command "${name}": ${error}`,
           }),
       });
     }),
