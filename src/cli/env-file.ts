@@ -32,26 +32,39 @@ export const envFileCommand = Command.make(
         return;
       }
 
+      const results = yield* Effect.forEach(
+        secrets,
+        (item) =>
+          SecretStore.get(ctx, item.key).pipe(
+            Effect.map((value) => ({
+              key: item.key,
+              found: true as const,
+              value: String(value),
+            })),
+            Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
+              Effect.succeed({
+                key: item.key,
+                found: false as const,
+                value: "",
+              })
+            )
+          ),
+        { concurrency: 10 }
+      );
+
       const lines: string[] = [];
       const skipped: string[] = [];
-      for (const item of secrets) {
-        const result = yield* SecretStore.get(ctx, item.key).pipe(
-          Effect.map((value) => ({
-            found: true as const,
-            value: String(value),
-          })),
-          Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
-            Effect.succeed({ found: false as const, value: "" })
-          )
-        );
-
+      for (const result of results) {
         if (!result.found) {
-          skipped.push(item.key);
+          skipped.push(result.key);
           continue;
         }
-
-        const envKey = item.key.toUpperCase().replaceAll(".", "_");
-        lines.push(`${envKey}=${result.value}`);
+        const envKey = result.key.toUpperCase().replaceAll(".", "_");
+        const escaped = result.value
+          .replaceAll("\\", "\\\\")
+          .replaceAll('"', '\\"')
+          .replaceAll("\n", "\\n");
+        lines.push(`${envKey}="${escaped}"`);
       }
 
       if (skipped.length > 0) {
