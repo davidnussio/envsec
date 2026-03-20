@@ -1,48 +1,38 @@
 import { spyOn } from "bun:test";
 import { Command } from "@effect/cli";
 import { NodeContext } from "@effect/platform-node";
-import { Effect, type Layer } from "effect";
-import { rootCommand } from "../cli/root.js";
+import { Effect, Layer, type Layer as LayerType } from "effect";
+import { commands } from "../cli/index.js";
 import type { MetadataStoreError } from "../errors.js";
 import type { SecretStore } from "../services/secret-store.js";
 
-type CommandType =
-  | "list"
-  | "add"
-  | "get"
-  | "delete"
-  | "del"
-  | "search"
-  | "run"
-  | "env-file"
-  | "load"
-  | "cmd";
-
-export function runCli<T extends CommandType>(
-  command: Command.Command<
-    T,
-    SecretStore | Command.Command.Context<"envsec">,
-    MetadataStoreError,
-    Readonly<Record<string, unknown>>
-  >,
-  secretStoreLayer: Layer.Layer<SecretStore, MetadataStoreError | Error, never>
+export function buildTestCli(
+  secretStoreLayer: LayerType.Layer<
+    SecretStore,
+    MetadataStoreError | Error,
+    never
+  >
 ) {
-  return (argv: string[]) => {
+  return (arg: string) => {
     const logs: string[] = [];
 
     const consoleSpy = spyOn(console, "log").mockImplementation((...args) => {
       logs.push(args.map(String).join(" "));
     });
 
-    const fullCommand = rootCommand.pipe(Command.withSubcommands([command]));
-    const run = Command.run(fullCommand, {
+    const run = Command.run(commands, {
       name: "envsec",
       version: "0.0.0-test",
     });
 
-    return run(["node", "envsec", ...argv])
-      .pipe(Effect.provide(secretStoreLayer), Effect.provide(NodeContext.layer))
-      .pipe(Effect.runPromise)
+    const allLayers = Layer.mergeAll(secretStoreLayer, NodeContext.layer);
+
+    return run(["node", "envsec", ...arg.split(" ")])
+      .pipe(
+        Effect.provide(allLayers),
+        Effect.tapError(() => Effect.sync(() => consoleSpy.mockRestore())),
+        Effect.runPromise
+      )
       .finally(() => consoleSpy.mockRestore())
       .then(() => logs);
   };

@@ -1,16 +1,24 @@
 import { expect } from "bun:test";
 import { describe, it } from "node:test";
-import { runCli } from "../../tests/run-cli-test.js";
+import { buildTestCli } from "../../tests/run-cli-test.js";
 import { SecretStoreTest } from "../../tests/secret-store-test-layer.js";
-import { listCommand } from "../list.js";
 
 describe("list", () => {
   describe("when no --context flag is given", () => {
     it("shows the empty-state message if no contexts are found", async () => {
-      const runCliList = runCli(listCommand, SecretStoreTest);
-      const logs = await runCliList(["list"]);
+      const testCli = buildTestCli(SecretStoreTest);
+      const logs = await testCli("list");
 
       expect(logs).toEqual(["📭 No contexts found."]);
+    });
+
+    it("lists all contexts", async () => {
+      const testCli = buildTestCli(SecretStoreTest);
+      await testCli("-c myapp.dev add api.key --value sk-abc123");
+
+      const logs = await testCli("-c myapp.dev list");
+
+      expect(logs).toEqual(["📂 context1", "📂 context2"]);
     });
   });
 });
