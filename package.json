@@ -42,16 +42,16 @@
     "access": "public"
   },
   "dependencies": {
-    "@effect/cli": "^0.73.2",
-    "@effect/platform": "^0.94.5",
-    "@effect/platform-node": "^0.104.1",
-    "effect": "^3.19.19",
+    "@effect/cli": "^0.75.0",
+    "@effect/platform": "^0.96.0",
+    "@effect/platform-node": "^0.106.0",
+    "effect": "^3.21.0",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.7",
-    "@types/node": "^22",
-    "@types/sql.js": "^1.4.9",
+    "@biomejs/biome": "2.4.8",
+    "@types/node": "^25",
+    "@types/sql.js": "^1.4.10",
     "husky": "^9.1.7",
     "typescript": "^5",
     "ultracite": "7.3.2"
