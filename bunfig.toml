@@ -1,2 +1,5 @@
 [test]
 coverage = true
+preload = [
+  "./src/tests/cleanup-db.ts",
+]

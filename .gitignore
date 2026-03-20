@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 
 # Claude
 *.local.json
+
+# test db
+db/

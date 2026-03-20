@@ -13,22 +13,13 @@ import {
   MetadataStore,
 } from "../services/metadata-store.js";
 
-const MEMORY_DB = ":memory:" as const;
-
 const initDb = async (dbPath: string): Promise<Database> => {
   const SQL = await initSqlJs();
-  let db: Database;
 
-  const inMemory = dbPath === MEMORY_DB;
-
-  if (inMemory) {
-    db = new SQL.Database();
-  } else {
-    mkdirSync(join(dbPath, ".."), { recursive: true });
-    db = existsSync(dbPath)
-      ? new SQL.Database(readFileSync(dbPath))
-      : new SQL.Database();
-  }
+  mkdirSync(join(dbPath, ".."), { recursive: true });
+  const db = existsSync(dbPath)
+    ? new SQL.Database(readFileSync(dbPath))
+    : new SQL.Database();
 
   db.run(`
     CREATE TABLE IF NOT EXISTS secrets (
@@ -51,9 +42,7 @@ const initDb = async (dbPath: string): Promise<Database> => {
     )
   `);
 
-  if (!inMemory) {
-    persist(db, dbPath);
-  }
+  persist(db, dbPath);
 
   return db;
 };
@@ -73,10 +62,18 @@ export const MetadataStoreConfig = Context.GenericTag<MetadataStoreConfig>(
 const make = Effect.gen(function* () {
   const config = yield* Effect.serviceOption(MetadataStoreConfig);
 
-  const dbPath = Option.match(config, {
-    onNone: () => MEMORY_DB,
-    onSome: (conf) => conf.dbPath,
+  const dbPathOrError = Option.match(config, {
+    onSome: (conf) => Effect.succeed(conf.dbPath),
+    onNone: () =>
+      Effect.fail(
+        new MetadataStoreError({
+          operation: "init",
+          message: "Database path not configured",
+        })
+      ),
   });
+
+  const dbPath = yield* dbPathOrError;
 
   const db = yield* Effect.tryPromise({
     try: () => initDb(dbPath),
@@ -88,9 +85,7 @@ const make = Effect.gen(function* () {
   });
 
   const save = () => {
-    if (dbPath !== MEMORY_DB) {
-      persist(db, dbPath);
-    }
+    persist(db, dbPath);
   };
 
   return MetadataStore.of({

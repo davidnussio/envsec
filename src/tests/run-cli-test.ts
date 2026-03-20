@@ -13,6 +13,8 @@ export function buildTestCli(
     never
   >
 ) {
+  const allLayers = Layer.mergeAll(secretStoreLayer, NodeContext.layer);
+
   return (arg: string) => {
     const logs: string[] = [];
 
@@ -24,8 +26,6 @@ export function buildTestCli(
       name: "envsec",
       version: "0.0.0-test",
     });
-
-    const allLayers = Layer.mergeAll(secretStoreLayer, NodeContext.layer);
 
     return run(["node", "envsec", ...arg.split(" ")])
       .pipe(

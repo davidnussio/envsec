@@ -7,37 +7,38 @@ import {
 import { KeychainAccess } from "../services/keychain-access.js";
 import { SecretStore } from "../services/secret-store.js";
 
-export const KeychainAccessTest = Layer.effect(
-  KeychainAccess,
-  Effect.sync(() => {
-    const store = new Map<string, string>();
-    const key = (service: string, account: string) => `${service}::${account}`;
+const keychainKey = (service: string, account: string) =>
+  `${service}::${account}`;
 
-    return {
-      set: (service, account, password) =>
-        Effect.sync(() => store.set(key(service, account), password)),
+const keychainStore = new Map<string, string>();
 
-      get: (service, account) =>
-        Effect.gen(function* () {
-          const value = store.get(key(service, account));
-          if (value === undefined) {
-            return yield* new SecretNotFoundError({
-              key: account,
-              context: service,
-              message: `Not found: ${service}/${account}`,
-            });
-          }
-          return value;
-        }),
+const KeychainAccessTest = Layer.succeed(KeychainAccess, {
+  set: (service, account, password) =>
+    Effect.sync(() =>
+      keychainStore.set(keychainKey(service, account), password)
+    ),
 
-      remove: (service, account) =>
-        Effect.sync(() => store.delete(key(service, account))),
-    };
-  })
-);
+  get: (service, account) =>
+    Effect.gen(function* () {
+      const value = keychainStore.get(keychainKey(service, account));
+      if (value === undefined) {
+        return yield* new SecretNotFoundError({
+          key: account,
+          context: service,
+          message: `Not found: ${service}/${account}`,
+        });
+      }
+      return value;
+    }),
 
-const ConfigTest = Layer.succeed(MetadataStoreConfig, { dbPath: ":memory:" });
-export const SqliteMetadataStoreTest = SqliteMetadataStore.pipe(
+  remove: (service, account) =>
+    Effect.sync(() => keychainStore.delete(keychainKey(service, account))),
+});
+
+const ConfigTest = Layer.succeed(MetadataStoreConfig, {
+  dbPath: `${process.cwd()}/db/test.db`,
+});
+const SqliteMetadataStoreTest = SqliteMetadataStore.pipe(
   Layer.provide(ConfigTest)
 );
 
