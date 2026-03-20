@@ -1,5 +1,5 @@
 [test]
 coverage = true
 preload = [
-  "./src/tests/cleanup-db.ts",
+  "./src/tests/setup-test-db.ts",
 ]
