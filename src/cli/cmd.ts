@@ -27,9 +27,10 @@ const cmdRunCommand = Command.make(
       const resolved = yield* resolveCommand(saved.command, ctx);
 
       try {
-        execSync(resolved, {
+        execSync(resolved.command, {
           stdio: "inherit",
           shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+          env: { ...process.env, ...resolved.env },
         });
       } catch (e: unknown) {
         const status =

@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
+import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { rootCommand } from "./root.js";
 
@@ -38,12 +39,15 @@ const readLine = (prompt: string): Effect.Effect<string, Error> =>
     process.stdin.on("data", onData);
   });
 
-const executeCommand = (resolved: string): Effect.Effect<void, Error> =>
+const executeCommand = (
+  resolved: ResolvedCommand
+): Effect.Effect<void, Error> =>
   Effect.gen(function* () {
     try {
-      execSync(resolved, {
+      execSync(resolved.command, {
         stdio: "inherit",
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+        env: { ...process.env, ...resolved.env },
       });
     } catch (e: unknown) {
       const status =
