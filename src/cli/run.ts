@@ -4,7 +4,7 @@ import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
-import { rootCommand } from "./root.js";
+import { requireContext } from "./root.js";
 
 const cmd = Args.text({ name: "command" }).pipe(
   Args.withDescription(
@@ -63,14 +63,7 @@ export const runCommand = Command.make(
   { cmd, save, name },
   ({ cmd, save, name }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
-
-      if (Option.isNone(context)) {
-        return yield* Effect.fail(
-          new Error("Missing required option --context (-c)")
-        );
-      }
-      const ctx = context.value;
+      const ctx = yield* requireContext;
 
       if (save) {
         const cmdName = Option.isSome(name)

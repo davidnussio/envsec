@@ -1,9 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect } from "effect";
 import type { SecretNotFoundError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { requireContext } from "./root.js";
 
 const output = Options.text("output").pipe(
   Options.withAlias("o"),
@@ -16,14 +16,7 @@ export const envFileCommand = Command.make(
   { output },
   ({ output }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
-
-      if (Option.isNone(context)) {
-        return yield* Effect.fail(
-          new Error("Missing required option --context (-c)")
-        );
-      }
-      const ctx = context.value;
+      const ctx = yield* requireContext;
 
       const secrets = yield* SecretStore.list(ctx);
 

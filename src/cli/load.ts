@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect } from "effect";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { requireContext } from "./root.js";
 
 const input = Options.text("input").pipe(
   Options.withAlias("i"),
@@ -37,14 +37,7 @@ export const loadCommand = Command.make(
   { input, force },
   ({ input, force }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
-
-      if (Option.isNone(context)) {
-        return yield* Effect.fail(
-          new Error("Missing required option --context (-c)")
-        );
-      }
-      const ctx = context.value;
+      const ctx = yield* requireContext;
 
       const content = yield* Effect.try({
         try: () => readFileSync(input, "utf-8"),

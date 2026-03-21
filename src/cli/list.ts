@@ -1,11 +1,11 @@
 import { Command } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { optionalContext } from "./root.js";
 
 export const listCommand = Command.make("list", {}, () =>
   Effect.gen(function* () {
-    const { context } = yield* rootCommand;
+    const context = yield* optionalContext;
 
     if (Option.isNone(context)) {
       const contexts = yield* SecretStore.listContexts();

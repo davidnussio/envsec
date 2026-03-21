@@ -1,7 +1,7 @@
 import { Args, Command } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { optionalContext } from "./root.js";
 
 const pattern = Args.text({ name: "pattern" });
 
@@ -10,7 +10,7 @@ export const searchCommand = Command.make(
   { pattern },
   ({ pattern }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
+      const context = yield* optionalContext;
 
       if (Option.isNone(context)) {
         const results = yield* SecretStore.searchContexts(pattern);

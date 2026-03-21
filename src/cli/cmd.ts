@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { Args, Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect, Option, Schema } from "effect";
+import { ContextName } from "../domain/context-name.js";
 import { SecretStore } from "../services/secret-store.js";
 import { resolveCommand } from "./resolve-command.js";
 
@@ -22,7 +23,8 @@ const cmdRunCommand = Command.make(
   ({ name, context }) =>
     Effect.gen(function* () {
       const saved = yield* SecretStore.getCommand(name);
-      const ctx = Option.isSome(context) ? context.value : saved.context;
+      const rawCtx = Option.isSome(context) ? context.value : saved.context;
+      const ctx = yield* Schema.decode(ContextName)(rawCtx);
 
       const resolved = yield* resolveCommand(saved.command, ctx);
 
