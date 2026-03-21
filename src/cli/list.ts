@@ -42,5 +42,9 @@ export const listCommand = Command.make("list", {}, () =>
     for (const item of results) {
       yield* Console.log(`🔐 ${item.key}  updated: ${item.updated_at}`);
     }
+
+    yield* Console.log(
+      `\n📊 ${results.length} secret${results.length === 1 ? "" : "s"} in ${context.value}`
+    );
   })
 );

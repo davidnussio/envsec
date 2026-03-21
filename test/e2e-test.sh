@@ -118,6 +118,7 @@ out=$(run_ok -c "$CTX" list)
 assert_contains "list: db.password" "db.password" "$out"
 assert_contains "list: api.token" "api.token" "$out"
 assert_contains "list: special.chars" "special.chars" "$out"
+assert_contains "list: summary count" "3 secrets in $CTX" "$out"
 
 out=$(run_ok list)
 assert_contains "list contesti: test.e2e" "test.e2e" "$out"
