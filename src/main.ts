@@ -6,6 +6,7 @@ import { Effect, Layer } from "effect";
 import { addCommand } from "./cli/add.js";
 import { cmdCommand } from "./cli/cmd.js";
 import { delCommand, deleteCommand } from "./cli/delete.js";
+import { envCommand } from "./cli/env.js";
 import { envFileCommand } from "./cli/env-file.js";
 import { getCommand } from "./cli/get.js";
 import { listCommand } from "./cli/list.js";
@@ -31,6 +32,7 @@ const command = rootCommand.pipe(
     searchCommand,
     listCommand,
     runCommand,
+    envCommand,
     envFileCommand,
     loadCommand,
     cmdCommand,

@@ -154,6 +154,45 @@ assert_contains "env-file: DB_PASSWORD" 'DB_PASSWORD="newpassword"' "$env_conten
 assert_contains "env-file: API_TOKEN" 'API_TOKEN="tok_abc_999"' "$env_content"
 assert_contains "env-file: quotato" '"' "$env_content"
 
+# ─── 4b. ENV (export to stdout) ──────────────────────────────────────────────
+echo ""
+echo "── 4b. ENV ──"
+
+# Default (bash) export
+out=$(run_ok -c "$CTX" env)
+assert_contains "env: bash export db.password" "export DB_PASSWORD=" "$out"
+assert_contains "env: bash export api.token" "export API_TOKEN=" "$out"
+assert_contains "env: bash value" "newpassword" "$out"
+
+# Explicit --shell bash
+out=$(run_ok -c "$CTX" env --shell bash)
+assert_contains "env --shell bash: export" "export DB_PASSWORD=" "$out"
+
+# --shell fish
+out=$(run_ok -c "$CTX" env --shell fish)
+assert_contains "env --shell fish: set -gx" "set -gx DB_PASSWORD" "$out"
+
+# --shell powershell
+out=$(run_ok -c "$CTX" env --shell powershell)
+assert_contains "env --shell powershell: \$env:" '$env:DB_PASSWORD' "$out"
+
+# --unset (bash)
+out=$(run_ok -c "$CTX" env --unset)
+assert_contains "env --unset bash: unset" "unset DB_PASSWORD" "$out"
+assert_contains "env --unset bash: unset api" "unset API_TOKEN" "$out"
+
+# --unset --shell fish
+out=$(run_ok -c "$CTX" env --unset --shell fish)
+assert_contains "env --unset fish: set -e" "set -e DB_PASSWORD" "$out"
+
+# --unset --shell powershell
+out=$(run_ok -c "$CTX" env --unset --shell powershell)
+assert_contains "env --unset powershell: Remove-Item" "Remove-Item" "$out"
+
+# Empty context
+ec=0
+out=$(run_all -c "nonexistent.ctx.e2e" env 2>&1) || ec=$?
+assert_contains "env: empty context message" "No secrets" "$out"
 
 # ─── 5. LOAD ─────────────────────────────────────────────────────────────────
 echo ""

@@ -58,9 +58,9 @@
 - [ ] `envsec exec <command>` — run a command with secrets injected as environment variables (no file written to disk), e.g. `envsec exec -c myapp.dev -- node server.js`
 
 ### Secret Injection via Environment Variables
-- [ ] `envsec env` — export all secrets for a context as environment variables to stdout (for `eval $(envsec env -c myapp.dev)` usage)
-- [ ] `envsec env --shell <bash|zsh|fish|powershell>` — output in the correct syntax for the target shell
-- [ ] `envsec env --unset` — output unset/remove commands to clean up previously exported variables
+- [x] `envsec env` — export all secrets for a context as environment variables to stdout (for `eval $(envsec env -c myapp.dev)` usage)
+- [x] `envsec env --shell <bash|zsh|fish|powershell>` — output in the correct syntax for the target shell
+- [x] `envsec env --unset` — output unset/remove commands to clean up previously exported variables
 
 ### Import/Export
 - [ ] `envsec export -c <ctx> -o secrets.enc` — export all secrets for a context to an encrypted file (for backup, migration, or sharing)

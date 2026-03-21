@@ -12,6 +12,7 @@ Secure environment secrets management using native OS credential stores.
 - Run commands with secret interpolation
 - Save and rerun commands with `cmd` (search, list, run, delete)
 - Export secrets to `.env` files
+- Export secrets as shell environment variables (`eval $(envsec env)`)
 - Load secrets from `.env` files (with conflict detection)
 
 ## Requirements
@@ -137,6 +138,25 @@ envsec -c myapp.dev env-file --output .env.local
 ```
 
 Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`).
+
+### Export secrets as environment variables
+
+```bash
+# Output export statements for eval (bash/zsh)
+eval $(envsec -c myapp.dev env)
+
+# Specify target shell syntax
+envsec -c myapp.dev env --shell fish
+envsec -c myapp.dev env --shell powershell
+
+# Output unset commands to clean up exported variables
+eval $(envsec -c myapp.dev env --unset)
+
+# Combine shell and unset
+envsec -c myapp.dev env --unset --shell fish
+```
+
+Supported shells: `bash` (default), `zsh`, `fish`, `powershell`. Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`). Output goes to stdout so it can be piped to `eval` or sourced directly — no file is written to disk.
 
 ### Load secrets from a .env file
 
