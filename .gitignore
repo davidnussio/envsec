@@ -147,3 +147,4 @@ vite.config.ts.timestamp-*
 skills-lock.json
 .kiro
 .agents
+.vercel

@@ -20,7 +20,7 @@ export function Footer() {
           </Link>
           <a
             className="transition-colors hover:text-foreground"
-            href="https://github.com"
+            href="https://github.com/davidnussio/envsec"
             rel="noopener noreferrer"
             target="_blank"
           >

@@ -50,7 +50,7 @@ export function Navbar() {
               buttonVariants({ size: "sm" }),
               "bg-emerald-500 text-black hover:bg-emerald-400"
             )}
-            href="https://github.com"
+            href="https://github.com/davidnussio/envsec"
             rel="noopener noreferrer"
             target="_blank"
           >
