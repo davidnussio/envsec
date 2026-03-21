@@ -69,6 +69,21 @@ esec -c myapp.dev list
 Most commands require a context specified with `--context` (or `-c`).
 A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
 
+### Custom database path
+
+By default, metadata is stored at `~/.envsec/store.sqlite`. You can override this with `--db` or the `ENVSEC_DB` environment variable:
+
+```bash
+# Use a project-local database
+envsec --db ./local-store.sqlite -c myapp.dev list
+
+# Or via environment variable
+export ENVSEC_DB=/shared/team/envsec.sqlite
+envsec -c myapp.dev list
+```
+
+The `--db` flag takes precedence over `ENVSEC_DB`. Use cases include per-project databases, team-shared databases on network drives, and CI/CD with ephemeral storage.
+
 ### Add a secret
 
 ```bash
@@ -211,7 +226,7 @@ Secrets are stored in the native OS credential store. The backend is selected au
 | Linux   | Secret Service API (D-Bus)     | `secret-tool` (libsecret)           |
 | Windows | Credential Manager             | `cmdkey` + PowerShell (advapi32)    |
 
-Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite`. Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
+Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
 
 ## Security
 

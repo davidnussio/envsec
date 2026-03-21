@@ -38,7 +38,7 @@
 ## New Features
 
 ### Custom Database Path
-- [ ] Add `--db <path>` global option (and `ENVSEC_DB` env var) to specify an alternative SQLite database file instead of the default `~/.envsec/store.sqlite`
+- [x] Add `--db <path>` global option (and `ENVSEC_DB` env var) to specify an alternative SQLite database file instead of the default `~/.envsec/store.sqlite`
 - Use cases: per-project databases, team-shared databases on network drives, CI/CD with ephemeral storage
 - Implementation: pass the path through to `SqliteMetadataStore` via an Effect layer config, fall back to default when unset
 

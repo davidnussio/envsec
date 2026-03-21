@@ -325,9 +325,50 @@ assert_contains "json get: value field" '"value"' "$out"
 out=$(run_ok --json list)
 assert_contains "json list: is array" "[" "$out"
 
-# ─── 12. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 12. CUSTOM DATABASE PATH ────────────────────────────────────────────────
 echo ""
-echo "── 12. CLEANUP ──"
+echo "── 12. CUSTOM DB PATH ──"
+
+CUSTOM_DB="$TMPDIR_TEST/custom-store.sqlite"
+
+# --db flag: add and get with custom database
+out=$(run_ok --db "$CUSTOM_DB" -c "$CTX" add db.custom -v "custom-value")
+assert_contains "db flag: add" "stored" "$out"
+
+out=$(run_ok --db "$CUSTOM_DB" -c "$CTX" get db.custom)
+assert_eq "db flag: get" "custom-value" "$out"
+
+# Custom DB should not see secrets from default DB
+out=$(run_ok --db "$CUSTOM_DB" -c "$CTX" list)
+assert_contains "db flag: list shows custom secret" "db.custom" "$out"
+assert_not_contains "db flag: list no default secrets" "api.token" "$out"
+
+# ENVSEC_DB env var: same behavior
+CUSTOM_DB2="$TMPDIR_TEST/custom-store2.sqlite"
+out=$(ENVSEC_DB="$CUSTOM_DB2" run_ok -c "$CTX" add db.envvar -v "envvar-value")
+assert_contains "ENVSEC_DB: add" "stored" "$out"
+
+out=$(ENVSEC_DB="$CUSTOM_DB2" run_ok -c "$CTX" get db.envvar)
+assert_eq "ENVSEC_DB: get" "envvar-value" "$out"
+
+# --db flag takes precedence over ENVSEC_DB
+out=$(ENVSEC_DB="$CUSTOM_DB2" run_ok --db "$CUSTOM_DB" -c "$CTX" get db.custom)
+assert_eq "db flag precedence over ENVSEC_DB" "custom-value" "$out"
+
+# Verify custom DB file was created
+if [[ -f "$CUSTOM_DB" ]]; then
+  green "  ✓ db flag: file created"; ((PASS++))
+else
+  red "  ✗ db flag: file not created at $CUSTOM_DB"; ((FAIL++))
+fi
+
+# Clean up custom DB secrets (keychain still has them)
+run_ok --db "$CUSTOM_DB" -c "$CTX" delete -y db.custom >/dev/null || true
+ENVSEC_DB="$CUSTOM_DB2" run_ok -c "$CTX" delete -y db.envvar >/dev/null || true
+
+# ─── 13. CLEANUP & VERIFY ────────────────────────────────────────────────────
+echo ""
+echo "── 13. CLEANUP ──"
 
 for key in db.password api.token; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true

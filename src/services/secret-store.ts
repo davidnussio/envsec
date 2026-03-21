@@ -2,12 +2,17 @@ import { Effect } from "effect";
 import { parse as parseSecretKey } from "../domain/secret-key.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
+import { DatabaseConfigDefault } from "./database-config.js";
 import { KeychainAccess } from "./keychain-access.js";
 import { MetadataStore } from "./metadata-store.js";
 
 export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
   accessors: true,
-  dependencies: [PlatformKeychainAccessLive, SqliteMetadataStoreLive],
+  dependencies: [
+    PlatformKeychainAccessLive,
+    SqliteMetadataStoreLive,
+    DatabaseConfigDefault,
+  ],
   effect: Effect.gen(function* () {
     const keychain = yield* KeychainAccess;
     const metadata = yield* MetadataStore;

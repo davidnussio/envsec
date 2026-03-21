@@ -5,8 +5,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname } from "node:path";
 import { Effect, Layer } from "effect";
 import initSqlJs, { type Database } from "sql.js";
 import {
@@ -14,18 +13,17 @@ import {
   MetadataStoreError,
   SecretNotFoundError,
 } from "../errors.js";
+import { DatabaseConfig } from "../services/database-config.js";
 import {
   type CommandMetadata,
   MetadataStore,
 } from "../services/metadata-store.js";
 
-const dbDir = join(homedir(), ".envsec");
-const dbPath = join(dbDir, "store.sqlite");
-
 const DIR_PERMISSIONS = 0o700;
 const FILE_PERMISSIONS = 0o600;
 
-const initDb = async (): Promise<Database> => {
+const initDb = async (dbPath: string): Promise<Database> => {
+  const dbDir = dirname(dbPath);
   mkdirSync(dbDir, { recursive: true, mode: DIR_PERMISSIONS });
   chmodSync(dbDir, DIR_PERMISSIONS);
   const SQL = await initSqlJs();
@@ -52,17 +50,19 @@ const initDb = async (): Promise<Database> => {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `);
-  persist(db);
+  persist(db, dbPath);
   return db;
 };
 
-const persist = (db: Database) => {
+const persist = (db: Database, dbPath: string) => {
   writeFileSync(dbPath, Buffer.from(db.export()), { mode: FILE_PERMISSIONS });
 };
 
 const make = Effect.gen(function* () {
+  const { path: dbPath } = yield* DatabaseConfig;
+
   const db = yield* Effect.tryPromise({
-    try: () => initDb(),
+    try: () => initDb(dbPath),
     catch: (error) =>
       new MetadataStoreError({
         operation: "init",
@@ -78,7 +78,7 @@ const make = Effect.gen(function* () {
       dirty = true;
       return;
     }
-    persist(db);
+    persist(db, dbPath);
   };
 
   return MetadataStore.of({
@@ -94,7 +94,7 @@ const make = Effect.gen(function* () {
       if (dirty) {
         yield* Effect.try({
           try: () => {
-            persist(db);
+            persist(db, dbPath);
             dirty = false;
           },
           catch: (error) =>
