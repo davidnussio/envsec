@@ -58,6 +58,12 @@ npm install -g envsec
 npx envsec
 ```
 
+The package also provides `esec` as a shorter alias:
+
+```bash
+esec -c myapp.dev list
+```
+
 ## Usage
 
 Most commands require a context specified with `--context` (or `-c`).
