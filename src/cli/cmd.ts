@@ -1,6 +1,8 @@
 import { execSync } from "node:child_process";
 import { Args, Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect, Option, Schema } from "effect";
+import { ContextName } from "../domain/context-name.js";
+import { CommandExecutionError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
 import { resolveCommand } from "./resolve-command.js";
 
@@ -22,22 +24,31 @@ const cmdRunCommand = Command.make(
   ({ name, context }) =>
     Effect.gen(function* () {
       const saved = yield* SecretStore.getCommand(name);
-      const ctx = Option.isSome(context) ? context.value : saved.context;
+      const rawCtx = Option.isSome(context) ? context.value : saved.context;
+      const ctx = yield* Schema.decode(ContextName)(rawCtx);
 
       const resolved = yield* resolveCommand(saved.command, ctx);
 
-      try {
-        execSync(resolved, {
-          stdio: "inherit",
-          shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-        });
-      } catch (e: unknown) {
-        const status =
-          e instanceof Error && "status" in e
-            ? (e as { status: number }).status
-            : 1;
-        yield* Effect.fail(new Error(`Command exited with code ${status}`));
-      }
+      yield* Effect.try({
+        try: () => {
+          execSync(resolved.command, {
+            stdio: "inherit",
+            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+            env: { ...process.env, ...resolved.env },
+          });
+        },
+        catch: (e) => {
+          const status =
+            e instanceof Error && "status" in e
+              ? (e as { status: number }).status
+              : 1;
+          return new CommandExecutionError({
+            command: resolved.command,
+            exitCode: status,
+            message: `Command exited with code ${status}`,
+          });
+        },
+      });
     })
 );
 

@@ -1,7 +1,8 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
+import { AbortedError, EmptyValueError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });
 const valueOption = Options.text("value").pipe(
@@ -10,7 +11,11 @@ const valueOption = Options.text("value").pipe(
   Options.optional
 );
 
-const readSecret = (prompt: string): Effect.Effect<string, Error> =>
+const isNewline = (ch: string): boolean => ch === "\r" || ch === "\n";
+const isInterrupt = (ch: string): boolean => ch === "\u0003";
+const isBackspace = (ch: string): boolean => ch === "\u007F" || ch === "\b";
+
+const readSecret = (prompt: string): Effect.Effect<string, AbortedError> =>
   Effect.async((resume) => {
     process.stdout.write(prompt);
 
@@ -32,24 +37,35 @@ const readSecret = (prompt: string): Effect.Effect<string, Error> =>
       process.stdin.pause();
     };
 
+    const handleChar = (ch: string): boolean => {
+      if (isNewline(ch)) {
+        cleanup();
+        process.stdout.write("\n");
+        resume(Effect.succeed(input));
+        return true;
+      }
+      if (isInterrupt(ch)) {
+        cleanup();
+        process.stdout.write("\n");
+        resume(
+          Effect.fail(new AbortedError({ message: "User aborted input" }))
+        );
+        return true;
+      }
+      if (isBackspace(ch) && input.length > 0) {
+        input = input.slice(0, -1);
+        process.stdout.write("\b \b");
+      } else if (!isBackspace(ch)) {
+        input += ch;
+        process.stdout.write("*");
+      }
+      return false;
+    };
+
     const onData = (chunk: string) => {
       for (const ch of chunk) {
-        if (ch === "\r" || ch === "\n") {
-          cleanup();
-          process.stdout.write("\n");
-          resume(Effect.succeed(input));
+        if (handleChar(ch)) {
           return;
-        }
-        if (ch === "\u0003") {
-          cleanup();
-          process.stdout.write("\n");
-          resume(Effect.fail(new Error("Aborted")));
-          return;
-        }
-        if (ch === "\u007F" || ch === "\b") {
-          input = input.slice(0, -1);
-        } else {
-          input += ch;
         }
       }
     };
@@ -62,21 +78,17 @@ export const addCommand = Command.make(
   { key, value: valueOption },
   ({ key, value }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
-
-      if (Option.isNone(context)) {
-        return yield* Effect.fail(
-          new Error("Missing required option --context (-c)")
-        );
-      }
-      const ctx = context.value;
+      const ctx = yield* requireContext;
 
       const secret = Option.isSome(value)
         ? value.value
         : yield* readSecret("Enter secret value: ");
 
       if (secret.trim() === "") {
-        return yield* Effect.fail(new Error("Secret value cannot be empty"));
+        return yield* new EmptyValueError({
+          field: "secret",
+          message: "Secret value cannot be empty",
+        });
       }
 
       yield* SecretStore.set(ctx, key, secret);

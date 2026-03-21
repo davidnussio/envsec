@@ -1,7 +1,7 @@
 import { Args, Command } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { isJsonOutput, optionalContext } from "./root.js";
 
 const pattern = Args.text({ name: "pattern" });
 
@@ -10,10 +10,16 @@ export const searchCommand = Command.make(
   { pattern },
   ({ pattern }) =>
     Effect.gen(function* () {
-      const { context } = yield* rootCommand;
+      const context = yield* optionalContext;
+      const jsonMode = yield* isJsonOutput;
 
       if (Option.isNone(context)) {
         const results = yield* SecretStore.searchContexts(pattern);
+
+        if (jsonMode) {
+          yield* Console.log(JSON.stringify(results));
+          return;
+        }
 
         if (results.length === 0) {
           yield* Console.log("📭 No contexts found.");
@@ -27,6 +33,11 @@ export const searchCommand = Command.make(
       }
 
       const results = yield* SecretStore.search(context.value, pattern);
+
+      if (jsonMode) {
+        yield* Console.log(JSON.stringify(results));
+        return;
+      }
 
       if (results.length === 0) {
         yield* Console.log("🔍 No secrets found.");

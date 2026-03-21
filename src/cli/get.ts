@@ -1,21 +1,21 @@
 import { Args, Command } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect } from "effect";
 import { SecretStore } from "../services/secret-store.js";
-import { rootCommand } from "./root.js";
+import { isJsonOutput, requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });
 
 export const getCommand = Command.make("get", { key }, ({ key }) =>
   Effect.gen(function* () {
-    const { context } = yield* rootCommand;
+    const ctx = yield* requireContext;
+    const jsonMode = yield* isJsonOutput;
 
-    if (Option.isNone(context)) {
-      return yield* Effect.fail(
-        new Error("Missing required option --context (-c)")
-      );
+    const value = yield* SecretStore.get(ctx, key);
+
+    if (jsonMode) {
+      yield* Console.log(JSON.stringify({ context: ctx, key, value }));
+    } else {
+      yield* Console.log(value);
     }
-
-    const value = yield* SecretStore.get(context.value, key);
-    yield* Console.log(value);
   })
 );

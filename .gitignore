@@ -143,6 +143,10 @@ vite.config.ts.timestamp-*
 
 # Claude
 *.local.json
+.claude
+skills-lock.json
+.kiro
+.agents
 
 # test db
 db/
