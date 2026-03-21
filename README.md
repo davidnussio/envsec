@@ -60,12 +60,6 @@ npm install -g envsec
 npx envsec
 ```
 
-The package also provides `esec` as a shorter alias:
-
-```bash
-esec -c myapp.dev list
-```
-
 ## Usage
 
 Most commands require a context specified with `--context` (or `-c`).
@@ -279,6 +273,21 @@ envsec -c myapp.dev audit --json
 ```
 
 Secrets with an `--expires` duration set via `envsec add` are tracked in metadata. The `audit` command scans for secrets that are already expired or will expire within the specified window. The `get` and `list` commands also display expiry warnings inline.
+
+### Shell completions
+
+envsec supports tab completion for bash, zsh, fish, and sh.
+
+```bash
+# Bash (add to ~/.bashrc)
+eval "$(envsec --completions bash)"
+
+# Zsh (add to ~/.zshrc)
+eval "$(envsec --completions zsh)"
+
+# Fish (add to ~/.config/fish/config.fish)
+envsec --completions fish | source
+```
 
 ## How it works
 
