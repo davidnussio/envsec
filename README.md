@@ -335,6 +335,23 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 **Encryption depends on your OS.** envsec adds no additional at-rest encryption beyond what the native credential store provides. On systems without full-disk encryption, an attacker with physical access could potentially extract secrets from the keychain. We recommend enabling full-disk encryption (FileVault, LUKS, BitLocker) for the strongest protection.
 
+## Testing
+
+End-to-end integration tests cover the full CLI lifecycle (add, get, list, search, env-file, load, delete, run, cmd, audit, share).
+
+```bash
+# Build first
+pnpm run build
+
+# macOS / Linux
+bash test/e2e-test.sh
+
+# Windows (PowerShell)
+pwsh test/e2e-test.ps1
+```
+
+CI runs automatically on push/PR to `main` via GitHub Actions, executing `e2e-test.sh` on macOS and Ubuntu, and `e2e-test.ps1` on Windows.
+
 ## License
 
 MIT
