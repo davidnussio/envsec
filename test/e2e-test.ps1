@@ -128,11 +128,21 @@ Run-Ok @("-c", $CTX, "add", "db.password", "-v", "newpassword") | Out-Null
 $out = Run-Ok @("-c", $CTX, "get", "db.password")
 Assert-Eq "add: sovrascrittura" "newpassword" $out.Trim()
 
-# Special characters (Windows cmdkey has issues with !, #, &, %, = in values)
-$SpecialValue = 'p@ssw0rd_S3cr3t'
+# Special characters — now handled via P/Invoke (no cmdkey escaping issues)
+$SpecialValue = 'p@ss w0rd!#$%'
 Run-Ok @("-c", $CTX, "add", "special.chars", "-v", $SpecialValue) | Out-Null
 $out = Run-Ok @("-c", $CTX, "get", "special.chars")
 Assert-Eq "get: caratteri speciali" $SpecialValue $out.Trim()
+
+# ─── 1b. GET --quiet ──────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "── 1b. GET --quiet ──"
+
+$out = Run-Ok @("-c", $CTX, "get", "-q", "db.password")
+Assert-Eq "get -q: only value" "newpassword" $out.Trim()
+
+$out = Run-Ok @("-c", $CTX, "get", "--quiet", "api.token")
+Assert-Eq "get --quiet: only value" "tok_abc_999" $out.Trim()
 
 # ─── 2. LIST ─────────────────────────────────────────────────────────────────
 Write-Host ""

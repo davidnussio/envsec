@@ -110,6 +110,10 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 
 ```bash
 envsec -c myapp.dev get api.key
+
+# Print only the raw value (no warnings or extra output)
+envsec -c myapp.dev get api.key --quiet
+envsec -c myapp.dev get api.key -q
 ```
 
 ### List all secrets in a context

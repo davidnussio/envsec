@@ -111,6 +111,16 @@ run_ok -c "$CTX" add special.chars -v 'p@ss w0rd!#$%' >/dev/null
 out=$(run_ok -c "$CTX" get special.chars)
 assert_eq "get: caratteri speciali" 'p@ss w0rd!#$%' "$out"
 
+# ─── 1b. GET --quiet ──────────────────────────────────────────────────────────
+echo ""
+echo "── 1b. GET --quiet ──"
+
+out=$(run_ok -c "$CTX" get -q db.password)
+assert_eq "get -q: only value" "newpassword" "$out"
+
+out=$(run_ok -c "$CTX" get --quiet api.token)
+assert_eq "get --quiet: only value" "tok_abc_999" "$out"
+
 # ─── 2. LIST ─────────────────────────────────────────────────────────────────
 echo ""
 echo "── 2. LIST ──"

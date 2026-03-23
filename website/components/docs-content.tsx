@@ -126,7 +126,17 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo`}
       <Section id="get">
         <H2>envsec get</H2>
         <P>Retrieve a single secret value.</P>
-        <CodeBlock code="envsec -c myapp.dev get api.key" />
+        <CodeBlock
+          code={`envsec -c myapp.dev get api.key
+
+# Print only the raw value (no warnings or extra output)
+envsec -c myapp.dev get api.key --quiet
+envsec -c myapp.dev get api.key -q`}
+        />
+        <P>
+          Use <Mono>--quiet</Mono> (<Mono>-q</Mono>) for scripting — it
+          suppresses expiry warnings and outputs only the secret value.
+        </P>
       </Section>
 
       <Section id="list">
