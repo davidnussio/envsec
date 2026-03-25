@@ -5,9 +5,8 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { Context, Effect, Layer } from "effect";
+import { dirname } from "node:path";
+import { Effect, Layer } from "effect";
 import initSqlJs, { type Database } from "sql.js";
 import {
   CommandNotFoundError,
@@ -30,7 +29,6 @@ const initDb = async (dbPath: string): Promise<Database> => {
   chmodSync(dbDir, DIR_PERMISSIONS);
   const SQL = await initSqlJs();
 
-  mkdirSync(join(dbPath, ".."), { recursive: true });
   const db = existsSync(dbPath)
     ? new SQL.Database(readFileSync(dbPath))
     : new SQL.Database();
@@ -53,14 +51,6 @@ const initDb = async (dbPath: string): Promise<Database> => {
 const persist = (db: Database, dbPath: string) => {
   writeFileSync(dbPath, Buffer.from(db.export()), { mode: FILE_PERMISSIONS });
 };
-
-export interface MetadataStoreConfig {
-  readonly dbPath: string;
-}
-
-export const MetadataStoreConfig = Context.GenericTag<MetadataStoreConfig>(
-  "@services/MetadataStoreConfig"
-);
 
 const make = Effect.gen(function* () {
   const { path: dbPath } = yield* DatabaseConfig;
@@ -470,11 +460,4 @@ const make = Effect.gen(function* () {
   });
 });
 
-export const SqliteMetadataStore = Layer.effect(MetadataStore, make);
-
-const liveDbPath = join(homedir(), ".envsec", "store.sqlite");
-const ConfigLive = Layer.succeed(MetadataStoreConfig, { dbPath: liveDbPath });
-
-export const SqliteMetadataStoreLive = SqliteMetadataStore.pipe(
-  Layer.provide(ConfigLive)
-);
+export const SqliteMetadataStoreLive = Layer.effect(MetadataStore, make);
