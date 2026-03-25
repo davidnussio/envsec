@@ -492,9 +492,48 @@ assert_contains "add update expiry: stored" "stored" "$out"
 # Clean up expiry context
 run_ok -c "$CTX_EXP" delete --all -y >/dev/null || true
 
-# ─── 14. SHARE (GPG ENCRYPTION) ───────────────────────────────────────────────
+# ─── 14. ENV FILE EXPORT TRACKING ────────────────────────────────────────────
 echo ""
-echo "── 14. SHARE ──"
+echo "── 14. ENV FILE EXPORT TRACKING ──"
+
+# Generate an env file — should be tracked
+ENV_TRACK_OUT="$TMPDIR_TEST/first-tracked.env"
+run_ok -c "$CTX" env-file -o "$ENV_TRACK_OUT" >/dev/null
+
+# Audit should show the generated env file
+out=$(run_ok -c "$CTX" audit --within 30d)
+assert_contains "audit env-file: shows path" "$ENV_TRACK_OUT" "$out"
+assert_contains "audit env-file: section header" "Generated .env files" "$out"
+
+# Generate a second env file with different path
+ENV_TRACK_OUT2="$TMPDIR_TEST/second-tracked.env"
+run_ok -c "$CTX" env-file -o "$ENV_TRACK_OUT2" >/dev/null
+
+# Audit without context should show all env files
+out=$(run_ok audit --within 30d)
+assert_contains "audit all env-files: first path" "$ENV_TRACK_OUT" "$out"
+assert_contains "audit all env-files: second path" "$ENV_TRACK_OUT2" "$out"
+
+# Audit JSON should include env_files array
+out=$(run_ok -c "$CTX" --json audit --within 30d)
+assert_contains "audit json: has env_files" '"env_files"' "$out"
+assert_contains "audit json: has secrets key" '"secrets"' "$out"
+assert_contains "audit json: env file path" "$ENV_TRACK_OUT" "$out"
+
+# Delete a tracked env file and verify audit prunes it
+rm -f "$ENV_TRACK_OUT"
+out=$(run_ok -c "$CTX" audit --within 30d)
+assert_contains "audit prune: stale removed msg" "stale" "$out"
+assert_not_contains "audit prune: removed file gone" "$ENV_TRACK_OUT" "$out"
+assert_contains "audit prune: existing file still shown" "$ENV_TRACK_OUT2" "$out"
+
+# Second audit should not show stale message (already cleaned)
+out=$(run_ok -c "$CTX" audit --within 30d)
+assert_not_contains "audit prune: no stale on second run" "stale" "$out"
+
+# ─── 15. SHARE (GPG ENCRYPTION) ───────────────────────────────────────────────
+echo ""
+echo "── 15. SHARE ──"
 
 # Check if gpg is available
 if command -v gpg &>/dev/null; then
@@ -569,9 +608,9 @@ else
   echo "  ⚠ gpg not found — skipping share tests"
 fi
 
-# ─── 15. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 16. CLEANUP & VERIFY ────────────────────────────────────────────────────
 echo ""
-echo "── 13. CLEANUP ──"
+echo "── 16. CLEANUP ──"
 
 for key in db.password api.token; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true

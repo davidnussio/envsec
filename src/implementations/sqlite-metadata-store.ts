@@ -37,6 +37,9 @@ const initDb = async (dbPath: string): Promise<Database> => {
   db.run(
     "CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, command TEXT NOT NULL, context TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
   );
+  db.run(
+    "CREATE TABLE IF NOT EXISTS env_exports (id INTEGER PRIMARY KEY AUTOINCREMENT, context TEXT NOT NULL, path TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+  );
   const cols = db
     .exec("PRAGMA table_info(secrets)")
     .flatMap((r) => r.values.map((v) => v[1]));
@@ -452,6 +455,71 @@ const make = Effect.gen(function* () {
             new MetadataStoreError({
               operation: "listAllExpiring",
               message: `Failed to list all expiring secrets: ${error}`,
+            }),
+        });
+      }
+    ),
+    trackEnvFileExport: Effect.fn("SqliteMetadataStore.trackEnvFileExport")(
+      function* (context: string, path: string) {
+        yield* Effect.try({
+          try: () => {
+            db.run("INSERT INTO env_exports (context, path) VALUES (?, ?)", [
+              context,
+              path,
+            ]);
+            maybePersist();
+          },
+          catch: (error) =>
+            new MetadataStoreError({
+              operation: "trackEnvFileExport",
+              message: `Failed to track env file export: ${error}`,
+            }),
+        });
+      }
+    ),
+    listEnvFileExports: Effect.fn("SqliteMetadataStore.listEnvFileExports")(
+      function* () {
+        return yield* Effect.try({
+          try: () => {
+            const results: Array<{
+              context: string;
+              path: string;
+              created_at: string;
+            }> = [];
+            const stmt = db.prepare(
+              "SELECT context, path, created_at FROM env_exports ORDER BY created_at DESC"
+            );
+            while (stmt.step()) {
+              results.push(
+                stmt.getAsObject() as unknown as {
+                  context: string;
+                  path: string;
+                  created_at: string;
+                }
+              );
+            }
+            stmt.free();
+            return results;
+          },
+          catch: (error) =>
+            new MetadataStoreError({
+              operation: "listEnvFileExports",
+              message: `Failed to list env file exports: ${error}`,
+            }),
+        });
+      }
+    ),
+    removeEnvFileExport: Effect.fn("SqliteMetadataStore.removeEnvFileExport")(
+      function* (path: string) {
+        yield* Effect.try({
+          try: () => {
+            db.run("DELETE FROM env_exports WHERE path = ?", [path]);
+            maybePersist();
+          },
+          catch: (error) =>
+            new MetadataStoreError({
+              operation: "removeEnvFileExport",
+              message: `Failed to remove env file export: ${error}`,
             }),
         });
       }

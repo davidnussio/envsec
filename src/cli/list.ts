@@ -2,22 +2,24 @@ import { Command } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { formatTimeDistance } from "../domain/duration.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, dim, icons } from "../ui.js";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (
   item: { key: string; updated_at: string; expires_at: string | null },
   now: number
 ): string => {
-  let suffix = `updated: ${item.updated_at}`;
-  if (item.expires_at) {
-    const expiresMs = new Date(`${item.expires_at}Z`).getTime();
-    const expired = expiresMs <= now;
-    const distance = formatTimeDistance(item.expires_at);
-    suffix += expired
-      ? `  \u274C expired ${distance}`
-      : `  \u23F3 expires ${distance}`;
+  const updated = dim(`updated: ${item.updated_at}`);
+  if (!item.expires_at) {
+    return `${icons.key} ${item.key}  ${updated}`;
   }
-  return `\uD83D\uDD10 ${item.key}  ${suffix}`;
+  const expiresMs = new Date(`${item.expires_at}Z`).getTime();
+  const expired = expiresMs <= now;
+  const distance = formatTimeDistance(item.expires_at);
+  const expiry = expired
+    ? `${icons.expired} expired ${distance}`
+    : `${icons.clock} expires ${distance}`;
+  return `${icons.key} ${item.key}  ${updated}  ${expiry}`;
 };
 
 const listContexts = (jsonMode: boolean) =>
@@ -28,12 +30,12 @@ const listContexts = (jsonMode: boolean) =>
       return;
     }
     if (contexts.length === 0) {
-      yield* Console.log("\uD83D\uDCED No contexts found.");
+      yield* Console.log(`${icons.empty} No contexts found.`);
       return;
     }
     for (const item of contexts) {
       yield* Console.log(
-        `\uD83D\uDCE6 ${item.context}  (${item.count} secrets)`
+        `${icons.folder} ${bold(item.context)}  ${dim(`(${item.count} secrets)`)}`
       );
     }
   });
@@ -46,7 +48,7 @@ const listSecrets = (ctx: string, jsonMode: boolean) =>
       return;
     }
     if (results.length === 0) {
-      yield* Console.log("\uD83D\uDCED No secrets found.");
+      yield* Console.log(`${icons.empty} No secrets found.`);
       return;
     }
     const now = Date.now();
@@ -54,7 +56,7 @@ const listSecrets = (ctx: string, jsonMode: boolean) =>
       yield* Console.log(formatSecretLine(item, now));
     }
     yield* Console.log(
-      `\n\uD83D\uDCCA ${results.length} secret${results.length === 1 ? "" : "s"} in ${ctx}`
+      `\n${icons.chart} ${badge(results.length, "secret")} in ${bold(ctx)}`
     );
   });
 

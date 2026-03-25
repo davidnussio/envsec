@@ -8,6 +8,7 @@ import {
   type SecretNotFoundError,
 } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, icons } from "../ui.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const encryptTo = Options.text("encrypt-to").pipe(
@@ -51,7 +52,9 @@ export const shareCommand = Command.make(
       const secrets = yield* SecretStore.list(ctx);
 
       if (secrets.length === 0) {
-        yield* Console.error(`📭 No secrets found for context "${ctx}"`);
+        yield* Console.error(
+          `${icons.empty} No secrets found for context ${bold(`"${ctx}"`)}`
+        );
         return;
       }
 
@@ -87,7 +90,7 @@ export const shareCommand = Command.make(
 
       if (skipped.length > 0) {
         yield* Console.error(
-          `⚠️  Skipped ${skipped.length} secret(s) no longer in keychain: ${skipped.join(", ")}`
+          `${icons.warning} Skipped ${badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
         );
       }
 
@@ -116,7 +119,7 @@ export const shareCommand = Command.make(
             }),
         });
         yield* Console.error(
-          `🔒 Encrypted ${entries.length} secret(s) from "${ctx}" for ${encryptTo} → ${output.value}`
+          `${icons.shield} Encrypted ${badge(entries.length, "secret")} from ${bold(`"${ctx}"`)} for ${bold(encryptTo)} ${icons.arrow} ${bold(output.value)}`
         );
       } else {
         yield* Console.log(encrypted);

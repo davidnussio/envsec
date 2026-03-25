@@ -488,9 +488,48 @@ Assert-Contains "add update expiry: stored" "stored" $out
 
 Run-Ok @("-c", $CTX_EXP, "delete", "--all", "-y") | Out-Null
 
-# ─── 14. SHARE (GPG ENCRYPTION) ───────────────────────────────────────────────
+# ─── 14. ENV FILE EXPORT TRACKING ────────────────────────────────────────────
 Write-Host ""
-Write-Host "── 14. SHARE ──"
+Write-Host "── 14. ENV FILE EXPORT TRACKING ──"
+
+# Generate an env file — should be tracked
+$EnvTrackOut = Join-Path $TmpDir "first-tracked.env"
+Run-Ok @("-c", $CTX, "env-file", "-o", $EnvTrackOut) | Out-Null
+
+# Audit should show the generated env file
+$out = Run-Ok @("-c", $CTX, "audit", "--within", "30d")
+Assert-Contains "audit env-file: shows path" $EnvTrackOut $out
+Assert-Contains "audit env-file: section header" "Generated .env files" $out
+
+# Generate a second env file with different path
+$EnvTrackOut2 = Join-Path $TmpDir "second-tracked.env"
+Run-Ok @("-c", $CTX, "env-file", "-o", $EnvTrackOut2) | Out-Null
+
+# Audit without context should show all env files
+$out = Run-Ok @("audit", "--within", "30d")
+Assert-Contains "audit all env-files: first path" $EnvTrackOut $out
+Assert-Contains "audit all env-files: second path" $EnvTrackOut2 $out
+
+# Audit JSON should include env_files array
+$out = Run-Ok @("-c", $CTX, "--json", "audit", "--within", "30d")
+Assert-Contains "audit json: has env_files" '"env_files"' $out
+Assert-Contains "audit json: has secrets key" '"secrets"' $out
+Assert-Contains "audit json: env file path" $EnvTrackOut $out
+
+# Delete a tracked env file and verify audit prunes it
+Remove-Item $EnvTrackOut -Force -ErrorAction SilentlyContinue
+$out = Run-Ok @("-c", $CTX, "audit", "--within", "30d")
+Assert-Contains "audit prune: stale removed msg" "stale" $out
+Assert-NotContains "audit prune: removed file gone" $EnvTrackOut $out
+Assert-Contains "audit prune: existing file still shown" $EnvTrackOut2 $out
+
+# Second audit should not show stale message (already cleaned)
+$out = Run-Ok @("-c", $CTX, "audit", "--within", "30d")
+Assert-NotContains "audit prune: no stale on second run" "stale" $out
+
+# ─── 15. SHARE (GPG ENCRYPTION) ───────────────────────────────────────────────
+Write-Host ""
+Write-Host "── 15. SHARE ──"
 
 # GPG tests are skipped on Windows CI.
 # The GPG binary on GitHub Actions windows-latest is Git for Windows' MSYS2 build.
@@ -500,9 +539,9 @@ Write-Host "── 14. SHARE ──"
 # the MSYS2 path mangling. GPG share functionality is fully tested on macOS/Linux CI.
 Write-Host "  ⚠ Skipping GPG share tests on Windows (MSYS2 path conversion issues)" -ForegroundColor Yellow
 
-# ─── 15. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 16. CLEANUP & VERIFY ────────────────────────────────────────────────────
 Write-Host ""
-Write-Host "── 15. CLEANUP ──"
+Write-Host "── 16. CLEANUP ──"
 
 foreach ($key in @("db.password", "api.token")) {
     Run-Ok @("-c", $CTX, "delete", "-y", $key) | Out-Null

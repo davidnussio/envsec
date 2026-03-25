@@ -2,6 +2,7 @@ import { Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import type { SecretNotFoundError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, icons } from "../ui.js";
 import { requireContext } from "./root.js";
 
 type Shell = "bash" | "zsh" | "fish" | "powershell";
@@ -63,7 +64,9 @@ export const envCommand = Command.make(
       const secrets = yield* SecretStore.list(ctx);
 
       if (secrets.length === 0) {
-        yield* Console.error(`📭 No secrets found for context "${ctx}"`);
+        yield* Console.error(
+          `${icons.empty} No secrets found for context ${bold(`"${ctx}"`)}`
+        );
         return;
       }
 
@@ -107,7 +110,7 @@ export const envCommand = Command.make(
 
       if (skipped.length > 0) {
         yield* Console.error(
-          `⚠️  Skipped ${skipped.length} secret(s) no longer in keychain: ${skipped.join(", ")}`
+          `${icons.warning} Skipped ${badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
         );
       }
     })

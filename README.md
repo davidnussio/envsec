@@ -17,14 +17,14 @@ Secure environment secrets management using native OS credential stores.
 - Search contexts and secrets with glob patterns
 - Run commands with secret interpolation
 - Save and rerun commands with `cmd` (search, list, run, delete)
-- Export secrets to `.env` files
+- Export secrets to `.env` files (with generation tracking via `audit`)
 - Export secrets as shell environment variables (`eval $(envsec env)`)
 - Load secrets from `.env` files (with conflict detection)
 - Share secrets encrypted with GPG for team members
 
 ## Requirements
 
-- Node.js >= 18
+- Node.js >= 20
 
 ### macOS
 
@@ -299,6 +299,8 @@ envsec -c myapp.dev audit --json
 ```
 
 Secrets with an `--expires` duration set via `envsec add` are tracked in metadata. The `audit` command scans for secrets that are already expired or will expire within the specified window. The `get` and `list` commands also display expiry warnings inline.
+
+The `audit` command also tracks generated `.env` files. Every time `env-file` is used, the output path, context, and timestamp are recorded. The audit output includes a second section listing these files. If a tracked `.env` file no longer exists on disk, audit automatically removes it from the metadata and reports the cleanup.
 
 ### Shell completions
 

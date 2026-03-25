@@ -3,6 +3,7 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { CommandExecutionError, EmptyValueError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { bold, icons } from "../ui.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
@@ -84,7 +85,9 @@ export const runCommand = Command.make(
         }
 
         yield* SecretStore.saveCommand(cmdName, cmd, ctx);
-        yield* Console.log(`💾 Command "${cmdName}" saved`);
+        yield* Console.log(
+          `${icons.save} Command ${bold(`"${cmdName}"`)} saved`
+        );
       }
 
       const resolved = yield* resolveCommand(cmd, ctx);

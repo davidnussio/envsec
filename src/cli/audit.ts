@@ -1,8 +1,13 @@
+import { existsSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
 import { Console, Duration, Effect, Option } from "effect";
 import { formatTimeDistance, parseDuration } from "../domain/duration.js";
-import type { SecretMetadata } from "../services/metadata-store.js";
+import type {
+  EnvFileExport,
+  SecretMetadata,
+} from "../services/metadata-store.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, dim, icons, indent } from "../ui.js";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const DEFAULT_WINDOW = "30d";
@@ -26,10 +31,10 @@ const formatLine = (
 ): string => {
   const distance = expiresAt ? formatTimeDistance(expiresAt) : "unknown";
   const expired = isExpired(expiresAt, now);
-  const icon = expired ? "\u274C" : "\u23F3";
+  const icon = expired ? icons.expired : icons.clock;
   const label = expired ? "expired" : "expires";
-  const ctx = prefix ? `[${prefix}] ` : "";
-  return `  ${icon} ${ctx}${key}  ${label} ${distance}`;
+  const ctx = prefix ? dim(`[${prefix}] `) : "";
+  return indent(`${icon} ${ctx}${key}  ${label} ${distance}`);
 };
 
 const countExpired = (
@@ -44,63 +49,41 @@ const auditForContext = (
   ctx: string,
   secrets: SecretMetadata[],
   windowStr: string,
-  now: number,
-  jsonMode: boolean
+  now: number
 ) =>
   Effect.gen(function* () {
-    if (jsonMode) {
-      const items = secrets.map((s) => ({
-        context: ctx,
-        key: s.key,
-        expires_at: s.expires_at,
-        expired: isExpired(s.expires_at, now),
-      }));
-      yield* Console.log(JSON.stringify(items));
-      return;
-    }
     if (secrets.length === 0) {
       yield* Console.log(
-        `\u2705 No secrets expiring within ${windowStr} in "${ctx}"`
+        `${icons.check} No secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}`
       );
       return;
     }
     yield* Console.log(
-      `\uD83D\uDD0D Secrets expiring within ${windowStr} in "${ctx}":\n`
+      `${icons.search} Secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}:\n`
     );
     for (const s of secrets) {
       yield* Console.log(formatLine(s.key, s.expires_at, now));
     }
     const { expired, expiring } = countExpired(secrets, now);
     yield* Console.log(
-      `\n\uD83D\uDCCA ${expired} expired, ${expiring} expiring soon (${secrets.length} total)`
+      `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon ${dim(`(${secrets.length} total)`)}`
     );
   });
 
 const auditAllContexts = (
   secrets: Array<SecretMetadata & { env: string }>,
   windowStr: string,
-  now: number,
-  jsonMode: boolean
+  now: number
 ) =>
   Effect.gen(function* () {
-    if (jsonMode) {
-      const items = secrets.map((s) => ({
-        context: s.env,
-        key: s.key,
-        expires_at: s.expires_at,
-        expired: isExpired(s.expires_at, now),
-      }));
-      yield* Console.log(JSON.stringify(items));
-      return;
-    }
     if (secrets.length === 0) {
       yield* Console.log(
-        `\u2705 No secrets expiring within ${windowStr} across all contexts`
+        `${icons.check} No secrets expiring within ${bold(windowStr)} across all contexts`
       );
       return;
     }
     yield* Console.log(
-      `\uD83D\uDD0D Secrets expiring within ${windowStr} across all contexts:\n`
+      `${icons.search} Secrets expiring within ${bold(windowStr)} across all contexts:\n`
     );
     for (const s of secrets) {
       yield* Console.log(formatLine(s.key, s.expires_at, now, s.env));
@@ -108,8 +91,66 @@ const auditAllContexts = (
     const { expired, expiring } = countExpired(secrets, now);
     const contextCount = new Set(secrets.map((s) => s.env)).size;
     yield* Console.log(
-      `\n\uD83D\uDCCA ${expired} expired, ${expiring} expiring soon across ${contextCount} context${contextCount === 1 ? "" : "s"} (${secrets.length} total)`
+      `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon across ${badge(contextCount, "context")} ${dim(`(${secrets.length} total)`)}`
     );
+  });
+
+const pruneStaleEnvExports = (exports: EnvFileExport[]) =>
+  Effect.gen(function* () {
+    const alive: EnvFileExport[] = [];
+    const stale: EnvFileExport[] = [];
+
+    for (const e of exports) {
+      if (existsSync(e.path)) {
+        alive.push(e);
+      } else {
+        stale.push(e);
+      }
+    }
+
+    for (const e of stale) {
+      yield* SecretStore.removeEnvFileExport(e.path);
+    }
+
+    if (stale.length > 0) {
+      yield* Console.log(
+        `\n${icons.broom} Removed ${badge(stale.length, "stale env file record")} ${dim("(files no longer on disk)")}`
+      );
+    }
+
+    return alive;
+  });
+
+const auditEnvFileExports = (
+  exports: EnvFileExport[],
+  jsonMode: boolean,
+  contextFilter?: string
+) =>
+  Effect.gen(function* () {
+    const filtered = contextFilter
+      ? exports.filter((e) => e.context === contextFilter)
+      : exports;
+
+    if (jsonMode) {
+      return filtered;
+    }
+
+    if (filtered.length === 0) {
+      return filtered;
+    }
+
+    yield* Console.log(`\n${icons.file} Generated .env files:\n`);
+    for (const e of filtered) {
+      const date = e.created_at.replace("T", " ").slice(0, 19);
+      yield* Console.log(indent(`${icons.file} ${e.path}`));
+      yield* Console.log(
+        indent(`${dim(`context: ${e.context}  generated: ${date}`)}`, 2)
+      );
+    }
+    yield* Console.log(
+      `\n${icons.chart} ${badge(filtered.length, "env file")} generated`
+    );
+    return filtered;
   });
 
 export const auditCommand = Command.make(
@@ -124,22 +165,53 @@ export const auditCommand = Command.make(
       const windowMs = Duration.toMillis(windowDuration);
       const now = Date.now();
 
+      const envExports = yield* pruneStaleEnvExports(
+        yield* SecretStore.listEnvFileExports()
+      );
+
       if (Option.isSome(context)) {
         const secrets = yield* SecretStore.listExpiring(
           context.value,
           windowMs
         );
-        yield* auditForContext(
-          context.value,
-          secrets,
-          windowStr,
-          now,
-          jsonMode
-        );
+
+        if (jsonMode) {
+          const items = secrets.map((s) => ({
+            context: context.value,
+            key: s.key,
+            expires_at: s.expires_at,
+            expired: isExpired(s.expires_at, now),
+          }));
+          const filteredExports = envExports.filter(
+            (e) => e.context === context.value
+          );
+          yield* Console.log(
+            JSON.stringify({ secrets: items, env_files: filteredExports })
+          );
+          return;
+        }
+
+        yield* auditForContext(context.value, secrets, windowStr, now);
+        yield* auditEnvFileExports(envExports, false, context.value);
         return;
       }
 
       const secrets = yield* SecretStore.listAllExpiring(windowMs);
-      yield* auditAllContexts(secrets, windowStr, now, jsonMode);
+
+      if (jsonMode) {
+        const items = secrets.map((s) => ({
+          context: s.env,
+          key: s.key,
+          expires_at: s.expires_at,
+          expired: isExpired(s.expires_at, now),
+        }));
+        yield* Console.log(
+          JSON.stringify({ secrets: items, env_files: envExports })
+        );
+        return;
+      }
+
+      yield* auditAllContexts(secrets, windowStr, now);
+      yield* auditEnvFileExports(envExports, false);
     })
 );

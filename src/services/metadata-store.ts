@@ -85,6 +85,17 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
       Array<SecretMetadata & { env: string }>,
       MetadataStoreError
     >;
+    readonly trackEnvFileExport: (
+      context: string,
+      path: string
+    ) => Effect.Effect<void, MetadataStoreError>;
+    readonly listEnvFileExports: () => Effect.Effect<
+      EnvFileExport[],
+      MetadataStoreError
+    >;
+    readonly removeEnvFileExport: (
+      path: string
+    ) => Effect.Effect<void, MetadataStoreError>;
   }
 >() {}
 
@@ -93,4 +104,10 @@ export interface CommandMetadata {
   readonly context: string;
   readonly created_at: string;
   readonly name: string;
+}
+
+export interface EnvFileExport {
+  readonly context: string;
+  readonly created_at: string;
+  readonly path: string;
 }

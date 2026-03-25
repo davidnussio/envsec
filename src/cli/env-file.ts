@@ -1,8 +1,10 @@
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { FileAccessError, type SecretNotFoundError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, icons } from "../ui.js";
 import { requireContext } from "./root.js";
 
 const output = Options.text("output").pipe(
@@ -21,7 +23,9 @@ export const envFileCommand = Command.make(
       const secrets = yield* SecretStore.list(ctx);
 
       if (secrets.length === 0) {
-        yield* Console.log(`📭 No secrets found for context "${ctx}"`);
+        yield* Console.log(
+          `${icons.empty} No secrets found for context ${bold(`"${ctx}"`)}`
+        );
         return;
       }
 
@@ -62,7 +66,7 @@ export const envFileCommand = Command.make(
 
       if (skipped.length > 0) {
         yield* Console.log(
-          `⚠️  Skipped ${skipped.length} secret(s) no longer in keychain: ${skipped.join(", ")}`
+          `${icons.warning} Skipped ${badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
         );
       }
 
@@ -74,6 +78,12 @@ export const envFileCommand = Command.make(
             message: `Failed to write env file: ${error}`,
           }),
       });
-      yield* Console.log(`📝 Written ${lines.length} secret(s) to ${output}`);
+
+      const absolutePath = resolve(output);
+      yield* SecretStore.trackEnvFileExport(ctx, absolutePath);
+
+      yield* Console.log(
+        `${icons.file} Written ${badge(lines.length, "secret")} to ${bold(output)}`
+      );
     })
 );

@@ -142,6 +142,24 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       return yield* metadata.listAllExpiring(withinMs);
     });
 
+    const trackEnvFileExport = Effect.fn("SecretStore.trackEnvFileExport")(
+      function* (context: string, path: string) {
+        yield* metadata.trackEnvFileExport(context, path);
+      }
+    );
+
+    const listEnvFileExports = Effect.fn("SecretStore.listEnvFileExports")(
+      function* () {
+        return yield* metadata.listEnvFileExports();
+      }
+    );
+
+    const removeEnvFileExport = Effect.fn("SecretStore.removeEnvFileExport")(
+      function* (path: string) {
+        yield* metadata.removeEnvFileExport(path);
+      }
+    );
+
     return {
       set,
       get,
@@ -160,6 +178,9 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       endBatch,
       listExpiring,
       listAllExpiring,
+      trackEnvFileExport,
+      listEnvFileExports,
+      removeEnvFileExport,
     };
   }),
 }) {}

@@ -4,6 +4,7 @@ import { Console, Effect, Option, Schema } from "effect";
 import { ContextName } from "../domain/context-name.js";
 import { CommandExecutionError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { bold, dim, icons } from "../ui.js";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---
@@ -98,13 +99,13 @@ const cmdSearchCommandDef = Command.make(
       const results = yield* SecretStore.searchCommands(pattern, field);
 
       if (results.length === 0) {
-        yield* Console.log("🔍 No commands found.");
+        yield* Console.log(`${icons.search} No commands found.`);
         return;
       }
 
       for (const item of results) {
         yield* Console.log(
-          `⚡ ${item.name}  →  ${item.command}  (ctx: ${item.context})`
+          `${icons.bolt} ${bold(item.name)}  ${icons.arrow}  ${item.command}  ${dim(`(ctx: ${item.context})`)}`
         );
       }
     })
@@ -117,13 +118,13 @@ const cmdListCommand = Command.make("list", {}, () =>
     const results = yield* SecretStore.listCommands();
 
     if (results.length === 0) {
-      yield* Console.log("📭 No saved commands.");
+      yield* Console.log(`${icons.empty} No saved commands.`);
       return;
     }
 
     for (const item of results) {
       yield* Console.log(
-        `⚡ ${item.name}  →  ${item.command}  (ctx: ${item.context})`
+        `${icons.bolt} ${bold(item.name)}  ${icons.arrow}  ${item.command}  ${dim(`(ctx: ${item.context})`)}`
       );
     }
   })
@@ -141,7 +142,7 @@ const cmdDeleteCommand = Command.make(
   ({ name }) =>
     Effect.gen(function* () {
       yield* SecretStore.removeCommand(name);
-      yield* Console.log(`🗑️  Command "${name}" removed`);
+      yield* Console.log(`${icons.trash} Command ${bold(`"${name}"`)} removed`);
     })
 );
 

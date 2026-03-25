@@ -2,6 +2,7 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { formatTimeDistance } from "../domain/duration.js";
 import { SecretStore } from "../services/secret-store.js";
+import { icons } from "../ui.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });
@@ -48,13 +49,13 @@ export const getCommand = Command.make(
           const now = Date.now();
           if (expiresMs <= now) {
             yield* Console.error(
-              `⚠️  Warning: this secret expired ${formatTimeDistance(meta.expires_at)}`
+              `${icons.expired} Warning: this secret expired ${formatTimeDistance(meta.expires_at)}`
             );
           } else {
             const oneDayMs = 24 * 60 * 60 * 1000;
             if (expiresMs - now < oneDayMs) {
               yield* Console.error(
-                `⏳ Heads up: this secret expires ${formatTimeDistance(meta.expires_at)}`
+                `${icons.clock} Heads up: this secret expires ${formatTimeDistance(meta.expires_at)}`
               );
             }
           }

@@ -1,6 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect, Option } from "effect";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, bold, icons } from "../ui.js";
 import { requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" }).pipe(Args.optional);
@@ -48,16 +49,18 @@ const handler = ({
       const keys = yield* SecretStore.list(ctx);
 
       if (keys.length === 0) {
-        yield* Console.log(`No secrets found in context "${ctx}".`);
+        yield* Console.log(
+          `${icons.empty} No secrets found in context ${bold(`"${ctx}"`)}.`
+        );
         return;
       }
 
       if (!yes) {
         const confirmed = yield* readConfirmation(
-          `Delete all ${keys.length} secret(s) from context "${ctx}"?`
+          `${icons.warning} Delete ${badge(keys.length, "secret")} from context ${bold(`"${ctx}"`)}?`
         );
         if (!confirmed) {
-          yield* Console.log("Cancelled.");
+          yield* Console.log(`${icons.cancel} Cancelled.`);
           return;
         }
       }
@@ -68,7 +71,7 @@ const handler = ({
       });
       yield* SecretStore.endBatch();
       yield* Console.log(
-        `🗑️  Removed ${keys.length} secret(s) from context "${ctx}"`
+        `${icons.trash} Removed ${badge(keys.length, "secret")} from context ${bold(`"${ctx}"`)}`
       );
       return;
     }
@@ -84,16 +87,18 @@ const handler = ({
 
     if (!yes) {
       const confirmed = yield* readConfirmation(
-        `Delete secret "${keyValue}" from context "${ctx}"?`
+        `${icons.warning} Delete secret ${bold(`"${keyValue}"`)} from context ${bold(`"${ctx}"`)}?`
       );
       if (!confirmed) {
-        yield* Console.log("Cancelled.");
+        yield* Console.log(`${icons.cancel} Cancelled.`);
         return;
       }
     }
 
     yield* SecretStore.remove(ctx, keyValue);
-    yield* Console.log(`🗑️  Secret "${keyValue}" removed from context "${ctx}"`);
+    yield* Console.log(
+      `${icons.trash} Secret ${bold(`"${keyValue}"`)} removed from context ${bold(`"${ctx}"`)}`
+    );
   });
 
 export const deleteCommand = Command.make("delete", { key, yes, all }, handler);

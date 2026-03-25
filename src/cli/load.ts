@@ -3,6 +3,7 @@ import { Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { FileAccessError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { bold, icons } from "../ui.js";
 import { requireContext } from "./root.js";
 
 const input = Options.text("input").pipe(
@@ -81,7 +82,7 @@ export const loadCommand = Command.make(
 
         if (exists && !force) {
           yield* Console.log(
-            `⚠️  Skipped "${secretKey}": already exists (use --force to overwrite)`
+            `${icons.warning} Skipped ${bold(`"${secretKey}"`)}: already exists (use --force to overwrite)`
           );
           skipped++;
           continue;
@@ -102,7 +103,7 @@ export const loadCommand = Command.make(
       }
 
       yield* Console.log(
-        `✅ Done: ${added} added, ${overwritten} overwritten, ${skipped} skipped`
+        `${icons.success} Done: ${bold(String(added))} added, ${bold(String(overwritten))} overwritten, ${bold(String(skipped))} skipped`
       );
     })
 );

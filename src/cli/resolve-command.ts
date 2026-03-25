@@ -7,6 +7,7 @@ import {
   type SecretNotFoundError,
 } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { badge, icons, indent } from "../ui.js";
 
 const placeholderPattern = /\{([^}]+)\}/g;
 
@@ -63,9 +64,9 @@ export const resolveCommand = (
     }
 
     if (missing.length > 0) {
-      const keys = missing.map((k) => `  - ${k}`).join("\n");
-      const message = `Missing secrets in context "${ctx}":\n${keys}\n\nAdd them with: envsec -c ${ctx} add <key>`;
-      yield* Console.error(`❌ ${message}`);
+      const keyList = missing.map((k) => indent(`- ${k}`)).join("\n");
+      const message = `Missing secrets in context "${ctx}":\n${keyList}\n\nAdd them with: envsec -c ${ctx} add <key>`;
+      yield* Console.error(`${icons.error} ${message}`);
       return yield* new MissingSecretsError({
         keys: missing,
         context: ctx,
@@ -75,6 +76,8 @@ export const resolveCommand = (
 
     yield* options?.quiet
       ? Effect.void
-      : Console.log(`🔑 Resolved ${placeholders.length} secret(s)`);
+      : Console.log(
+          `${icons.lock} Resolved ${badge(placeholders.length, "secret")}`
+        );
     return { command: resolved, env };
   });

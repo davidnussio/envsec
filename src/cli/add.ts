@@ -3,6 +3,7 @@ import { Console, Effect, Option } from "effect";
 import { expiresAtFromNow, parseDuration } from "../domain/duration.js";
 import { AbortedError, EmptyValueError } from "../errors.js";
 import { SecretStore } from "../services/secret-store.js";
+import { bold, icons, label } from "../ui.js";
 import { requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });
@@ -88,7 +89,7 @@ export const addCommand = Command.make(
 
       const secret = Option.isSome(value)
         ? value.value
-        : yield* readSecret("Enter secret value: ");
+        : yield* readSecret(`${icons.key} Enter secret value: `);
 
       if (secret.trim() === "") {
         return yield* new EmptyValueError({
@@ -104,9 +105,13 @@ export const addCommand = Command.make(
       }
 
       yield* SecretStore.set(ctx, key, secret, expiresAt);
-      yield* Console.log(`✅ Secret "${key}" stored in context "${ctx}"`);
+      yield* Console.log(
+        `${icons.success} Secret ${bold(`"${key}"`)} stored in context ${bold(`"${ctx}"`)}`
+      );
       if (expiresAt) {
-        yield* Console.log(`⏳ expires: ${expiresAt} UTC`);
+        yield* Console.log(
+          `  ${icons.clock} ${label("expires", `${expiresAt} UTC`)}`
+        );
       }
     })
 );
