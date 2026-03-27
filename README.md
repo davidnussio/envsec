@@ -6,7 +6,7 @@ Secure environment secrets management using native OS credential stores.
 
 <!-- https://github.com/user-attachments/assets/ce744e1f-7a6f-4571-8bdc-9dc63cf42ed8 -->
 
-![Image](https://github.com/user-attachments/assets/533f3cf9-d5af-42d0-b517-bc8b05835093)
+![Image](https://raw.githubusercontent.com/davidnussio/envsec/328e0773aad6a4c10f399f40f1a750904df334c3/assets/terminal-1.gif)
 
 ## Features
 
