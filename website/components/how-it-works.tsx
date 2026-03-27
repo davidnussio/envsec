@@ -16,7 +16,7 @@ const PLATFORMS = [
 
 export function HowItWorks() {
   return (
-    <section className="relative px-6 py-32" id="how-it-works">
+    <section className="relative px-4 py-32 sm:px-6" id="how-it-works">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(16,185,129,0.05)_0%,transparent_60%)]" />
       <div className="relative mx-auto max-w-4xl">
         <div className="mb-16 animate-reveal text-center">
@@ -28,8 +28,8 @@ export function HowItWorks() {
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
             envsec delegates encryption to battle-tested credential stores.
-            Metadata (key names, timestamps) lives in a local SQLite database —
-            values never do.
+            Metadata (key names, timestamps) lives in a local SQLite database.
+            Values never do.
           </p>
         </div>
 

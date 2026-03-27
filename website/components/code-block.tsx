@@ -20,10 +20,10 @@ export function CodeBlock({ code, language = "bash" }: CodeBlockProps) {
   return (
     <div className="group relative my-4 overflow-hidden rounded-lg border border-white/10 bg-zinc-950">
       <div className="flex items-center justify-between border-white/5 border-b px-4 py-2">
-        <span className="font-mono text-xs text-zinc-600">{language}</span>
+        <span className="font-mono text-xs text-zinc-400">{language}</span>
         <button
           aria-label="Copy code"
-          className="text-zinc-600 opacity-0 transition-opacity hover:text-zinc-400 group-hover:opacity-100"
+          className="text-zinc-400 opacity-0 transition-opacity hover:text-zinc-300 group-hover:opacity-100"
           onClick={handleCopy}
           type="button"
         >

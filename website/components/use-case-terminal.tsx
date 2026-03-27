@@ -46,7 +46,7 @@ export function UseCaseTerminal({ lines }: { lines: readonly TerminalLine[] }) {
         </span>
       </div>
       <div
-        className="max-h-64 overflow-y-auto overflow-x-hidden p-4 font-mono text-sm leading-relaxed"
+        className="max-h-64 overflow-y-auto overflow-x-hidden p-3 font-mono text-sm leading-relaxed sm:p-4"
         ref={scrollRef}
       >
         {lines.slice(0, visibleLines).map((line, i) => (

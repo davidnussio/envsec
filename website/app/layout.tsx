@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   creator: "David Nussio",
   metadataBase: new URL(siteUrl),
   alternates: {
-    canonical: "/",
+    canonical: "./",
   },
   icons: {
     icon: [

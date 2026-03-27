@@ -11,7 +11,7 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 z-50 w-full border-white/5 border-b bg-black/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           className="flex items-center gap-2 font-bold font-mono text-lg tracking-tight"
           href="/"
@@ -79,7 +79,7 @@ export function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-white/5 border-t bg-black/95 px-6 py-4 md:hidden">
+        <div className="border-white/5 border-t bg-black/95 px-4 py-4 sm:px-6 md:hidden">
           <div className="flex flex-col gap-4">
             <Link
               className="text-muted-foreground text-sm"

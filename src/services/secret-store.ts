@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { parse as parseSecretKey } from "../domain/secret-key.js";
+import { SecretNotFoundError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
 import { DatabaseConfigDefault } from "./database-config.js";
@@ -42,7 +43,17 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
     ) {
       yield* metadata.get(context, key);
       const parsed = yield* parseSecretKey(key, context);
-      return yield* keychain.get(parsed.service, parsed.account);
+      return yield* keychain.get(parsed.service, parsed.account).pipe(
+        Effect.catchTag("SecretNotFoundError", () =>
+          Effect.fail(
+            new SecretNotFoundError({
+              key,
+              context,
+              message: `Secret "${key}" has metadata in context "${context}" but is missing from the OS keychain. Run: envsec delete -c ${context} ${key}`,
+            })
+          )
+        )
+      );
     });
 
     const getMetadata = Effect.fn("SecretStore.getMetadata")(function* (
@@ -57,16 +68,10 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       key: string
     ) {
       const parsed = yield* parseSecretKey(key, context);
-      yield* keychain.remove(parsed.service, parsed.account);
-      yield* metadata
-        .remove(context, key)
-        .pipe(
-          Effect.catchAll((metadataError) =>
-            keychain
-              .set(parsed.service, parsed.account, "")
-              .pipe(Effect.ignore, Effect.andThen(Effect.fail(metadataError)))
-          )
-        );
+      yield* keychain
+        .remove(parsed.service, parsed.account)
+        .pipe(Effect.catchTag("KeychainError", () => Effect.void));
+      yield* metadata.remove(context, key);
     });
 
     const search = Effect.fn("SecretStore.search")(function* (

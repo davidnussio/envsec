@@ -9,7 +9,7 @@ import { TerminalDemo } from "./terminal-demo";
 
 export function Hero() {
   return (
-    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pt-14">
+    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pt-14 sm:px-6">
       {/* Gradient background */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08)_0%,transparent_70%)]" />
       <div className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-emerald-500/5 blur-3xl" />

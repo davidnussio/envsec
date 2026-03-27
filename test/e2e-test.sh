@@ -18,7 +18,7 @@ FAIL=0
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 cleanup_secrets() {
-  for key in db.password api.token special.chars; do
+  for key in db.password api.token special.chars stale.secret; do
     node "$CLI" -c "$CTX" delete -y "$key" >/dev/null 2>&1 || true
   done
   for key in redis.host redis.port redis.password smtp.user smtp.pass; do
@@ -610,9 +610,60 @@ else
   echo "  ⚠ gpg not found — skipping share tests"
 fi
 
-# ─── 16. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 16. STALE METADATA (get/delete orphaned secrets) ─────────────────────────
 echo ""
-echo "── 16. CLEANUP ──"
+echo "── 16. STALE METADATA ──"
+
+CTX_STALE="test.e2e"
+
+# Add a secret normally
+run_ok -c "$CTX_STALE" add stale.secret -v "will-be-orphaned" >/dev/null
+
+# Verify it works
+out=$(run_ok -c "$CTX_STALE" get stale.secret)
+assert_eq "stale: get before removal" "will-be-orphaned" "$out"
+
+# Delete directly from OS keychain (bypass envsec), leaving metadata orphaned
+# service = envsec.<context>.<prefix>, account = <last part>
+if [[ "$(uname)" == "Darwin" ]]; then
+  security delete-generic-password -s "envsec.${CTX_STALE}.stale" -a "secret" >/dev/null 2>&1 || true
+else
+  secret-tool clear service "envsec.${CTX_STALE}.stale" account "secret" >/dev/null 2>&1 || true
+fi
+
+# get should fail with a helpful message suggesting delete
+ec=0
+out=$(run_all -c "$CTX_STALE" get stale.secret) || ec=$?
+assert_exit "stale: get exits with error" "1" "$ec"
+assert_contains "stale: get mentions missing from keychain" "missing from the OS keychain" "$out"
+assert_contains "stale: get suggests delete command" "envsec delete" "$out"
+
+# get --quiet should also show the suggestion
+ec=0
+out=$(run_all -c "$CTX_STALE" get -q stale.secret) || ec=$?
+assert_exit "stale: get -q exits with error" "1" "$ec"
+assert_contains "stale: get -q suggests delete" "envsec delete" "$out"
+
+# list should still show the key (metadata exists)
+out=$(run_ok -c "$CTX_STALE" list)
+assert_contains "stale: list still shows key" "stale.secret" "$out"
+
+# delete should succeed and clean up the orphaned metadata
+out=$(run_ok -c "$CTX_STALE" delete -y stale.secret)
+assert_contains "stale: delete succeeds" "removed" "$out"
+
+# After delete, list should no longer show the key
+out=$(run_ok -c "$CTX_STALE" list || true)
+assert_not_contains "stale: list after cleanup" "stale.secret" "$out"
+
+# get should now fail with standard not found (no metadata either)
+ec=0
+run_all -c "$CTX_STALE" get stale.secret >/dev/null || ec=$?
+assert_exit "stale: get after cleanup fails" "1" "$ec"
+
+# ─── 17. CLEANUP & VERIFY ────────────────────────────────────────────────────
+echo ""
+echo "── 17. CLEANUP ──"
 
 for key in db.password api.token; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true

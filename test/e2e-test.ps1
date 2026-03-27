@@ -85,7 +85,7 @@ function Run-All {
 }
 
 function Cleanup-Secrets {
-    foreach ($key in @("db.password", "api.token", "special.chars")) {
+    foreach ($key in @("db.password", "api.token", "special.chars", "stale.secret")) {
         & node $CLI -c $CTX delete -y $key 2>$null | Out-Null
     }
     foreach ($key in @("redis.host", "redis.port", "redis.password", "smtp.user", "smtp.pass")) {
@@ -543,9 +543,55 @@ Write-Host "── 15. SHARE ──"
 # the MSYS2 path mangling. GPG share functionality is fully tested on macOS/Linux CI.
 Write-Host "  ⚠ Skipping GPG share tests on Windows (MSYS2 path conversion issues)" -ForegroundColor Yellow
 
-# ─── 16. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 16. STALE METADATA (get/delete orphaned secrets) ─────────────────────────
 Write-Host ""
-Write-Host "── 16. CLEANUP ──"
+Write-Host "── 16. STALE METADATA ──"
+
+$CTX_STALE = "test.e2e"
+
+# Add a secret normally
+Run-Ok @("-c", $CTX_STALE, "add", "stale.secret", "-v", "will-be-orphaned") | Out-Null
+
+# Verify it works
+$out = Run-Ok @("-c", $CTX_STALE, "get", "stale.secret")
+Assert-Eq "stale: get before removal" "will-be-orphaned" $out.Trim()
+
+# Delete directly from Windows Credential Manager (bypass envsec), leaving metadata orphaned
+# target = envsec:<service>/<account> where service = envsec.<context>.<prefix>, account = <last part>
+& cmd /c "cmdkey /delete:`"envsec:envsec.${CTX_STALE}.stale/secret`"" 2>$null | Out-Null
+
+# get should fail with a helpful message suggesting delete
+$out = Run-All @("-c", $CTX_STALE, "get", "stale.secret")
+$ec = $LASTEXITCODE
+Assert-ExitCode "stale: get exits with error" 1 $ec
+Assert-Contains "stale: get mentions missing from keychain" "missing from the OS keychain" $out
+Assert-Contains "stale: get suggests delete command" "envsec delete" $out
+
+# get --quiet should also show the suggestion
+$out = Run-All @("-c", $CTX_STALE, "get", "-q", "stale.secret")
+$ec = $LASTEXITCODE
+Assert-ExitCode "stale: get -q exits with error" 1 $ec
+Assert-Contains "stale: get -q suggests delete" "envsec delete" $out
+
+# list should still show the key (metadata exists)
+$out = Run-Ok @("-c", $CTX_STALE, "list")
+Assert-Contains "stale: list still shows key" "stale.secret" $out
+
+# delete should succeed and clean up the orphaned metadata
+$out = Run-Ok @("-c", $CTX_STALE, "delete", "-y", "stale.secret")
+Assert-Contains "stale: delete succeeds" "removed" $out
+
+# After delete, list should no longer show the key
+$out = Run-Ok @("-c", $CTX_STALE, "list")
+Assert-NotContains "stale: list after cleanup" "stale.secret" $out
+
+# get should now fail with standard not found (no metadata either)
+& node $CLI -c $CTX_STALE get stale.secret 2>$null | Out-Null
+Assert-ExitCode "stale: get after cleanup fails" 1 $LASTEXITCODE
+
+# ─── 17. CLEANUP & VERIFY ────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "── 17. CLEANUP ──"
 
 foreach ($key in @("db.password", "api.token")) {
     Run-Ok @("-c", $CTX, "delete", "-y", $key) | Out-Null

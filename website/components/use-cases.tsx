@@ -266,7 +266,7 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
   return (
     <div className="rounded-xl border border-white/10 bg-zinc-950/50 transition-colors hover:border-emerald-500/20">
       <button
-        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+        className="flex w-full items-center justify-between gap-4 px-3 py-4 text-left sm:px-6 sm:py-5"
         onClick={() => setOpen(!open)}
         type="button"
       >
@@ -280,11 +280,13 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
         />
       </button>
       {open && (
-        <div className="px-6 pb-6">
+        <div className="px-3 pb-4 sm:px-6 sm:pb-6">
           <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
             {item.problem}
           </p>
-          <UseCaseTerminal lines={item.lines} />
+          <div className="-mx-0.5 sm:mx-0">
+            <UseCaseTerminal lines={item.lines} />
+          </div>
         </div>
       )}
     </div>
@@ -293,7 +295,7 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
 
 export function UseCases() {
   return (
-    <section className="relative px-6 py-32" id="use-cases">
+    <section className="relative px-4 py-32 sm:px-6" id="use-cases">
       <div className="mx-auto max-w-3xl">
         <div className="mb-16 animate-reveal text-center">
           <p className="mb-3 font-mono text-emerald-400 text-sm">Use Cases</p>

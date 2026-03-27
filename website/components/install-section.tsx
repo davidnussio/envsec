@@ -22,7 +22,7 @@ export function InstallSection() {
   };
 
   return (
-    <section className="relative px-6 py-32" id="install">
+    <section className="relative px-4 py-32 sm:px-6" id="install">
       <div className="mx-auto max-w-2xl text-center">
         <div className="animate-reveal">
           <p className="mb-3 font-mono text-emerald-400 text-sm">Install</p>

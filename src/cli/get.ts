@@ -2,7 +2,7 @@ import { Args, Command, Options } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { formatTimeDistance } from "../domain/duration.js";
 import { SecretStore } from "../services/secret-store.js";
-import { icons } from "../ui.js";
+import { bold, icons, yellow } from "../ui.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });
@@ -24,13 +24,39 @@ export const getCommand = Command.make(
       const jsonMode = yield* isJsonOutput;
 
       if (quiet) {
-        const value = yield* SecretStore.get(ctx, key);
+        const value = yield* SecretStore.get(ctx, key).pipe(
+          Effect.catchTag("SecretNotFoundError", (err) =>
+            Effect.gen(function* () {
+              if (err.message.includes("missing from the OS keychain")) {
+                yield* Console.error(`${icons.warning} ${err.message}`);
+                yield* Console.error(
+                  `${icons.info} To clean up stale metadata, run: ${yellow(`envsec delete -c ${ctx} ${key}`)}`
+                );
+              }
+              return yield* Effect.fail(err);
+            })
+          )
+        );
         yield* Console.log(value);
         return;
       }
 
       const meta = yield* SecretStore.getMetadata(ctx, key);
-      const value = yield* SecretStore.get(ctx, key);
+      const value = yield* SecretStore.get(ctx, key).pipe(
+        Effect.catchTag("SecretNotFoundError", (err) =>
+          Effect.gen(function* () {
+            if (err.message.includes("missing from the OS keychain")) {
+              yield* Console.error(
+                `${icons.warning} Secret ${bold(`"${key}"`)} has metadata but is missing from the OS keychain.`
+              );
+              yield* Console.error(
+                `${icons.info} To clean up stale metadata, run: ${yellow(`envsec delete -c ${ctx} ${key}`)}`
+              );
+            }
+            return yield* Effect.fail(err);
+          })
+        )
+      );
 
       if (jsonMode) {
         yield* Console.log(

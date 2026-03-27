@@ -43,7 +43,7 @@ export default function Home() {
         {JSON.stringify(jsonLd)}
       </Script>
       <Navbar />
-      <main className="px-6 py-12 md:px-12">
+      <main className="py-12">
         <Hero />
         <Features />
         <HowItWorks />
