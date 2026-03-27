@@ -28,6 +28,7 @@ const initDb = async (dbPath: string): Promise<Database> => {
   mkdirSync(dbDir, { recursive: true, mode: DIR_PERMISSIONS });
   chmodSync(dbDir, DIR_PERMISSIONS);
   const SQL = await initSqlJs();
+
   const db = existsSync(dbPath)
     ? new SQL.Database(readFileSync(dbPath))
     : new SQL.Database();

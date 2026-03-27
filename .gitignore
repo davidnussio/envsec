@@ -148,3 +148,7 @@ skills-lock.json
 .kiro
 .agents
 .vercel
+
+
+# test db
+db/
