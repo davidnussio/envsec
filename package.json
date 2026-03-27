@@ -49,11 +49,11 @@
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.8",
-    "@types/node": "^25",
-    "@types/sql.js": "^1.4.10",
+    "@biomejs/biome": "2.4.9",
+    "@types/node": "^25.5.0",
+    "@types/sql.js": "^1.4.11",
     "husky": "^9.1.7",
-    "typescript": "^5",
+    "typescript": "^5.9.3",
     "ultracite": "7.3.2"
   }
 }
