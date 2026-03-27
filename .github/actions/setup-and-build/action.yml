@@ -1,0 +1,32 @@
+name: Setup & Build
+description: Shared setup — checkout, Node.js, pnpm, install, build
+
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: "22"
+  registry-url:
+    description: npm registry URL (set for publishing)
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url || '' }}
+
+    - uses: pnpm/action-setup@v4
+      with:
+        version: latest
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Build
+      shell: bash
+      run: pnpm run build
