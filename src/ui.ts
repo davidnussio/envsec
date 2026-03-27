@@ -1,6 +1,6 @@
 /**
  * Centralized UI module for polished console output.
- * Uses ANSI escape codes for colors and Nerd Font icons.
+ * Uses ANSI escape codes for colors and standard Unicode icons.
  * Zero dependencies — works in any terminal with color support.
  */
 
@@ -30,40 +30,40 @@ export const dim = ansi("2");
 export const bold = ansi("1");
 export const white = ansi("37");
 
-// ── Nerd Font Icons ─────────────────────────────────────────────────
+// ── Icons (Unicode only — no Nerd Fonts required) ───────────────────
 export const icons = {
-  success: green("✔"), //  success / done
-  error: red("✖"), //  error / failed
-  warning: yellow("⚠"), //  warning
-  info: blue("ℹ"), //  info
-  key: yellow(""), //  nf-md-key
-  lock: green(""), //  nf-md-lock
-  unlock: red(""), //  nf-md-lock_open
-  search: blue(""), //  nf-md-magnify
-  folder: blue(""), //  nf-md-folder
-  file: cyan(""), //  nf-md-file_document
-  clock: yellow(""), //  nf-md-clock_outline
-  expired: red(""), //  nf-md-clock_alert
-  trash: red(""), //  nf-md-delete
-  save: green(""), //  nf-md-content_save
-  download: cyan(""), //  nf-md-download
-  upload: magenta(""), //  nf-md-upload
-  shield: green(""), //  nf-md-shield_lock
-  chart: blue(""), //  nf-md-chart_bar
-  bolt: yellow("⚡"), //  bolt / command
-  empty: dim("∅"), //  empty set
-  arrow: dim("→"), //  arrow
-  check: green(""), //  nf-md-check_circle
-  cancel: dim("⊘"), //  cancel
-  broom: yellow(""), //  nf-md-broom
-  env: cyan("$"), //  env var
+  success: green("✔"), // U+2714
+  error: red("✖"), // U+2716
+  warning: yellow("⚠"), // U+26A0
+  info: blue("ℹ"), // U+2139
+  key: yellow("🔑"), // U+1F511
+  lock: green("🔒"), // U+1F512
+  unlock: red("🔓"), // U+1F513
+  search: blue("🔍"), // U+1F50D
+  folder: blue("📁"), // U+1F4C1
+  file: cyan("📄"), // U+1F4C4
+  clock: yellow("🕐"), // U+1F550
+  expired: red("⏰"), // U+23F0
+  trash: red("🗑"), // U+1F5D1
+  save: green("💾"), // U+1F4BE
+  download: cyan("⬇"), // U+2B07
+  upload: magenta("⬆"), // U+2B06
+  shield: green("🛡"), // U+1F6E1
+  chart: blue("📊"), // U+1F4CA
+  bolt: yellow("⚡"), // U+26A1
+  empty: dim("∅"), // U+2205
+  arrow: dim("→"), // U+2192
+  check: green("✅"), // U+2705
+  cancel: dim("⊘"), // U+2298
+  broom: yellow("🧹"), // U+1F9F9
+  env: cyan("$"), // env var
 } as const;
 
 // ── Formatting Helpers ──────────────────────────────────────────────
 
 /** Format a label: value pair with dimmed separator */
 export const label = (name: string, value: string): string =>
-  `${dim(`${name}:`)} ${value}`;
+  `${dim(name)}${dim(":")} ${value}`;
 
 /** Format a count badge like "3 secrets" */
 export const badge = (

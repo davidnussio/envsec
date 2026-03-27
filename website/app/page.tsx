@@ -5,6 +5,7 @@ import { Hero } from "@/components/hero";
 import { HowItWorks } from "@/components/how-it-works";
 import { InstallSection } from "@/components/install-section";
 import { Navbar } from "@/components/navbar";
+import { UseCases } from "@/components/use-cases";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -46,6 +47,7 @@ export default function Home() {
         <Hero />
         <Features />
         <HowItWorks />
+        <UseCases />
         <InstallSection />
       </main>
       <Footer />
