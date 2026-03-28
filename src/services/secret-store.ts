@@ -7,6 +7,24 @@ import { DatabaseConfigDefault } from "./database-config.js";
 import { KeychainAccess } from "./keychain-access.js";
 import { MetadataStore } from "./metadata-store.js";
 
+/** Prefix to identify base64-encoded values stored by envsec.
+ *  Allows backward compatibility with legacy plaintext secrets. */
+const B64_PREFIX = "envsec:b64:";
+
+/** Encode secret values to base64 before storing in OS credential stores.
+ *  This avoids platform-specific encoding issues (e.g. macOS security CLI
+ *  returns hex for non-ASCII values, Windows cmdkey has escaping quirks). */
+const encodeValue = (value: string): string =>
+  `${B64_PREFIX}${Buffer.from(value, "utf8").toString("base64")}`;
+
+const decodeValue = (raw: string): string => {
+  if (raw.startsWith(B64_PREFIX)) {
+    return Buffer.from(raw.slice(B64_PREFIX.length), "base64").toString("utf8");
+  }
+  // Legacy: return plaintext values as-is for backward compatibility
+  return raw;
+};
+
 export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
   accessors: true,
   dependencies: [
@@ -25,7 +43,7 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       expiresAt?: string | null
     ) {
       const parsed = yield* parseSecretKey(key, context);
-      yield* keychain.set(parsed.service, parsed.account, value);
+      yield* keychain.set(parsed.service, parsed.account, encodeValue(value));
       yield* metadata
         .upsert(context, key, expiresAt)
         .pipe(
@@ -44,6 +62,7 @@ export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
       yield* metadata.get(context, key);
       const parsed = yield* parseSecretKey(key, context);
       return yield* keychain.get(parsed.service, parsed.account).pipe(
+        Effect.map(decodeValue),
         Effect.catchTag("SecretNotFoundError", () =>
           Effect.fail(
             new SecretNotFoundError({

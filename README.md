@@ -344,6 +344,8 @@ envsec is built around a simple principle: your secrets belong in your OS, not i
 
 **OS-native encryption, zero custom crypto.** Secret values are stored directly in macOS Keychain, GNOME Keyring / KDE Wallet, or Windows Credential Manager. envsec never invents its own encryption — it delegates to the battle-tested credential stores your operating system already provides, protected by your user session and (on macOS) the login keychain.
 
+**Full Unicode support.** Secret values can contain any Unicode characters, including emoji and accented letters. Values are base64-encoded before being stored in the OS credential store, avoiding platform-specific encoding quirks (e.g. macOS `security` CLI hex-encoding non-ASCII output). Legacy plaintext secrets are read transparently for backward compatibility.
+
 **Secrets never touch disk as plaintext.** Values go straight from your terminal into the OS credential store. They are never written to config files, logs, or intermediate storage.
 
 **No secrets in terminal output.** The `list` and `search` commands display key names only — values are never printed. This keeps secrets out of scrollback buffers, screen recordings, and shoulder-surfing range.

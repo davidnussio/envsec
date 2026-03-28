@@ -85,7 +85,7 @@ function Run-All {
 }
 
 function Cleanup-Secrets {
-    foreach ($key in @("db.password", "api.token", "special.chars", "stale.secret")) {
+    foreach ($key in @("db.password", "api.token", "special.chars", "special.emoji", "special.utf8", "stale.secret")) {
         & node $CLI -c $CTX delete -y $key 2>$null | Out-Null
     }
     foreach ($key in @("redis.host", "redis.port", "redis.password", "smtp.user", "smtp.pass")) {
@@ -134,6 +134,15 @@ Run-Ok @("-c", $CTX, "add", "special.chars", "-v", $SpecialValue) | Out-Null
 $out = Run-Ok @("-c", $CTX, "get", "special.chars")
 Assert-Eq "get: caratteri speciali" $SpecialValue $out.Trim()
 
+# Non-ASCII / emoji (values are base64-encoded internally, works on all OS)
+Run-Ok @("-c", $CTX, "add", "special.emoji", "-v", "hello ⭐ world 🚀") | Out-Null
+$out = Run-Ok @("-c", $CTX, "get", "special.emoji")
+Assert-Eq "get: emoji value decoded" "hello ⭐ world 🚀" $out.Trim()
+
+Run-Ok @("-c", $CTX, "add", "special.utf8", "-v", "café résumé naïve") | Out-Null
+$out = Run-Ok @("-c", $CTX, "get", "special.utf8")
+Assert-Eq "get: accented chars" "café résumé naïve" $out.Trim()
+
 # ─── 1b. GET --quiet ──────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "── 1b. GET --quiet ──"
@@ -152,7 +161,7 @@ $out = Run-Ok @("-c", $CTX, "list")
 Assert-Contains "list: db.password" "db.password" $out
 Assert-Contains "list: api.token" "api.token" $out
 Assert-Contains "list: special.chars" "special.chars" $out
-Assert-Contains "list: summary count" "3 secrets in $CTX" $out
+Assert-Contains "list: summary count" "5 secrets in $CTX" $out
 
 $out = Run-Ok @("list")
 Assert-Contains "list contesti: test.e2e" "test.e2e" $out
@@ -593,7 +602,7 @@ Assert-ExitCode "stale: get after cleanup fails" 1 $LASTEXITCODE
 Write-Host ""
 Write-Host "── 17. CLEANUP ──"
 
-foreach ($key in @("db.password", "api.token")) {
+foreach ($key in @("db.password", "api.token", "special.emoji", "special.utf8")) {
     Run-Ok @("-c", $CTX, "delete", "-y", $key) | Out-Null
 }
 foreach ($key in @("redis.host", "redis.port", "redis.password", "smtp.user", "smtp.pass")) {

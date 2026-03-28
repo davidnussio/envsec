@@ -18,7 +18,7 @@ FAIL=0
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 cleanup_secrets() {
-  for key in db.password api.token special.chars stale.secret; do
+  for key in db.password api.token special.chars special.emoji special.utf8 stale.secret; do
     node "$CLI" -c "$CTX" delete -y "$key" >/dev/null 2>&1 || true
   done
   for key in redis.host redis.port redis.password smtp.user smtp.pass; do
@@ -111,6 +111,15 @@ run_ok -c "$CTX" add special.chars -v 'p@ss w0rd!#$%' >/dev/null
 out=$(run_ok -c "$CTX" get special.chars)
 assert_eq "get: caratteri speciali" 'p@ss w0rd!#$%' "$out"
 
+# Non-ASCII / emoji (macOS security returns hex for these)
+run_ok -c "$CTX" add special.emoji -v "hello ⭐ world 🚀" >/dev/null
+out=$(run_ok -c "$CTX" get special.emoji)
+assert_eq "get: emoji value decoded" "hello ⭐ world 🚀" "$out"
+
+run_ok -c "$CTX" add special.utf8 -v "café résumé naïve" >/dev/null
+out=$(run_ok -c "$CTX" get special.utf8)
+assert_eq "get: accented chars" "café résumé naïve" "$out"
+
 # ─── 1b. GET --quiet ──────────────────────────────────────────────────────────
 echo ""
 echo "── 1b. GET --quiet ──"
@@ -129,7 +138,7 @@ out=$(run_ok -c "$CTX" list)
 assert_contains "list: db.password" "db.password" "$out"
 assert_contains "list: api.token" "api.token" "$out"
 assert_contains "list: special.chars" "special.chars" "$out"
-assert_contains "list: summary count" "3 secrets in $CTX" "$out"
+assert_contains "list: summary count" "5 secrets in $CTX" "$out"
 
 out=$(run_ok list)
 assert_contains "list contesti: test.e2e" "test.e2e" "$out"
@@ -702,7 +711,7 @@ assert_contains "completions fish: __complete" "__complete" "$out"
 echo ""
 echo "── 18. CLEANUP ──"
 
-for key in db.password api.token; do
+for key in db.password api.token special.emoji special.utf8; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true
 done
 for key in redis.host redis.port redis.password smtp.user smtp.pass; do
