@@ -279,6 +279,54 @@ envsec -c myapp.dev delete api.key
 envsec -c myapp.dev del api.key
 ```
 
+### Rename a secret
+
+Rename a secret key within the same context. The value and expiry metadata are preserved.
+
+```bash
+# Rename a key
+envsec -c myapp.dev rename old.key new.key
+
+# Overwrite target if it already exists
+envsec -c myapp.dev rename old.key existing.key --force
+```
+
+### Move secrets between contexts
+
+Move secrets from one context to another. The source secrets are removed after moving.
+
+```bash
+# Move a single secret
+envsec -c myapp.dev move api.token --to myapp.prod
+
+# Move secrets matching a glob pattern
+envsec -c myapp.dev move "redis.*" --to myapp.prod -y
+
+# Move all secrets from one context to another
+envsec -c myapp.dev move --all --to myapp.prod -y
+
+# Overwrite existing secrets in the target context
+envsec -c myapp.dev move "redis.*" --to myapp.prod --force -y
+```
+
+### Copy secrets between contexts
+
+Copy secrets from one context to another. The source secrets remain intact.
+
+```bash
+# Copy a single secret
+envsec -c myapp.dev copy api.token --to myapp.staging
+
+# Copy secrets matching a glob pattern
+envsec -c myapp.dev copy "redis.*" --to myapp.staging -y
+
+# Copy all secrets from one context to another
+envsec -c myapp.dev copy --all --to myapp.staging -y
+
+# Overwrite existing secrets in the target context
+envsec -c myapp.dev copy "redis.*" --to myapp.staging --force -y
+```
+
 ### Audit secrets for expiry
 
 ```bash
