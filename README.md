@@ -370,9 +370,70 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 **Encryption depends on your OS.** envsec adds no additional at-rest encryption beyond what the native credential store provides. On systems without full-disk encryption, an attacker with physical access could potentially extract secrets from the keychain. We recommend enabling full-disk encryption (FileVault, LUKS, BitLocker) for the strongest protection.
 
-## Testing
+## Development
 
-End-to-end integration tests cover the full CLI lifecycle (add, get, list, search, env-file, load, delete, run, cmd, audit, share).
+### Prerequisites
+
+- Node.js >= 20
+- pnpm
+
+### Setup
+
+```bash
+git clone https://github.com/davidnussio/envsec.git
+cd envsec
+pnpm install
+pnpm run build
+```
+
+### Common commands
+
+```bash
+# Build TypeScript to dist/
+pnpm run build
+
+# Lint and format check
+pnpm exec ultracite check
+
+# Auto-fix lint and formatting
+pnpm exec ultracite fix
+```
+
+### Running locally without installing
+
+Create a temporary alias to use the local build as if it were installed globally:
+
+```bash
+# Bash / Zsh
+alias envsec="node $(pwd)/dist/main.js"
+
+# Fish
+alias envsec "node (pwd)/dist/main.js"
+```
+
+### Testing shell completions locally
+
+After building and setting up the alias, load the completions in your current session:
+
+```bash
+# Bash
+alias envsec="node $(pwd)/dist/main.js"
+eval "$(envsec --completions bash)"
+
+# Zsh
+alias envsec="node $(pwd)/dist/main.js"
+eval "$(envsec --completions zsh)"
+
+# Fish
+alias envsec "node (pwd)/dist/main.js"
+envsec --completions fish | source
+```
+
+Then press TAB after `envsec -c ` to see your contexts, or after `envsec -c myapp.dev get ` to see secret keys.
+
+### Running tests
+
+End-to-end integration tests cover the full CLI lifecycle (add, get, list, search, env-file, load, delete, run, cmd, audit, share, completions).
 
 ```bash
 # Build first
