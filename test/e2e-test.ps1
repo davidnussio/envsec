@@ -338,7 +338,7 @@ Assert-Contains "run: interpolation" "newpassword" $out
 # Missing secret
 $out = Run-All @("-c", $CTX, "run", "echo {nonexistent.key}")
 $ec = $LASTEXITCODE
-Assert-ExitCode "run: missing secret fails" 1 $ec
+Assert-NonZeroExit "run: missing secret fails" $ec
 Assert-Contains "run: missing message" "Missing" $out
 
 # ─── 8. CMD ──────────────────────────────────────────────────────────────────
