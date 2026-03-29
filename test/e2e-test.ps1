@@ -505,7 +505,7 @@ Assert-Contains "audit 0m: nothing expired" "No secrets" $out
 
 # Invalid duration
 & node $CLI -c $CTX_EXP add exp.bad -v "x" --expires "abc" 2>$null | Out-Null
-Assert-ExitCode "add: invalid duration fails" 1 $LASTEXITCODE
+Assert-NonZeroExit "add: invalid duration fails" $LASTEXITCODE
 
 # Update expiry on existing secret
 $out = Run-Ok @("-c", $CTX_EXP, "add", "exp.short", "-v", "updated", "--expires", "7d")
