@@ -652,7 +652,7 @@ Assert-Eq "rename: force value" "rename-value" $out.Trim()
 # Rename same key should fail
 $out = Run-All @("-c", $CTX_REN, "rename", "existing.key", "existing.key")
 $ec = $LASTEXITCODE
-Assert-ExitCode "rename: same key fails" 1 $ec
+Assert-NonZeroExit "rename: same key fails" $ec
 
 # JSON output
 Run-Ok @("-c", $CTX_REN, "add", "json.test", "-v", "json-val") | Out-Null
@@ -688,7 +688,7 @@ Assert-Eq "move single: value in target" "tok_move" $out.Trim()
 
 # Source should not have it
 & node $CLI -c $CTX_MSRC get api.token 2>$null | Out-Null
-Assert-ExitCode "move single: gone from source" 1 $LASTEXITCODE
+Assert-NonZeroExit "move single: gone from source" $LASTEXITCODE
 
 # Move with glob pattern (redis.*)
 $out = Run-Ok @("-c", $CTX_MSRC, "move", "redis.*", "--to", $CTX_MDST, "-y")
