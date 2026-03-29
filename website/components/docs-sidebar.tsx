@@ -30,6 +30,7 @@ const SECTIONS = [
       { id: "load", label: "load" },
       { id: "share", label: "share" },
       { id: "audit", label: "audit" },
+      { id: "doctor", label: "doctor" },
     ],
   },
   {

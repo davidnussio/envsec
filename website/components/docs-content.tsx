@@ -385,6 +385,70 @@ envsec -c myapp.dev audit --json`}
         />
       </Section>
 
+      <Section id="doctor">
+        <H2>envsec doctor</H2>
+        <P>
+          Run a suite of health checks to verify your envsec installation and
+          environment. Useful when troubleshooting setup issues.
+        </P>
+        <CodeBlock
+          code={`# Run all health checks
+envsec doctor
+
+# JSON output
+envsec --json doctor`}
+        />
+        <P>Checks performed:</P>
+        <ul className="mb-4 list-inside list-disc space-y-1 text-muted-foreground">
+          <li>
+            <Mono>Version</Mono> — currently installed envsec version
+          </li>
+          <li>
+            <Mono>Platform</Mono> — OS and kernel version, confirms it is
+            supported
+          </li>
+          <li>
+            <Mono>Node.js</Mono> — runtime version (22+ required)
+          </li>
+          <li>
+            <Mono>Shell</Mono> — active shell detected from the environment
+          </li>
+          <li>
+            <Mono>Environment</Mono> — detects <Mono>ENVSEC_DB</Mono> and{" "}
+            <Mono>ENVSEC_CONTEXT</Mono> overrides
+          </li>
+          <li>
+            <Mono>Credential store</Mono> — verifies the OS credential backend
+            is accessible (Keychain, Secret Service, or Credential Manager)
+          </li>
+          <li>
+            <Mono>Keychain read/write</Mono> — writes, reads back, and deletes a
+            probe secret to confirm full access
+          </li>
+          <li>
+            <Mono>Database</Mono> — checks that the metadata directory and
+            SQLite file exist and have correct permissions
+          </li>
+          <li>
+            <Mono>Database integrity</Mono> — queries the schema to confirm the
+            database is not corrupted
+          </li>
+          <li>
+            <Mono>Orphaned secrets</Mono> — detects keys present in metadata but
+            missing from the keychain
+          </li>
+          <li>
+            <Mono>Expired secrets</Mono> — flags secrets whose expiry date has
+            already passed
+          </li>
+        </ul>
+        <P>
+          A summary line at the end shows how many checks passed and how many
+          failed. Use the <Mono>--json</Mono> flag to get structured output
+          suitable for scripting or CI diagnostics.
+        </P>
+      </Section>
+
       {/* Configuration */}
       <Section id="contexts">
         <H2>Contexts</H2>
