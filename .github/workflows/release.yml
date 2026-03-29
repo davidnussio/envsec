@@ -20,8 +20,14 @@ jobs:
 
       - name: Bump version from release tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            pnpm publish --no-git-checks --tag beta
+          elif [[ "$VERSION" == *"-alpha"* ]]; then
+            pnpm publish --no-git-checks --tag alpha
+          else
+            pnpm publish --no-git-checks
+          fi
 
       - name: Publish
         run: pnpm publish --no-git-checks
