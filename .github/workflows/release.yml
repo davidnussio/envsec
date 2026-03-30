@@ -52,17 +52,17 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish @envsec/core to npm
-        run: pnpm -F @envsec/core publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        run: pnpm -F @envsec/core publish --no-git-checks --access public --tag ${{ steps.version.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @envsec/sdk to npm
-        run: pnpm -F @envsec/sdk publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        run: pnpm -F @envsec/sdk publish --no-git-checks --access public --tag ${{ steps.version.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish envsec CLI to npm
-        run: pnpm -F envsec publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        run: pnpm -F envsec publish --no-git-checks --access public --tag ${{ steps.version.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
