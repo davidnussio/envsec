@@ -1,8 +1,16 @@
 import { execSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
+import {
+  badge,
+  bold,
+  FileAccessError,
+  GPGEncryptionError,
+  icons,
+  type SecretNotFoundError,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { FileAccessError, GPGEncryptionError, type SecretNotFoundError, SecretStore, badge, bold, icons } from "@envsec/core";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const encryptTo = Options.text("encrypt-to").pipe(

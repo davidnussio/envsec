@@ -1,7 +1,14 @@
 import { execSync } from "node:child_process";
 import { Args, Command, Options } from "@effect/cli";
+import {
+  bold,
+  CommandExecutionError,
+  ContextName,
+  dim,
+  icons,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
-import { CommandExecutionError, ContextName, SecretStore, bold, dim, icons } from "@envsec/core";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---

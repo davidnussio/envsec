@@ -7,6 +7,7 @@ const SECTIONS = [
   {
     title: "Getting Started",
     items: [
+      { id: "why-envsec", label: "Why envsec?" },
       { id: "installation", label: "Installation" },
       { id: "quick-start", label: "Quick Start" },
       { id: "requirements", label: "Requirements" },

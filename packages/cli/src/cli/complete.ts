@@ -1,5 +1,5 @@
+import { refreshCache, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { SecretStore, refreshCache } from "@envsec/core";
 
 /**
  * Handle `__complete <type> [arg]` — slow path.

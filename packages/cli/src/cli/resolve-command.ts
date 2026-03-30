@@ -1,5 +1,15 @@
+import {
+  badge,
+  type InvalidKeyError,
+  icons,
+  indent,
+  type KeychainError,
+  type MetadataStoreError,
+  MissingSecretsError,
+  type SecretNotFoundError,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
-import { type InvalidKeyError, type KeychainError, type MetadataStoreError, MissingSecretsError, type SecretNotFoundError, SecretStore, badge, icons, indent } from "@envsec/core";
 
 const placeholderPattern = /\{([^}]+)\}/g;
 

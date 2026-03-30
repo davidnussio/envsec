@@ -2,7 +2,14 @@
   "name": "@envsec/core",
   "version": "0.1.0",
   "description": "Core secrets management engine — native OS credential store adapters + metadata DB",
-  "keywords": ["secrets", "keychain", "credential-store", "env", "security", "effect"],
+  "keywords": [
+    "secrets",
+    "keychain",
+    "credential-store",
+    "env",
+    "security",
+    "effect"
+  ],
   "license": "MIT",
   "author": "David Nussio",
   "type": "module",
@@ -14,7 +21,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
@@ -30,5 +39,7 @@
     "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

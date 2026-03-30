@@ -1,6 +1,6 @@
 import { Args, Command, Options } from "@effect/cli";
+import { bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { SecretStore, bold, icons } from "@envsec/core";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const oldKey = Args.text({ name: "old-key" });

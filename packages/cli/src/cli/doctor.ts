@@ -4,8 +4,18 @@ import { createRequire } from "node:module";
 import { homedir, platform, release } from "node:os";
 import { dirname, join } from "node:path";
 import { Command } from "@effect/cli";
+import {
+  badge,
+  bold,
+  dim,
+  green,
+  icons,
+  indent,
+  red,
+  SecretStore,
+  yellow,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
-import { SecretStore, badge, bold, dim, green, icons, indent, red, yellow } from "@envsec/core";
 import { isJsonOutput } from "./root.js";
 
 const require = createRequire(import.meta.url);

@@ -4,6 +4,18 @@
  * Zero CLI coupling — no yargs, no chalk, no ora.
  */
 
+export type { ContextName as ContextNameType } from "./domain/context-name.js";
+
+// ── Domain ──────────────────────────────────────────────────────────
+export { ContextName } from "./domain/context-name.js";
+export {
+  expiresAtFromNow,
+  formatLocalDateTime,
+  formatTimeDistance,
+  parseDuration,
+} from "./domain/duration.js";
+export type { ParsedKey } from "./domain/secret-key.js";
+export { parse as parseSecretKey } from "./domain/secret-key.js";
 // ── Errors ──────────────────────────────────────────────────────────
 export {
   AbortedError,
@@ -21,42 +33,28 @@ export {
   SecretNotFoundError,
   UnsupportedPlatformError,
 } from "./errors.js";
-
-// ── Domain ──────────────────────────────────────────────────────────
-export { ContextName } from "./domain/context-name.js";
-export type { ContextName as ContextNameType } from "./domain/context-name.js";
-export { parse as parseSecretKey } from "./domain/secret-key.js";
-export type { ParsedKey } from "./domain/secret-key.js";
-export {
-  expiresAtFromNow,
-  formatLocalDateTime,
-  formatTimeDistance,
-  parseDuration,
-} from "./domain/duration.js";
-
-// ── Services ────────────────────────────────────────────────────────
-export { SecretStore } from "./services/secret-store.js";
-export { KeychainAccess } from "./services/keychain-access.js";
-export {
-  MetadataStore,
-  type CommandMetadata,
-  type EnvFileExport,
-  type SecretMetadata,
-} from "./services/metadata-store.js";
+export { LinuxSecretServiceAccessLive } from "./implementations/linux-secret-service-access.js";
+export { MacOsKeychainAccessLive } from "./implementations/mac-os-keychain-access.js";
+// ── Implementations ─────────────────────────────────────────────────
+export { PlatformKeychainAccessLive } from "./implementations/platform-keychain-access.js";
+export { SqliteMetadataStoreLive } from "./implementations/sqlite-metadata-store.js";
+export { WindowsCredentialManagerAccessLive } from "./implementations/windows-credential-manager-access.js";
+export { refreshCache } from "./services/completion-cache.js";
 export {
   DatabaseConfig,
   DatabaseConfigDefault,
   DatabaseConfigFrom,
   type DatabaseConfigShape,
 } from "./services/database-config.js";
-export { refreshCache } from "./services/completion-cache.js";
-
-// ── Implementations ─────────────────────────────────────────────────
-export { PlatformKeychainAccessLive } from "./implementations/platform-keychain-access.js";
-export { MacOsKeychainAccessLive } from "./implementations/mac-os-keychain-access.js";
-export { LinuxSecretServiceAccessLive } from "./implementations/linux-secret-service-access.js";
-export { WindowsCredentialManagerAccessLive } from "./implementations/windows-credential-manager-access.js";
-export { SqliteMetadataStoreLive } from "./implementations/sqlite-metadata-store.js";
+export { KeychainAccess } from "./services/keychain-access.js";
+export {
+  type CommandMetadata,
+  type EnvFileExport,
+  MetadataStore,
+  type SecretMetadata,
+} from "./services/metadata-store.js";
+// ── Services ────────────────────────────────────────────────────────
+export { SecretStore } from "./services/secret-store.js";
 
 // ── UI ──────────────────────────────────────────────────────────────
 export {

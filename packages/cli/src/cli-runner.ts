@@ -1,6 +1,12 @@
 import { createRequire } from "node:module";
 import { Command } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
+import {
+  DatabaseConfigDefault,
+  DatabaseConfigFrom,
+  refreshCache,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect, Layer } from "effect";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
@@ -21,12 +27,6 @@ import { runCommand } from "./cli/run.js";
 import { searchCommand } from "./cli/search.js";
 import { shareCommand } from "./cli/share.js";
 import { generateCompletions, type ShellType } from "./completions/index.js";
-import {
-  DatabaseConfigDefault,
-  DatabaseConfigFrom,
-  refreshCache,
-  SecretStore,
-} from "@envsec/core";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };

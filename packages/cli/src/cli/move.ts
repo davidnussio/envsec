@@ -1,6 +1,12 @@
 import { Args, Command, Options } from "@effect/cli";
+import {
+  badge,
+  bold,
+  icons,
+  type MetadataStoreError,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { type MetadataStoreError, SecretStore, badge, bold, icons } from "@envsec/core";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const pattern = Args.text({ name: "pattern" }).pipe(Args.optional);

@@ -1,6 +1,6 @@
 import { Command, Options } from "@effect/cli";
-import { Effect, Option, Schema } from "effect";
 import { ContextName } from "@envsec/core";
+import { Effect, Option, Schema } from "effect";
 
 const decodeContext = Schema.decode(ContextName);
 

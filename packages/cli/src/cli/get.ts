@@ -1,6 +1,12 @@
 import { Args, Command, Options } from "@effect/cli";
+import {
+  bold,
+  formatTimeDistance,
+  icons,
+  SecretStore,
+  yellow,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
-import { SecretStore, bold, formatTimeDistance, icons, yellow } from "@envsec/core";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" });

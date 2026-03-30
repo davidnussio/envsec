@@ -6,8 +6,12 @@
   "bin": {
     "envsec": "./dist/main.js"
   },
-  "files": ["dist"],
-  "engines": { "node": ">=22.0.0" },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
@@ -17,8 +21,17 @@
     "clean": "rm -rf dist"
   },
   "keywords": [
-    "secrets", "environment-variables", "keychain", "credential-manager",
-    "libsecret", "cross-platform", "macos", "linux", "windows", "effect", "cli"
+    "secrets",
+    "environment-variables",
+    "keychain",
+    "credential-manager",
+    "libsecret",
+    "cross-platform",
+    "macos",
+    "linux",
+    "windows",
+    "effect",
+    "cli"
   ],
   "author": "David Nussio",
   "license": "MIT",

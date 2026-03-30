@@ -1,8 +1,15 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Command, Options } from "@effect/cli";
+import {
+  badge,
+  bold,
+  FileAccessError,
+  icons,
+  type SecretNotFoundError,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
-import { FileAccessError, SecretStore, type SecretNotFoundError, badge, bold, icons } from "@envsec/core";
 import { requireContext } from "./root.js";
 
 const output = Options.text("output").pipe(

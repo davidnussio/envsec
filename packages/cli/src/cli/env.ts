@@ -1,6 +1,12 @@
 import { Command, Options } from "@effect/cli";
+import {
+  badge,
+  bold,
+  icons,
+  type SecretNotFoundError,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
-import { type SecretNotFoundError, SecretStore, badge, bold, icons } from "@envsec/core";
 import { requireContext } from "./root.js";
 
 type Shell = "bash" | "zsh" | "fish" | "powershell";

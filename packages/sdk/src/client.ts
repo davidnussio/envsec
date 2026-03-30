@@ -25,31 +25,34 @@ type StoreError = UnsupportedPlatformError | MetadataStoreError;
  * await client.close()
  */
 export class EnvsecClient {
-  private runtime: ManagedRuntime.ManagedRuntime<SecretStore, StoreError>;
-  private context: string;
+  private readonly runtime: ManagedRuntime.ManagedRuntime<
+    SecretStore,
+    StoreError
+  >;
+  private readonly context: string;
 
   private constructor(
     runtime: ManagedRuntime.ManagedRuntime<SecretStore, StoreError>,
-    context: string,
+    context: string
   ) {
     this.runtime = runtime;
     this.context = context;
   }
 
-  static async create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
+  static create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
     const dbLayer = opts.dbPath
       ? DatabaseConfigFrom(opts.dbPath)
       : DatabaseConfigDefault;
     const storeLayer = SecretStore.Default.pipe(Layer.provide(dbLayer));
     const runtime = ManagedRuntime.make(storeLayer);
-    return new EnvsecClient(runtime, opts.context);
+    return Promise.resolve(new EnvsecClient(runtime, opts.context));
   }
 
-  async get(key: string): Promise<string | null> {
+  get(key: string): Promise<string | null> {
     return this.runtime.runPromise(
       SecretStore.get(this.context, key).pipe(
-        Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null)),
-      ),
+        Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
+      )
     );
   }
 
@@ -57,31 +60,25 @@ export class EnvsecClient {
     const value = await this.get(key);
     if (value === null) {
       throw new Error(
-        `[envsec] Secret not found: "${key}" in context "${this.context}"`,
+        `[envsec] Secret not found: "${key}" in context "${this.context}"`
       );
     }
     return value;
   }
 
-  async set(
-    key: string,
-    value: string,
-    opts?: { expires?: string },
-  ): Promise<void> {
+  set(key: string, value: string, opts?: { expires?: string }): Promise<void> {
     return this.runtime.runPromise(
-      SecretStore.set(this.context, key, value, opts?.expires),
+      SecretStore.set(this.context, key, value, opts?.expires)
     );
   }
 
-  async delete(key: string): Promise<void> {
-    return this.runtime.runPromise(
-      SecretStore.remove(this.context, key),
-    );
+  delete(key: string): Promise<void> {
+    return this.runtime.runPromise(SecretStore.remove(this.context, key));
   }
 
   async loadAll(): Promise<Record<string, string>> {
     const entries = await this.runtime.runPromise(
-      SecretStore.list(this.context),
+      SecretStore.list(this.context)
     );
     const result: Record<string, string> = {};
     for (const entry of entries) {

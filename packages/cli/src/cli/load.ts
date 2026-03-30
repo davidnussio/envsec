@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
+import { bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { FileAccessError, SecretStore, bold, icons } from "@envsec/core";
 import { requireContext } from "./root.js";
 
 const input = Options.text("input").pipe(

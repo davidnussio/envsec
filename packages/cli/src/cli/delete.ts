@@ -1,6 +1,6 @@
 import { Args, Command, Options } from "@effect/cli";
+import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { SecretStore, badge, bold, icons } from "@envsec/core";
 import { requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" }).pipe(Args.optional);

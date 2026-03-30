@@ -1,6 +1,6 @@
 import { Args, Command } from "@effect/cli";
+import { bold, dim, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { SecretStore, bold, dim, icons } from "@envsec/core";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const pattern = Args.text({ name: "pattern" });

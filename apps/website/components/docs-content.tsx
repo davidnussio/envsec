@@ -40,6 +40,18 @@ export function DocsContent() {
         Everything you need to manage secrets with envsec.
       </p>
 
+      {/* Why envsec? */}
+      <Section id="why-envsec">
+        <H2>Why envsec?</H2>
+        <P>
+          After the Shai-Hulud npm attack (September 2025), I audited my old
+          client projects and found 97 <Mono>.env</Mono> files with live
+          credentials. Side projects, POCs, test apps, course exercises. Just
+          files parked on disk, in plaintext, surviving every reboot.
+        </P>
+        <P>Your OS already has a vault. envsec uses it.</P>
+      </Section>
+
       {/* Getting Started */}
       <Section id="installation">
         <H2>Installation</H2>

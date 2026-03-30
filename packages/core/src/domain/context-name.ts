@@ -30,7 +30,7 @@ export const ContextName = Schema.String.pipe(
   Schema.filter(
     (s) =>
       !(s.includes("/") || s.includes("\\")) ||
-      `Context name "${s}" must not contain path separators (/ or \\)`
+      String.raw`Context name "${s}" must not contain path separators (/ or \)`
   ),
   Schema.filter(
     (s) =>

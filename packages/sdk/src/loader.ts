@@ -11,12 +11,14 @@ import type { LoadSecretsOptions, WithSecretsOptions } from "./types.js";
  * await loadSecrets({ context: 'myapp.prod', inject: true })
  */
 export async function loadSecrets(
-  opts: LoadSecretsOptions,
+  opts: LoadSecretsOptions
 ): Promise<Record<string, string>> {
   const client = await EnvsecClient.create(opts);
   try {
     const secrets = await client.loadAll();
-    if (opts.inject) await client.injectEnv();
+    if (opts.inject) {
+      await client.injectEnv();
+    }
     return secrets;
   } finally {
     await client.close();
@@ -33,18 +35,22 @@ export async function loadSecrets(
  */
 export async function withSecrets<T>(
   opts: WithSecretsOptions,
-  fn: (secrets: Record<string, string>) => Promise<T>,
+  fn: (secrets: Record<string, string>) => Promise<T>
 ): Promise<T> {
   const client = await EnvsecClient.create(opts);
   const snapshot = opts.inject ? { ...process.env } : null;
   try {
     const secrets = await client.loadAll();
-    if (opts.inject) await client.injectEnv();
+    if (opts.inject) {
+      await client.injectEnv();
+    }
     return await fn(secrets);
   } finally {
     if (snapshot) {
       for (const key of Object.keys(process.env)) {
-        if (!(key in snapshot)) delete process.env[key];
+        if (!(key in snapshot)) {
+          delete process.env[key];
+        }
       }
       Object.assign(process.env, snapshot);
     }

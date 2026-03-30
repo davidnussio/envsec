@@ -1,6 +1,13 @@
 import { Command } from "@effect/cli";
+import {
+  badge,
+  bold,
+  dim,
+  formatTimeDistance,
+  icons,
+  SecretStore,
+} from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { SecretStore, badge, bold, dim, formatTimeDistance, icons } from "@envsec/core";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (
