@@ -46,8 +46,8 @@ export function DocsContent() {
         <P>
           After the Shai-Hulud npm attack (September 2025), I audited my old
           client projects and found 97 <Mono>.env</Mono> files with live
-          credentials. Projects I hadn&apos;t touched in months. Just files
-          parked on disk, in plaintext, surviving every reboot.
+          credentials. Side projects, POCs, test apps, course exercises. Just
+          files parked on disk, in plaintext, surviving every reboot.
         </P>
         <P>Your OS already has a vault. envsec uses it.</P>
       </Section>
