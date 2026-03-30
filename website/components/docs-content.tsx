@@ -44,25 +44,12 @@ export function DocsContent() {
       <Section id="why-envsec">
         <H2>Why envsec?</H2>
         <P>
-          We&apos;ve all been there. A <Mono>.env</Mono> file accidentally
-          committed to git. API keys scattered across Slack messages. That one
-          teammate who keeps their secrets in a sticky note on their monitor.
-          The moment you realize your production database password has been
-          sitting in plaintext on your laptop for months.
+          After the Shai-Hulud npm attack (September 2025), I audited my old
+          client projects and found 97 <Mono>.env</Mono> files with live
+          credentials. Projects I hadn&apos;t touched in months. Just files
+          parked on disk, in plaintext, surviving every reboot.
         </P>
-        <P>
-          envsec was born from a simple idea: your operating system already has
-          a secure, encrypted credential store — why aren&apos;t we using it?
-          macOS has Keychain, Linux has Secret Service, Windows has Credential
-          Manager. These systems are battle-tested, encrypted by default, and
-          protected by your user session.
-        </P>
-        <P>
-          Instead of reinventing encryption or trusting a third-party cloud
-          service with your most sensitive data, envsec puts secrets exactly
-          where they belong: in your OS, under your control, never touching disk
-          as plaintext.
-        </P>
+        <P>Your OS already has a vault. envsec uses it.</P>
       </Section>
 
       {/* Getting Started */}
