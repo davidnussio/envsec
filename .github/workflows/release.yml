@@ -11,33 +11,73 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Determine npm dist-tag
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-alpha"* ]]; then
+            echo "tag=alpha" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump versions in package.json files
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # CLI gets the full version
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('packages/cli/package.json', 'utf8'));
+            pkg.version = '${VERSION}';
+            fs.writeFileSync('packages/cli/package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          # Core and SDK get the same version (linked)
+          for dir in packages/core packages/sdk; do
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('${dir}/package.json', 'utf8'));
+              pkg.version = '${VERSION}';
+              fs.writeFileSync('${dir}/package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+          done
+
       - uses: ./.github/actions/setup-and-build
         with:
           registry-url: "https://registry.npmjs.org"
-      - name: Publish to npm
-        run: |
-          VERSION=$(node -p "require('./packages/cli/package.json').version")
-          if [[ "$VERSION" == *"-beta"* ]]; then
-            pnpm -F envsec publish --no-git-checks --tag beta
-          elif [[ "$VERSION" == *"-alpha"* ]]; then
-            pnpm -F envsec publish --no-git-checks --tag alpha
-          else
-            pnpm -F envsec publish --no-git-checks
-          fi
+
+      - name: Publish @envsec/core to npm
+        run: pnpm -F @envsec/core publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Commit updated package.json
+
+      - name: Publish @envsec/sdk to npm
+        run: pnpm -F @envsec/sdk publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish envsec CLI to npm
+        run: pnpm -F envsec publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit version bump
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packages/cli/package.json
+          git add packages/cli/package.json packages/core/package.json packages/sdk/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
           git push origin HEAD:main
+
   update-homebrew:
     needs: publish
     runs-on: ubuntu-latest
-
     steps:
       - name: Wait for npm registry propagation
         run: sleep 30
