@@ -39,6 +39,8 @@ build/Release
 
 # Build output
 dist
+packages/*/dist
+apps/*/dist
 
 # Dependency directories
 node_modules/
@@ -148,6 +150,13 @@ skills-lock.json
 .kiro
 .agents
 .vercel
+
+# Turborepo
+.turbo
+
+# Changesets
+.changeset/*.md
+!.changeset/config.json
 
 # MacOS
 .DS_Store

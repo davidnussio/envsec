@@ -444,7 +444,7 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 ### Prerequisites
 
-- Node.js >= 24
+- Node.js >= 22
 - pnpm
 
 ### Setup

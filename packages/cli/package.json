@@ -1,0 +1,47 @@
+{
+  "name": "envsec",
+  "version": "1.0.0-beta.8",
+  "description": "Secure environment secrets management using native OS credential stores",
+  "type": "module",
+  "bin": {
+    "envsec": "./dist/main.js"
+  },
+  "files": ["dist"],
+  "engines": { "node": ">=22.0.0" },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "check": "ultracite check",
+    "fix": "ultracite fix",
+    "test": "bash test/e2e-test.sh",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "secrets", "environment-variables", "keychain", "credential-manager",
+    "libsecret", "cross-platform", "macos", "linux", "windows", "effect", "cli"
+  ],
+  "author": "David Nussio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidnussio/envsec.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@envsec/core": "workspace:*",
+    "@effect/cli": "^0.75.0",
+    "@effect/platform": "^0.96.0",
+    "@effect/platform-node": "^0.106.0",
+    "effect": "^3.21.0",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.9",
+    "@types/node": "^25.5.0",
+    "@types/sql.js": "^1.4.11",
+    "typescript": "^5.9.3",
+    "ultracite": "7.3.2"
+  }
+}

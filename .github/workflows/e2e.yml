@@ -3,12 +3,16 @@ name: E2E Tests
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "website/**"
+    paths:
+      - "packages/**"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "website/**"
+    paths:
+      - "packages/**"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
 
 jobs:
   e2e-unix:
@@ -38,7 +42,7 @@ jobs:
           echo "test" | gnome-keyring-daemon --unlock --components=secrets
 
       - name: Run E2E tests
-        run: bash test/e2e-test.sh
+        run: bash packages/cli/test/e2e-test.sh
 
   e2e-windows:
     runs-on: windows-latest
@@ -51,4 +55,4 @@ jobs:
 
       - name: Run E2E tests
         shell: pwsh
-        run: ./test/e2e-test.ps1
+        run: ./packages/cli/test/e2e-test.ps1

@@ -16,13 +16,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - name: Publish to npm
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./packages/cli/package.json').version")
           if [[ "$VERSION" == *"-beta"* ]]; then
-            pnpm publish --no-git-checks --tag beta
+            pnpm -F envsec publish --no-git-checks --tag beta
           elif [[ "$VERSION" == *"-alpha"* ]]; then
-            pnpm publish --no-git-checks --tag alpha
+            pnpm -F envsec publish --no-git-checks --tag alpha
           else
-            pnpm publish --no-git-checks
+            pnpm -F envsec publish --no-git-checks
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -31,7 +31,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json
+          git add packages/cli/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
           git push origin HEAD:main
   update-homebrew:
@@ -53,7 +53,6 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           URL="https://registry.npmjs.org/envsec/-/envsec-${VERSION}.tgz"
 
-          # Retry download until npm has propagated the package
           for i in 1 2 3 4 5; do
             HTTP_CODE=$(curl -sL -o envsec.tgz -w "%{http_code}" "$URL")
             if [ "$HTTP_CODE" = "200" ]; then
@@ -76,8 +75,6 @@ jobs:
             desc "Secure environment secrets management using native OS credential stores"
             homepage "https://github.com/davidnussio/envsec"
             url "$URL"
-            # To update the sha256, run:
-            # curl -sL $URL | shasum -a 256
             sha256 "$SHA256"
             license "MIT"
             version "$VERSION"
@@ -96,7 +93,6 @@ jobs:
           end
           EOF
 
-          # Remove leading whitespace from heredoc
           sed -i 's/^          //' Formula/envsec.rb
 
       - name: Commit and push
