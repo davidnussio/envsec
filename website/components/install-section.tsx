@@ -1,8 +1,10 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const INSTALL_OPTIONS = [
   { label: "brew", command: "brew install davidnussio/homebrew-tap/envsec" },
@@ -72,6 +74,26 @@ export function InstallSection() {
                 <Copy className="h-4 w-4" />
               )}
             </Button>
+          </div>
+
+          {/* Next step */}
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <p className="text-muted-foreground text-sm">
+              Verify installation:{" "}
+              <code className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-emerald-400 text-xs">
+                envsec --version
+              </code>
+            </p>
+            <Link
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+              )}
+              href="/docs#quick-start"
+            >
+              Continue to Quick Start
+              <ArrowRight className="ml-2 h-3 w-3" />
+            </Link>
           </div>
         </div>
       </div>

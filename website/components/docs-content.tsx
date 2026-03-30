@@ -40,6 +40,31 @@ export function DocsContent() {
         Everything you need to manage secrets with envsec.
       </p>
 
+      {/* Why envsec */}
+      <Section id="why-envsec">
+        <H2>Why envsec?</H2>
+        <P>
+          We&apos;ve all been there. A <Mono>.env</Mono> file accidentally
+          committed to git. API keys scattered across Slack messages. That one
+          teammate who keeps their secrets in a sticky note on their monitor.
+          The moment you realize your production database password has been
+          sitting in plaintext on your laptop for months.
+        </P>
+        <P>
+          envsec was born from a simple idea: your operating system already has
+          a secure, encrypted credential store — why aren&apos;t we using it?
+          macOS has Keychain, Linux has Secret Service, Windows has Credential
+          Manager. These systems are battle-tested, encrypted by default, and
+          protected by your user session.
+        </P>
+        <P>
+          Instead of reinventing encryption or trusting a third-party cloud
+          service with your most sensitive data, envsec puts secrets exactly
+          where they belong: in your OS, under your control, never touching disk
+          as plaintext.
+        </P>
+      </Section>
+
       {/* Getting Started */}
       <Section id="installation">
         <H2>Installation</H2>
@@ -553,6 +578,199 @@ envsec --completions fish | source`}
             daemon.
           </li>
         </ul>
+      </Section>
+
+      {/* Troubleshooting */}
+      <Section id="troubleshooting">
+        <H2>Troubleshooting</H2>
+        <P>
+          Common issues and their solutions, especially for Linux environments.
+        </P>
+
+        <H3>Linux: D-Bus not running</H3>
+        <P>
+          envsec requires an active D-Bus session to communicate with the Secret
+          Service API. If you see errors like{" "}
+          <Mono>Cannot autolaunch D-Bus without X11</Mono> or{" "}
+          <Mono>D-Bus connection failed</Mono>, start a D-Bus session manually:
+        </P>
+        <CodeBlock
+          code={`# Start a D-Bus session (add to your shell profile for persistence)
+eval $(dbus-launch --sh-syntax)
+
+# Verify D-Bus is running
+echo $DBUS_SESSION_BUS_ADDRESS`}
+        />
+
+        <H3>Linux: gnome-keyring-daemon not available</H3>
+        <P>
+          On headless servers or minimal installations, the keyring daemon may
+          not be installed or running. Install and start it:
+        </P>
+        <CodeBlock
+          code={`# Install gnome-keyring
+sudo apt install gnome-keyring  # Debian/Ubuntu
+sudo dnf install gnome-keyring  # Fedora
+sudo pacman -S gnome-keyring    # Arch
+
+# Start the daemon with the secrets component
+eval $(gnome-keyring-daemon --start --components=secrets)
+
+# Export the control socket
+export GNOME_KEYRING_CONTROL=$XDG_RUNTIME_DIR/keyring
+export SSH_AUTH_SOCK=$XDG_RUNTIME_DIR/keyring/ssh`}
+        />
+
+        <H3>Linux: WSL (Windows Subsystem for Linux)</H3>
+        <P>
+          WSL2 does not run systemd by default, which means D-Bus and keyring
+          services are not automatically available. You have two options:
+        </P>
+        <P>
+          <strong>Option 1: Enable systemd in WSL2</strong> (recommended for
+          WSL2 users on Windows 11):
+        </P>
+        <CodeBlock
+          code={`# Add to /etc/wsl.conf
+[boot]
+systemd=true
+
+# Then restart WSL from PowerShell:
+# wsl --shutdown`}
+        />
+        <P>
+          <strong>Option 2: Start services manually</strong> (for WSL1 or older
+          setups):
+        </P>
+        <CodeBlock
+          code={`# Add to your ~/.bashrc or ~/.zshrc
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+  eval $(dbus-launch --sh-syntax)
+fi
+eval $(gnome-keyring-daemon --start --components=secrets 2>/dev/null)`}
+        />
+
+        <H3>Linux: Headless servers and containers</H3>
+        <P>
+          In containerized or headless environments without a graphical session,
+          the keyring may store secrets with weaker protection or refuse to
+          unlock. For CI/CD pipelines, consider using{" "}
+          <Mono>envsec env-file</Mono> in a secure local environment to generate
+          a <Mono>.env</Mono> file, then inject it as a CI secret.
+        </P>
+
+        <H3>macOS: Keychain access denied</H3>
+        <P>
+          If envsec prompts for keychain access repeatedly, ensure it has
+          permission in System Preferences &rarr; Security & Privacy &rarr;
+          Privacy &rarr; Full Disk Access. You may also need to unlock your
+          login keychain:
+        </P>
+        <CodeBlock code="security unlock-keychain ~/Library/Keychains/login.keychain-db" />
+
+        <H3>General: Running envsec doctor</H3>
+        <P>
+          The <Mono>doctor</Mono> command diagnoses most setup issues
+          automatically:
+        </P>
+        <CodeBlock
+          code={`# Run diagnostics
+envsec doctor
+
+# JSON output for scripting
+envsec --json doctor`}
+        />
+        <P>
+          Check the output for failed checks and follow the suggestions
+          provided.
+        </P>
+      </Section>
+
+      {/* CI/CD */}
+      <Section id="ci-cd">
+        <H2>CI/CD Integration</H2>
+        <P>
+          Use envsec to manage secrets locally and export them securely to your
+          CI/CD pipelines. The recommended pattern is to generate environment
+          variables or <Mono>.env</Mono> files locally, then inject them as CI
+          secrets.
+        </P>
+
+        <H3>GitHub Actions</H3>
+        <P>
+          Export secrets from envsec to GitHub Actions secrets, then use them in
+          your workflow:
+        </P>
+        <CodeBlock
+          code={`# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env file from secrets
+        run: |
+          echo "API_KEY=\${{ secrets.API_KEY }}" >> .env
+          echo "DB_PASSWORD=\${{ secrets.DB_PASSWORD }}" >> .env
+
+      - name: Run deployment
+        run: npm run deploy
+        env:
+          API_KEY: \${{ secrets.API_KEY }}
+          DB_PASSWORD: \${{ secrets.DB_PASSWORD }}`}
+        />
+
+        <H3>Exporting secrets to CI</H3>
+        <P>
+          Use <Mono>envsec env</Mono> locally to generate export commands, then
+          copy the values to your CI provider&apos;s secrets management:
+        </P>
+        <CodeBlock
+          code={`# View secrets as KEY=value pairs (locally)
+envsec -c myapp.prod env
+
+# Output:
+# export API_KEY="sk-abc123"
+# export DB_PASSWORD="p@ss!"
+
+# Copy these values to GitHub Secrets, GitLab CI Variables, etc.`}
+        />
+
+        <H3>GitLab CI</H3>
+        <CodeBlock
+          code={`# .gitlab-ci.yml
+deploy:
+  stage: deploy
+  script:
+    - echo "$ENV_FILE" > .env
+    - npm run deploy
+  variables:
+    API_KEY: $API_KEY
+    DB_PASSWORD: $DB_PASSWORD`}
+        />
+
+        <P>
+          Store your secrets in GitLab CI/CD Variables (Settings &rarr; CI/CD
+          &rarr; Variables) as masked and protected variables.
+        </P>
+
+        <div className="mt-4 flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+          <span aria-hidden="true" className="shrink-0 text-amber-400">
+            !
+          </span>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Never commit <Mono>.env</Mono> files to version control. Always use
+            your CI provider&apos;s native secrets management to inject
+            sensitive values at runtime.
+          </p>
+        </div>
       </Section>
     </article>
   );

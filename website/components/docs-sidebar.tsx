@@ -7,6 +7,7 @@ const SECTIONS = [
   {
     title: "Getting Started",
     items: [
+      { id: "why-envsec", label: "Why envsec?" },
       { id: "installation", label: "Installation" },
       { id: "quick-start", label: "Quick Start" },
       { id: "requirements", label: "Requirements" },
@@ -48,6 +49,13 @@ const SECTIONS = [
       { id: "limitations", label: "Known Limitations" },
     ],
   },
+  {
+    title: "Guides",
+    items: [
+      { id: "troubleshooting", label: "Troubleshooting" },
+      { id: "ci-cd", label: "CI/CD Integration" },
+    ],
+  },
 ] as const;
 
 export function DocsSidebar() {
@@ -56,6 +64,7 @@ export function DocsSidebar() {
     Commands: true,
     Configuration: true,
     Security: true,
+    Guides: true,
   });
 
   const toggle = (title: string) => {
