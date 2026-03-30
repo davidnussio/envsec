@@ -9,7 +9,7 @@ import { Effect, Layer, ManagedRuntime } from "effect";
 import type { EnvsecClientOptions } from "./types.js";
 
 function toEnvKey(key: string): string {
-  return key.toUpperCase().replace(/\./g, "_").replace(/-/g, "_");
+  return key.toUpperCase().replaceAll(".", "_").replaceAll("-", "_");
 }
 
 type StoreError = UnsupportedPlatformError | MetadataStoreError;
