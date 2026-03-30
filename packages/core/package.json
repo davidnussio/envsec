@@ -39,6 +39,9 @@
     "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22"
   }

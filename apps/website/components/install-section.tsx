@@ -89,7 +89,7 @@ export function InstallSection() {
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
               )}
-              href="/docs#quick-start"
+              href="/docs#why-envsec"
             >
               Continue to Quick Start
               <ArrowRight className="ml-2 h-3 w-3" />
