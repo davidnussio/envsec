@@ -518,6 +518,242 @@ envsec --completions fish | source`}
         />
       </Section>
 
+      {/* SDK */}
+      <Section id="sdk-overview">
+        <H2>SDK Overview</H2>
+        <P>
+          <Mono>@envsec/sdk</Mono> is a Node.js / Bun SDK that gives your
+          applications programmatic access to envsec secrets. Load secrets at
+          startup, inject them into <Mono>process.env</Mono>, or manage them
+          with a full lifecycle client — no CLI needed.
+        </P>
+        <P>
+          Two API styles are available: a functional one-shot API (
+          <Mono>loadSecrets</Mono>, <Mono>withSecrets</Mono>) for simple use
+          cases, and a class-based API (<Mono>EnvsecClient</Mono>) for
+          multi-operation workflows.
+        </P>
+      </Section>
+
+      <Section id="sdk-installation">
+        <H2>SDK Installation</H2>
+        <P>
+          Requires Node.js &ge; 22 and a working envsec setup (OS credential
+          store accessible).
+        </P>
+        <CodeBlock
+          code={"npm install @envsec/sdk\n# or\npnpm add @envsec/sdk"}
+        />
+      </Section>
+
+      <Section id="sdk-functional-api">
+        <H2>Functional API</H2>
+        <P>
+          One-shot functions for the most common use cases. No lifecycle
+          management needed — the client is created and closed automatically.
+        </P>
+        <H3>loadSecrets</H3>
+        <P>
+          Load all secrets from one or more contexts. Optionally inject them
+          into <Mono>process.env</Mono>.
+        </P>
+        <CodeBlock
+          code={`import { loadSecrets } from "@envsec/sdk"
+
+// Load only
+const secrets = await loadSecrets({ context: "myapp.dev" })
+console.log(secrets["api.key"])
+
+// Load and inject into process.env
+await loadSecrets({ context: "myapp.prod", inject: true })
+// process.env.API_KEY is now set`}
+        />
+        <H3>withSecrets</H3>
+        <P>
+          Run a callback with secrets available. When <Mono>inject: true</Mono>,{" "}
+          <Mono>process.env</Mono> is automatically restored after the callback
+          completes.
+        </P>
+        <CodeBlock
+          code={`import { withSecrets } from "@envsec/sdk"
+
+const result = await withSecrets(
+  { context: "myapp.dev", inject: true },
+  async (secrets) => {
+    // process.env.API_TOKEN is set here
+    return fetch(secrets["api.url"])
+  }
+)
+// process.env is restored to its original state`}
+        />
+      </Section>
+
+      <Section id="sdk-client-api">
+        <H2>Client API</H2>
+        <P>
+          Full lifecycle client for multi-operation workflows. Supports get,
+          set, delete, and bulk loading.
+        </P>
+        <CodeBlock
+          code={`import { EnvsecClient } from "@envsec/sdk"
+
+const client = await EnvsecClient.create({ context: "myapp.dev" })
+
+// Read
+const apiKey = await client.get("api.key")      // string | null
+const dbUrl = await client.require("db.url")     // string (throws if missing)
+
+// Write
+await client.set("api.key", "sk-new-value")
+await client.set("api.key", "sk-new-value", { expires: "30d" })
+
+// Delete
+await client.delete("api.key")
+
+// Bulk
+const all = await client.loadAll()               // Record<string, string>
+await client.injectEnv()                         // inject all into process.env
+
+// Always close when done
+await client.close()`}
+        />
+      </Section>
+
+      <Section id="sdk-multi-context">
+        <H2>Multi-Context</H2>
+        <P>
+          Pass an array of contexts to merge secrets from multiple sources.
+          Later contexts override earlier ones (left-to-right merge).
+        </P>
+        <CodeBlock
+          code={`const client = await EnvsecClient.create({
+  context: ["myapp.defaults", "myapp.dev"],
+})
+
+// "myapp.dev" values win over "myapp.defaults"
+const secrets = await client.loadAll()
+await client.close()`}
+        />
+        <P>
+          Write operations (<Mono>set</Mono>, <Mono>delete</Mono>) target the
+          last (primary) context.
+        </P>
+      </Section>
+
+      <Section id="sdk-options">
+        <H2>Options Reference</H2>
+        <H3>EnvsecClientOptions</H3>
+        <div className="mb-6 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-white/10 border-b text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Option</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 font-medium">Description</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>context</Mono>
+                </td>
+                <td className="py-2 pr-4">
+                  <Mono>string | string[]</Mono>
+                </td>
+                <td className="py-2">
+                  Context(s) to operate on. Array enables multi-context merge.
+                </td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>dbPath</Mono>
+                </td>
+                <td className="py-2 pr-4">
+                  <Mono>string</Mono>
+                </td>
+                <td className="py-2">
+                  Override default SQLite path (
+                  <Mono>~/.envsec/store.sqlite</Mono>).
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <H3>LoadSecretsOptions / WithSecretsOptions</H3>
+        <P>
+          Extends <Mono>EnvsecClientOptions</Mono> with:
+        </P>
+        <div className="mb-6 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-white/10 border-b text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Option</th>
+                <th className="py-2 pr-4 font-medium">Type</th>
+                <th className="py-2 pr-4 font-medium">Default</th>
+                <th className="py-2 font-medium">Description</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>inject</Mono>
+                </td>
+                <td className="py-2 pr-4">
+                  <Mono>boolean</Mono>
+                </td>
+                <td className="py-2 pr-4">
+                  <Mono>false</Mono>
+                </td>
+                <td className="py-2">
+                  Inject secrets into <Mono>process.env</Mono> after loading.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <H3>Key Transformation</H3>
+        <P>
+          When injecting into <Mono>process.env</Mono>, keys are converted to
+          UPPER_SNAKE_CASE:
+        </P>
+        <div className="mb-6 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-white/10 border-b text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Secret Key</th>
+                <th className="py-2 font-medium">Environment Variable</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>api.token</Mono>
+                </td>
+                <td className="py-2">
+                  <Mono>API_TOKEN</Mono>
+                </td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>db.connection</Mono>
+                </td>
+                <td className="py-2">
+                  <Mono>DB_CONNECTION</Mono>
+                </td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>redis.cache-url</Mono>
+                </td>
+                <td className="py-2">
+                  <Mono>REDIS_CACHE_URL</Mono>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
       {/* Security */}
       <Section id="security-model">
         <H2>Security Model</H2>

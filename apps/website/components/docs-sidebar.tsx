@@ -43,6 +43,17 @@ const SECTIONS = [
     ],
   },
   {
+    title: "SDK",
+    items: [
+      { id: "sdk-overview", label: "Overview" },
+      { id: "sdk-installation", label: "Installation" },
+      { id: "sdk-functional-api", label: "Functional API" },
+      { id: "sdk-client-api", label: "Client API" },
+      { id: "sdk-multi-context", label: "Multi-Context" },
+      { id: "sdk-options", label: "Options Reference" },
+    ],
+  },
+  {
     title: "Security",
     items: [
       { id: "security-model", label: "Security Model" },
@@ -56,6 +67,7 @@ export function DocsSidebar() {
     "Getting Started": true,
     Commands: true,
     Configuration: true,
+    SDK: true,
     Security: true,
   });
 
