@@ -160,3 +160,6 @@ skills-lock.json
 
 # MacOS
 .DS_Store
+
+# Electrobun
+build

@@ -28,7 +28,7 @@ function NavigationMenu({
 function NavigationMenuList({
   className,
   ...props
-}: React.ComponentPropsWithRef<typeof NavigationMenuPrimitive.List>) {
+}: NavigationMenuPrimitive.List.Props) {
   return (
     <NavigationMenuPrimitive.List
       className={cn(
@@ -44,7 +44,7 @@ function NavigationMenuList({
 function NavigationMenuItem({
   className,
   ...props
-}: React.ComponentPropsWithRef<typeof NavigationMenuPrimitive.Item>) {
+}: NavigationMenuPrimitive.Item.Props) {
   return (
     <NavigationMenuPrimitive.Item
       className={cn("relative", className)}
@@ -101,7 +101,7 @@ function NavigationMenuPositioner({
   align = "start",
   alignOffset = 0,
   ...props
-}: NavigationMenuPrimitive.Positioner.Props) {
+}: NavigationMenuPrimitive.Positioner.Props & { className?: string }) {
   return (
     <NavigationMenuPrimitive.Portal>
       <NavigationMenuPrimitive.Positioner
@@ -142,7 +142,7 @@ function NavigationMenuLink({
 function NavigationMenuIndicator({
   className,
   ...props
-}: React.ComponentPropsWithRef<typeof NavigationMenuPrimitive.Icon>) {
+}: NavigationMenuPrimitive.Icon.Props) {
   return (
     <NavigationMenuPrimitive.Icon
       className={cn(
