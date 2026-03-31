@@ -11,6 +11,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/website/app/page.tsx"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noDangerouslySetInnerHtml": "off"
+          }
+        }
+      }
     }
   ]
 }

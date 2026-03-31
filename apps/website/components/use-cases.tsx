@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { UseCaseTerminal } from "./use-case-terminal";
 
 const USE_CASES = [
@@ -312,35 +312,34 @@ const USE_CASES = [
 ] as const;
 
 function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
-  const [open, setOpen] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-zinc-950/50 transition-colors hover:border-emerald-500/20">
-      <button
-        className="flex w-full items-center justify-between gap-4 px-3 py-4 text-left sm:px-6 sm:py-5"
-        onClick={() => setOpen(!open)}
-        type="button"
-      >
+    <details
+      className="group rounded-xl border border-white/10 bg-zinc-950/50 transition-colors hover:border-emerald-500/20"
+      onToggle={() => {
+        if (detailsRef.current?.open) {
+          setAnimKey((k) => k + 1);
+        }
+      }}
+      ref={detailsRef}
+    >
+      <summary className="flex w-full cursor-pointer list-none items-center justify-between gap-4 px-3 py-4 text-left sm:px-6 sm:py-5 [&::-webkit-details-marker]:hidden">
         <span className="font-medium text-base leading-snug">
           {item.question}
         </span>
-        <ChevronDown
-          className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-      {open && (
-        <div className="px-3 pb-4 sm:px-6 sm:pb-6">
-          <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
-            {item.problem}
-          </p>
-          <div className="-mx-0.5 sm:mx-0">
-            <UseCaseTerminal lines={item.lines} />
-          </div>
+        <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
+      </summary>
+      <div className="px-3 pb-4 sm:px-6 sm:pb-6">
+        <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
+          {item.problem}
+        </p>
+        <div className="-mx-0.5 sm:mx-0">
+          <UseCaseTerminal key={animKey} lines={item.lines} />
         </div>
-      )}
-    </div>
+      </div>
+    </details>
   );
 }
 
