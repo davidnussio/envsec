@@ -1,6 +1,13 @@
 export interface EnvsecClientOptions {
-  /** Context to operate on, e.g. "myapp.dev" */
-  context: string;
+  /**
+   * Context(s) to operate on.
+   * - Single context: `"myapp.dev"`
+   * - Multiple contexts: `["myapp.defaults", "myapp.dev"]`
+   *
+   * When an array is provided, secrets are merged left-to-right
+   * (later contexts override earlier ones).
+   */
+  context: string | string[];
   /** Override default SQLite path (~/.envsec/store.sqlite) */
   dbPath?: string;
 }
