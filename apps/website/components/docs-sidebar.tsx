@@ -35,6 +35,14 @@ const SECTIONS = [
     ],
   },
   {
+    title: "Interactive TUI",
+    items: [
+      { id: "tui-overview", label: "Overview" },
+      { id: "tui-views", label: "Views & Screens" },
+      { id: "tui-keyboard", label: "Keyboard Shortcuts" },
+    ],
+  },
+  {
     title: "Configuration",
     items: [
       { id: "contexts", label: "Contexts" },
@@ -66,6 +74,7 @@ export function DocsSidebar() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     "Getting Started": true,
     Commands: true,
+    "Interactive TUI": true,
     Configuration: true,
     SDK: true,
     Security: true,

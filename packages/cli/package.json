@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@envsec/core": "workspace:*",
+    "@envsec/tui": "workspace:*",
     "@effect/cli": "^0.75.0",
     "@effect/platform": "^0.96.0",
     "@effect/platform-node": "^0.106.0",

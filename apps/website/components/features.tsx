@@ -59,6 +59,12 @@ const FEATURES = [
     description:
       "Tab completions for bash, zsh, fish, and PowerShell. Feels native in every shell.",
   },
+  {
+    icon: Monitor,
+    title: "Interactive TUI",
+    description:
+      "Full-screen terminal UI for browsing contexts, managing secrets, running audits, and importing/exporting — all without memorizing commands.",
+  },
 ] as const;
 
 export function Features() {

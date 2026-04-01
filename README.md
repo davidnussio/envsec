@@ -21,6 +21,7 @@ Secure environment secrets management using native OS credential stores.
 - Export secrets as shell environment variables (`eval $(envsec env)`)
 - Load secrets from `.env` files (with conflict detection)
 - Share secrets encrypted with GPG for team members
+- Interactive terminal UI (`envsec tui`) for managing secrets without memorizing commands
 
 ## Packages
 
@@ -31,6 +32,7 @@ This is a monorepo containing the following packages:
 | [`envsec`](./packages/cli) | CLI tool for managing secrets | [![npm](https://img.shields.io/npm/v/envsec)](https://www.npmjs.com/package/envsec) |
 | [`@envsec/sdk`](./packages/sdk) | Node.js / Bun SDK for loading secrets programmatically | [![npm](https://img.shields.io/npm/v/@envsec/sdk)](https://www.npmjs.com/package/@envsec/sdk) |
 | [`@envsec/core`](./packages/core) | Core engine — OS credential store adapters + metadata DB | [![npm](https://img.shields.io/npm/v/@envsec/core)](https://www.npmjs.com/package/@envsec/core) |
+| [`@envsec/tui`](./packages/tui) | Interactive terminal UI for secrets management | [![npm](https://img.shields.io/npm/v/@envsec/tui)](https://www.npmjs.com/package/@envsec/tui) |
 
 ## SDK Quick Start
 
@@ -383,6 +385,44 @@ Secrets with an `--expires` duration set via `envsec add` are tracked in metadat
 
 The `audit` command also tracks generated `.env` files. Every time `env-file` is used, the output path, context, and timestamp are recorded. The audit output includes a second section listing these files. If a tracked `.env` file no longer exists on disk, audit automatically removes it from the metadata and reports the cleanup.
 
+### Interactive TUI
+
+envsec includes a full-screen terminal UI for managing secrets interactively — no need to memorize commands.
+
+```bash
+# Launch the TUI
+envsec tui
+
+# Launch with a pre-selected context
+envsec -c myapp.dev tui
+```
+
+The TUI provides eight screens accessible from the main menu:
+
+- **Contexts** — browse all contexts, set active context with `s`, clear context with `x`, view secret counts, delete entire contexts
+- **Secrets** — list secrets in a table, reveal values, add or delete secrets
+- **Add Secret** — interactive form with masked input and optional expiry duration
+- **Search** — glob pattern search across secrets or contexts
+- **Saved Commands** — list, view, and delete saved command templates
+- **Audit** — check for expired/expiring secrets, review tracked `.env` file exports
+- **Import .env** — load secrets from a `.env` file into the current context
+- **Export .env** — export secrets to a `.env` file (tracked for audit)
+
+Keyboard shortcuts:
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` | Navigate menu items and table rows |
+| `Enter` | Select / confirm |
+| `c` | Open contexts view (main menu) |
+| `s` | Set selected as active context (contexts view) |
+| `x` | Clear active context (contexts view) |
+| `a` | Add a new secret (secrets view) |
+| `d` | Delete selected item |
+| `r` | Reveal secret value (detail view) |
+| `Esc` | Go back / cancel |
+| `q` | Quit the TUI |
+
 ### Diagnose your setup
 
 ```bash
@@ -496,6 +536,7 @@ packages/
   cli/     → envsec CLI (published as `envsec`)
   sdk/     → Node.js/Bun SDK (published as `@envsec/sdk`)
   core/    → Core engine, shared by CLI and SDK (published as `@envsec/core`)
+  tui/     → Interactive terminal UI (published as `@envsec/tui`)
 apps/
   website/ → Documentation website
 ```
