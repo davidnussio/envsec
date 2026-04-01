@@ -3,8 +3,10 @@
  * All views consume SecretStore via Effect dependency injection.
  */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
+  type EnvFileExport,
   expiresAtFromNow,
   formatTimeDistance,
   icons,
@@ -154,28 +156,32 @@ export const mainMenuView = (
             break;
           }
           case "secrets": {
-            if (!ctx) {
-              message = {
-                text: "Set a context first (press c)",
-                type: "warning",
-              };
-              break;
+            let secretsCtx = ctx;
+            if (!secretsCtx) {
+              const picked = yield* selectContext("Secrets — Select Context");
+              if (!picked) {
+                break;
+              }
+              secretsCtx = picked;
             }
-            const result = yield* secretsView(ctx);
+            const result = yield* secretsView(secretsCtx);
             if (result === "quit") {
               running = false;
             }
             break;
           }
           case "add": {
-            if (!ctx) {
-              message = {
-                text: "Set a context first (press c)",
-                type: "warning",
-              };
-              break;
+            let addCtx = ctx;
+            if (!addCtx) {
+              const picked = yield* selectContext(
+                "Add Secret — Select Context"
+              );
+              if (!picked) {
+                break;
+              }
+              addCtx = picked;
             }
-            const result = yield* addSecretView(ctx);
+            const result = yield* addSecretView(addCtx);
             if (result === "quit") {
               running = false;
             }
@@ -203,28 +209,30 @@ export const mainMenuView = (
             break;
           }
           case "import": {
-            if (!ctx) {
-              message = {
-                text: "Set a context first (press c)",
-                type: "warning",
-              };
-              break;
+            let importCtx = ctx;
+            if (!importCtx) {
+              const picked = yield* selectContext("Import — Select Context");
+              if (!picked) {
+                break;
+              }
+              importCtx = picked;
             }
-            const result = yield* importView(ctx);
+            const result = yield* importView(importCtx);
             if (result === "quit") {
               running = false;
             }
             break;
           }
           case "export": {
-            if (!ctx) {
-              message = {
-                text: "Set a context first (press c)",
-                type: "warning",
-              };
-              break;
+            let exportCtx = ctx;
+            if (!exportCtx) {
+              const picked = yield* selectContext("Export — Select Context");
+              if (!picked) {
+                break;
+              }
+              exportCtx = picked;
             }
-            const result = yield* exportView(ctx);
+            const result = yield* exportView(exportCtx);
             if (result === "quit") {
               running = false;
             }
@@ -235,6 +243,68 @@ export const mainMenuView = (
         }
       }
     }
+  });
+
+// ── Select Context (arrow navigation) ───────────────────────────────
+
+const selectContext = (
+  title: string
+): Effect.Effect<string | null, never, SecretStore> =>
+  Effect.gen(function* () {
+    const contexts = yield* SecretStore.listContexts().pipe(
+      Effect.catchAll(() => Effect.succeed([]))
+    );
+
+    if (contexts.length === 0) {
+      write(screen.clear);
+      renderHeader(null, title);
+      renderEmpty(4, "No contexts found. Add secrets to create one.");
+      renderFooter(["any key to go back"]);
+      yield* readKey;
+      return null;
+    }
+
+    let selected = 0;
+
+    const loop = (): Effect.Effect<string | null, never, SecretStore> =>
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: interactive TUI loop
+      Effect.gen(function* () {
+        write(screen.clear);
+        let row = renderHeader(null, title);
+        row++;
+
+        const items = contexts.map((ctx) => ({
+          key: ctx.context,
+          label: ctx.context,
+          icon: icons.folder,
+          hint: `${ctx.count} secrets`,
+        }));
+
+        selected = Math.min(selected, items.length - 1);
+        row = renderMenu(items, selected, row);
+        renderFooter(["↑↓ navigate", "Enter select", "Esc back"]);
+
+        const key = yield* readKey;
+
+        if (key.name === "escape" || (key.ctrl && key.name === "c")) {
+          return null;
+        }
+        if (key.name === "up") {
+          selected = (selected - 1 + items.length) % items.length;
+          return yield* loop();
+        }
+        if (key.name === "down") {
+          selected = (selected + 1) % items.length;
+          return yield* loop();
+        }
+        if (key.name === "return") {
+          const ctx = contexts[selected];
+          return ctx ? ctx.context : null;
+        }
+        return yield* loop();
+      });
+
+    return yield* loop();
   });
 
 // ── Prompt Context ──────────────────────────────────────────────────
@@ -374,7 +444,7 @@ const confirmDeleteContext = (
     writeLine(7, ` ${c.dim("This cannot be undone.")}`);
     writeLine(
       9,
-      ` ${c.green("y")} confirm  ${c.dim("/")}  ${c.red("n")} cancel`
+      ` ${c.green("y")} confirm  ${c.dim("/")}  ${c.red("n")} cancel  ${c.dim("/")}  ${c.dim("Esc")} back`
     );
 
     const key = yield* readKey;
@@ -598,7 +668,7 @@ const confirmDelete = (
     );
     writeLine(
       7,
-      ` ${c.green("y")} confirm  ${c.dim("/")}  ${c.red("n")} cancel`
+      ` ${c.green("y")} confirm  ${c.dim("/")}  ${c.red("n")} cancel  ${c.dim("/")}  ${c.dim("Esc")} back`
     );
 
     const k = yield* readKey;
@@ -882,11 +952,83 @@ const auditView = (
       }
     }
 
+    // ── Env file exports ──────────────────────────────────────────────
+    row = yield* renderEnvFileExports(row, context);
+
     row += 2;
     writeLine(row, ` ${c.dim("Press any key to continue...")}`);
     renderFooter(["any key to go back"]);
     yield* readKey;
     return "back" as ViewResult;
+  });
+
+// ── Env file exports (audit subsection) ─────────────────────────────
+
+const renderEnvFileExports = (
+  startRow: number,
+  contextFilter: string | null
+): Effect.Effect<number, never, SecretStore> =>
+  Effect.gen(function* () {
+    let row = startRow;
+
+    const allExports = yield* SecretStore.listEnvFileExports().pipe(
+      Effect.catchAll(() => Effect.succeed([] as EnvFileExport[]))
+    );
+
+    // Prune stale exports (files no longer on disk)
+    const alive: EnvFileExport[] = [];
+    const stale: EnvFileExport[] = [];
+    for (const e of allExports) {
+      if (existsSync(e.path)) {
+        alive.push(e);
+      } else {
+        stale.push(e);
+      }
+    }
+    for (const e of stale) {
+      yield* SecretStore.removeEnvFileExport(e.path).pipe(
+        Effect.catchAll(() => Effect.void)
+      );
+    }
+
+    if (stale.length > 0) {
+      row += 2;
+      writeLine(
+        row,
+        ` ${icons.broom} Removed ${c.bold(String(stale.length))} stale env file record${stale.length === 1 ? "" : "s"} ${c.dim("(files no longer on disk)")}`
+      );
+    }
+
+    const filtered = contextFilter
+      ? alive.filter((e) => e.context === contextFilter)
+      : alive;
+
+    if (filtered.length === 0) {
+      return row;
+    }
+
+    row += 2;
+    writeLine(row, ` ${icons.file} ${c.bold("Generated .env files:")}`);
+    row++;
+
+    for (const e of filtered) {
+      const date = e.created_at.replace("T", " ").slice(0, 19);
+      row++;
+      writeLine(row, `   ${icons.file} ${e.path}`);
+      row++;
+      writeLine(
+        row,
+        `     ${c.dim(`context: ${e.context}  generated: ${date}`)}`
+      );
+    }
+
+    row += 2;
+    writeLine(
+      row,
+      ` ${icons.chart} ${c.bold(String(filtered.length))} env file${filtered.length === 1 ? "" : "s"} generated`
+    );
+
+    return row;
   });
 
 // ── Import View ─────────────────────────────────────────────────────
@@ -900,12 +1042,16 @@ const importView = (
     row++;
 
     write(cursor.show);
-    const filePath = yield* readLine(
-      ` ${c.cyan("File path (default: .env):")} `
-    );
+    writeLine(row, ` ${c.cyan("File path (default: .env):")}`);
+    row++;
+    const filePath = yield* readLine(` ${c.dim("›")} `);
     write(cursor.hide);
 
-    const path = filePath && filePath.trim() !== "" ? filePath.trim() : ".env";
+    if (filePath === null) {
+      return "back" as ViewResult;
+    }
+
+    const path = filePath.trim() === "" ? ".env" : filePath.trim();
 
     row += 2;
     writeLine(row, ` ${c.dim("Reading")} ${path}${c.dim("...")}`);
@@ -974,12 +1120,16 @@ const exportView = (
     row++;
 
     write(cursor.show);
-    const filePath = yield* readLine(
-      ` ${c.cyan("Output path (default: .env):")} `
-    );
+    writeLine(row, ` ${c.cyan("Output path (default: .env):")}`);
+    row++;
+    const filePath = yield* readLine(` ${c.dim("›")} `);
     write(cursor.hide);
 
-    const path = filePath && filePath.trim() !== "" ? filePath.trim() : ".env";
+    if (filePath === null) {
+      return "back" as ViewResult;
+    }
+
+    const path = filePath.trim() === "" ? ".env" : filePath.trim();
 
     row += 2;
     writeLine(row, ` ${c.dim("Exporting secrets...")}`);
@@ -1018,6 +1168,11 @@ const exportView = (
         renderMessage(row + 1, String(e), "error");
         return Effect.void;
       })
+    );
+
+    const absolutePath = resolve(path);
+    yield* SecretStore.trackEnvFileExport(context, absolutePath).pipe(
+      Effect.catchAll(() => Effect.void)
     );
 
     row++;

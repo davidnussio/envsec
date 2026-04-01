@@ -207,7 +207,18 @@ export const readLine = (
     };
 
     const onData = (chunk: string) => {
+      // Bare escape key (not part of an ANSI sequence like \x1b[A)
+      if (chunk === "\x1b") {
+        cleanup();
+        write("\n");
+        resume(Effect.succeed(null));
+        return;
+      }
       for (const ch of chunk) {
+        // Skip escape bytes that are part of ANSI sequences
+        if (ch === "\x1b") {
+          continue;
+        }
         const result = handleChar(ch);
         if (result === "done") {
           cleanup();
