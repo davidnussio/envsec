@@ -293,10 +293,8 @@ $out = Run-Ok @("-c", $CTX, "delete", "-y", "special.chars")
 Assert-Contains "delete: confirmed" "removed" $out
 
 # Verify secret no longer exists
-$ec = 0
 & node $CLI -c $CTX get special.chars 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { $ec = $LASTEXITCODE }
-Assert-ExitCode "delete: get fails after delete" 1 $ec
+Assert-NonZeroExit "delete: get fails after delete" $LASTEXITCODE
 
 # Other secrets still intact
 $out = Run-Ok @("-c", $CTX, "get", "db.password")
@@ -370,8 +368,7 @@ $out = Run-Ok @("cmd", "delete", "test-echo")
 Assert-Contains "cmd delete: confirmed" "removed" $out
 
 & node $CLI cmd run test-echo 2>$null | Out-Null
-$ec = $LASTEXITCODE
-Assert-ExitCode "cmd delete: run fails after" 1 $ec
+Assert-NonZeroExit "cmd delete: run fails after" $LASTEXITCODE
 
 # ─── 9. ENVSEC_CONTEXT env var ───────────────────────────────────────────────
 Write-Host ""
@@ -610,7 +607,7 @@ Assert-NotContains "stale: list after cleanup" "stale.secret" $out
 
 # get should now fail with standard not found (no metadata either)
 & node $CLI -c $CTX_STALE get stale.secret 2>$null | Out-Null
-Assert-ExitCode "stale: get after cleanup fails" 1 $LASTEXITCODE
+Assert-NonZeroExit "stale: get after cleanup fails" $LASTEXITCODE
 
 # ─── 17. RENAME ───────────────────────────────────────────────────────────────
 Write-Host ""
@@ -634,7 +631,7 @@ Assert-Eq "rename: value preserved" "rename-value" $out.Trim()
 
 # Old key should be gone
 & node $CLI -c $CTX_REN get old.key 2>$null | Out-Null
-Assert-ExitCode "rename: old key gone" 1 $LASTEXITCODE
+Assert-NonZeroExit "rename: old key gone" $LASTEXITCODE
 
 # Rename to existing key without --force should fail
 $out = Run-All @("-c", $CTX_REN, "rename", "new.key", "existing.key")

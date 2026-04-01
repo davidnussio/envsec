@@ -145,8 +145,7 @@ vite.config.ts.timestamp-*
 
 # Claude
 *.local.json
-.claude
-skills-lock.json
+.claude/settings.*.json
 .kiro
 .agents
 .vercel

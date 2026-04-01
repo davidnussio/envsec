@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { Command, Options } from "@effect/cli";
 import {
@@ -33,8 +33,18 @@ const gpgEncrypt = (
 ): Effect.Effect<string, GPGEncryptionError> =>
   Effect.try({
     try: () =>
-      execSync(
-        `gpg --batch --yes --trust-model always --encrypt --armor --recipient ${JSON.stringify(recipient)}`,
+      execFileSync(
+        "gpg",
+        [
+          "--batch",
+          "--yes",
+          "--trust-model",
+          "always",
+          "--encrypt",
+          "--armor",
+          "--recipient",
+          recipient,
+        ],
         { input: plaintext, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
       ),
     catch: (e) =>

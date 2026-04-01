@@ -22,39 +22,6 @@ Secure environment secrets management using native OS credential stores.
 - Load secrets from `.env` files (with conflict detection)
 - Share secrets encrypted with GPG for team members
 
-## Packages
-
-This is a monorepo containing the following packages:
-
-| Package | Description | npm |
-|---------|-------------|-----|
-| [`envsec`](./packages/cli) | CLI tool for managing secrets | [![npm](https://img.shields.io/npm/v/envsec)](https://www.npmjs.com/package/envsec) |
-| [`@envsec/sdk`](./packages/sdk) | Node.js / Bun SDK for loading secrets programmatically | [![npm](https://img.shields.io/npm/v/@envsec/sdk)](https://www.npmjs.com/package/@envsec/sdk) |
-| [`@envsec/core`](./packages/core) | Core engine — OS credential store adapters + metadata DB | [![npm](https://img.shields.io/npm/v/@envsec/core)](https://www.npmjs.com/package/@envsec/core) |
-
-## SDK Quick Start
-
-For programmatic access to secrets from Node.js or Bun, use `@envsec/sdk`:
-
-```bash
-npm install @envsec/sdk
-```
-
-```typescript
-import { loadSecrets } from "@envsec/sdk";
-
-// Load and inject into process.env
-await loadSecrets({ context: "myapp.dev", inject: true });
-
-// Or use the client for full control
-import { EnvsecClient } from "@envsec/sdk";
-const client = await EnvsecClient.create({ context: "myapp.dev" });
-const apiKey = await client.get("api.key");
-await client.close();
-```
-
-See the full [SDK documentation](./packages/sdk/README.md) for all APIs, multi-context support, and options.
-
 ## Requirements
 
 - Node.js >= 22
@@ -473,97 +440,20 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 **Encryption depends on your OS.** envsec adds no additional at-rest encryption beyond what the native credential store provides. On systems without full-disk encryption, an attacker with physical access could potentially extract secrets from the keychain. We recommend enabling full-disk encryption (FileVault, LUKS, BitLocker) for the strongest protection.
 
-## Development
+## Programmatic Usage
 
-### Prerequisites
+Need to load secrets from code instead of the CLI? Check out [`@envsec/sdk`](https://www.npmjs.com/package/@envsec/sdk) — a Node.js / Bun SDK that reads secrets directly from the OS credential store.
 
-- Node.js >= 22
-- pnpm
+```typescript
+import { loadSecrets } from "@envsec/sdk";
 
-### Setup
-
-```bash
-git clone https://github.com/davidnussio/envsec.git
-cd envsec
-pnpm install
-pnpm run build
+const secrets = await loadSecrets({ context: "myapp.dev", inject: true });
+// process.env.API_KEY is now set
 ```
 
-### Project Structure
+## Contributing
 
-```
-packages/
-  cli/     → envsec CLI (published as `envsec`)
-  sdk/     → Node.js/Bun SDK (published as `@envsec/sdk`)
-  core/    → Core engine, shared by CLI and SDK (published as `@envsec/core`)
-apps/
-  website/ → Documentation website
-```
-
-### Common commands
-
-```bash
-# Build all packages
-pnpm run build
-
-# Lint and format check (all packages)
-pnpm run check
-
-# Auto-fix lint and formatting
-pnpm run fix
-
-# Release (build + changeset publish)
-pnpm run release
-```
-
-### Running locally without installing
-
-Create a temporary alias to use the local build as if it were installed globally:
-
-```bash
-# Bash / Zsh
-alias envsec="node $(pwd)/packages/cli/dist/main.js"
-
-# Fish
-alias envsec "node (pwd)/packages/cli/dist/main.js"
-```
-
-### Testing shell completions locally
-
-After building and setting up the alias, load the completions in your current session:
-
-```bash
-# Bash
-alias envsec="node $(pwd)/packages/cli/dist/main.js"
-eval "$(envsec --completions bash)"
-
-# Zsh
-alias envsec="node $(pwd)/packages/cli/dist/main.js"
-eval "$(envsec --completions zsh)"
-
-# Fish
-alias envsec "node (pwd)/packages/cli/dist/main.js"
-envsec --completions fish | source
-```
-
-Then press TAB after `envsec -c ` to see your contexts, or after `envsec -c myapp.dev get ` to see secret keys.
-
-### Running tests
-
-End-to-end integration tests cover the full CLI lifecycle (add, get, list, search, env-file, load, delete, run, cmd, audit, share, completions).
-
-```bash
-# Build first
-pnpm run build
-
-# macOS / Linux
-bash packages/cli/test/e2e-test.sh
-
-# Windows (PowerShell)
-pwsh packages/cli/test/e2e-test.ps1
-```
-
-CI runs automatically on push/PR to `main` via GitHub Actions, executing `e2e-test.sh` on macOS and Ubuntu, and `e2e-test.ps1` on Windows.
+See the [GitHub repository](https://github.com/davidnussio/envsec) for development setup, architecture details, and contribution guidelines.
 
 ## License
 
