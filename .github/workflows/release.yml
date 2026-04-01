@@ -37,8 +37,8 @@ jobs:
             pkg.version = '${VERSION}';
             fs.writeFileSync('packages/cli/package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-          # Core and SDK get the same version (linked)
-          for dir in packages/core packages/sdk; do
+          # Core, SDK, and TUI get the same version (linked)
+          for dir in packages/core packages/sdk packages/tui; do
             node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('${dir}/package.json', 'utf8'));
@@ -61,6 +61,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Publish @envsec/tui to npm
+        run: pnpm -F @envsec/tui publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish envsec CLI to npm
         run: pnpm -F envsec publish --no-git-checks --tag ${{ steps.version.outputs.tag }}
         env:
@@ -71,7 +76,7 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add packages/cli/package.json packages/core/package.json packages/sdk/package.json
+          git add packages/cli/package.json packages/core/package.json packages/sdk/package.json packages/tui/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
           git push origin HEAD:main
 
