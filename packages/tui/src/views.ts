@@ -36,6 +36,7 @@ import {
 // ── Types ───────────────────────────────────────────────────────────
 
 type ViewResult = "back" | "quit" | "refresh";
+type ContextsViewResult = ViewResult | { setContext: string } | "clearContext";
 
 // ── Main Menu ───────────────────────────────────────────────────────
 
@@ -137,9 +138,18 @@ export const mainMenuView = (
       } else if (key.name === "down") {
         selected = (selected + 1) % mainMenuItems.length;
       } else if (key.name === "c") {
-        const newCtx = yield* promptContext();
-        if (newCtx !== null) {
-          ctx = newCtx;
+        const result = yield* contextsView();
+        if (result === "quit") {
+          running = false;
+        } else if (result === "clearContext") {
+          ctx = null;
+          message = { text: "Context cleared", type: "info" };
+        } else if (typeof result === "object" && "setContext" in result) {
+          ctx = result.setContext;
+          message = {
+            text: `Context set to "${result.setContext}"`,
+            type: "success",
+          };
         }
       } else if (key.name === "return") {
         const item = mainMenuItems[selected];
@@ -152,6 +162,15 @@ export const mainMenuView = (
             const result = yield* contextsView();
             if (result === "quit") {
               running = false;
+            } else if (result === "clearContext") {
+              ctx = null;
+              message = { text: "Context cleared", type: "info" };
+            } else if (typeof result === "object" && "setContext" in result) {
+              ctx = result.setContext;
+              message = {
+                text: `Context set to "${result.setContext}"`,
+                type: "success",
+              };
             }
             break;
           }
@@ -307,49 +326,17 @@ const selectContext = (
     return yield* loop();
   });
 
-// ── Prompt Context ──────────────────────────────────────────────────
-
-const promptContext = (): Effect.Effect<string | null, never, SecretStore> =>
-  Effect.gen(function* () {
-    write(screen.clear);
-    renderHeader(null, "Set Context");
-
-    // Show existing contexts as hints
-    const contexts = yield* SecretStore.listContexts().pipe(
-      Effect.catchAll(() => Effect.succeed([]))
-    );
-
-    let row = 4;
-    if (contexts.length > 0) {
-      writeLine(row, ` ${c.dim("Existing contexts:")}`);
-      row++;
-      for (const ctx of contexts.slice(0, 10)) {
-        writeLine(
-          row,
-          `   ${c.dim("•")} ${ctx.context} ${c.dim(`(${ctx.count} secrets)`)}`
-        );
-        row++;
-      }
-      row++;
-    }
-
-    write(cursor.show);
-    const input = yield* readLine(` ${c.cyan("Context name:")} `);
-    write(cursor.hide);
-
-    if (input === null || input.trim() === "") {
-      return null;
-    }
-    return input.trim();
-  });
-
 // ── Contexts View ───────────────────────────────────────────────────
 
-const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
+const contextsView = (): Effect.Effect<
+  ContextsViewResult,
+  never,
+  SecretStore
+> =>
   Effect.gen(function* () {
     let selected = 0;
 
-    const loop = (): Effect.Effect<ViewResult, never, SecretStore> =>
+    const loop = (): Effect.Effect<ContextsViewResult, never, SecretStore> =>
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: interactive TUI loop
       Effect.gen(function* () {
         const contexts = yield* SecretStore.listContexts().pipe(
@@ -368,9 +355,9 @@ const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
           renderFooter(["Esc back", "q quit"]);
           const key = yield* readKey;
           if (key.name === "q" || (key.ctrl && key.name === "c")) {
-            return "quit" as ViewResult;
+            return "quit" as ContextsViewResult;
           }
-          return "back" as ViewResult;
+          return "back" as ContextsViewResult;
         }
 
         const items = contexts.map((ctx) => ({
@@ -386,6 +373,8 @@ const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
         renderFooter([
           "↑↓ navigate",
           "Enter view secrets",
+          "s set context",
+          "x clear context",
           "d delete all",
           "Esc back",
           "q quit",
@@ -394,10 +383,10 @@ const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
         const key = yield* readKey;
 
         if (key.name === "q" || (key.ctrl && key.name === "c")) {
-          return "quit" as ViewResult;
+          return "quit" as ContextsViewResult;
         }
         if (key.name === "escape") {
-          return "back" as ViewResult;
+          return "back" as ContextsViewResult;
         }
         if (key.name === "up") {
           selected = (selected - 1 + items.length) % items.length;
@@ -406,12 +395,23 @@ const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
           selected = (selected + 1) % items.length;
         }
 
+        if (key.name === "s") {
+          const ctx = contexts[selected];
+          if (ctx) {
+            return { setContext: ctx.context } as ContextsViewResult;
+          }
+        }
+
+        if (key.name === "x") {
+          return "clearContext" as ContextsViewResult;
+        }
+
         if (key.name === "return") {
           const ctx = contexts[selected];
           if (ctx) {
             const result = yield* secretsView(ctx.context);
             if (result === "quit") {
-              return "quit" as ViewResult;
+              return "quit" as ContextsViewResult;
             }
           }
         }

@@ -461,6 +461,170 @@ envsec --json doctor`}
         </P>
       </Section>
 
+      {/* Interactive TUI */}
+      <Section id="tui-overview">
+        <H2>Interactive TUI</H2>
+        <P>
+          envsec includes a full-screen terminal UI for managing secrets without
+          memorizing commands. Launch it with <Mono>envsec tui</Mono> or
+          optionally pass a context to start in.
+        </P>
+        <CodeBlock
+          code={`# Launch the TUI
+envsec tui
+
+# Launch with a pre-selected context
+envsec -c myapp.dev tui`}
+        />
+        <P>
+          The TUI uses raw ANSI escape sequences with zero external
+          dependencies. It runs in an alternate screen buffer so your terminal
+          history stays clean.
+        </P>
+      </Section>
+
+      <Section id="tui-views">
+        <H2>Views &amp; Screens</H2>
+        <P>
+          The main menu provides access to eight screens, each covering a core
+          envsec workflow.
+        </P>
+        <H3>Contexts</H3>
+        <P>
+          Browse all contexts with their secret counts. Press <Mono>s</Mono> to
+          set the selected context as the active context for the session,{" "}
+          <Mono>x</Mono> to clear the active context, <Mono>Enter</Mono> to view
+          its secrets, or <Mono>d</Mono> to delete all secrets in a context
+          (with confirmation).
+        </P>
+        <H3>Secrets</H3>
+        <P>
+          Lists all secrets in the current context as a table with key, last
+          updated, and expiry columns. Press <Mono>Enter</Mono> to reveal a
+          secret value, <Mono>a</Mono> to add a new secret, or <Mono>d</Mono> to
+          delete the selected secret.
+        </P>
+        <H3>Add Secret</H3>
+        <P>
+          Interactive form to store a new secret. Prompts for key, value (masked
+          input), and an optional expiry duration (e.g. <Mono>30d</Mono>,{" "}
+          <Mono>1y</Mono>, <Mono>6mo</Mono>).
+        </P>
+        <H3>Search</H3>
+        <P>
+          Glob pattern search. With a context selected, searches secret keys.
+          Without a context, searches context names.
+        </P>
+        <H3>Saved Commands</H3>
+        <P>
+          Lists all saved commands in a table with name, command template, and
+          context. Press <Mono>d</Mono> to delete a command.
+        </P>
+        <H3>Audit</H3>
+        <P>
+          Scans for secrets expiring within 30 days. Shows expired vs. expiring
+          status with time distance. Also lists tracked <Mono>.env</Mono> file
+          exports and cleans up stale records for files that no longer exist on
+          disk.
+        </P>
+        <H3>Import .env</H3>
+        <P>
+          Prompts for a file path (defaults to <Mono>.env</Mono>) and imports
+          all key-value pairs into the current context. Keys are converted from{" "}
+          <Mono>UPPER_SNAKE_CASE</Mono> to <Mono>dotted.lowercase</Mono>.
+        </P>
+        <H3>Export .env</H3>
+        <P>
+          Prompts for an output path (defaults to <Mono>.env</Mono>) and writes
+          all secrets from the current context. The export is tracked in
+          metadata for the audit view.
+        </P>
+      </Section>
+
+      <Section id="tui-keyboard">
+        <H2>Keyboard Shortcuts</H2>
+        <div className="mb-6 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-white/10 border-b text-muted-foreground">
+                <th className="py-2 pr-4 font-medium">Key</th>
+                <th className="py-2 font-medium">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-muted-foreground">
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>↑ / ↓</Mono>
+                </td>
+                <td className="py-2">Navigate menu items and table rows</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>Enter</Mono>
+                </td>
+                <td className="py-2">Select / confirm</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>c</Mono>
+                </td>
+                <td className="py-2">Open contexts view (main menu)</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>s</Mono>
+                </td>
+                <td className="py-2">
+                  Set selected as active context (contexts view)
+                </td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>x</Mono>
+                </td>
+                <td className="py-2">Clear active context (contexts view)</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>a</Mono>
+                </td>
+                <td className="py-2">Add a new secret (secrets view)</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>d</Mono>
+                </td>
+                <td className="py-2">Delete selected item</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>r</Mono>
+                </td>
+                <td className="py-2">Reveal secret value (detail view)</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>Esc</Mono>
+                </td>
+                <td className="py-2">Go back / cancel</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>q</Mono>
+                </td>
+                <td className="py-2">Quit the TUI</td>
+              </tr>
+              <tr className="border-white/5 border-b">
+                <td className="py-2 pr-4">
+                  <Mono>Ctrl+C</Mono>
+                </td>
+                <td className="py-2">Quit the TUI</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
       {/* Configuration */}
       <Section id="contexts">
         <H2>Contexts</H2>
