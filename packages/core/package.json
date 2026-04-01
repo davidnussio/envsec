@@ -1,6 +1,6 @@
 {
   "name": "@envsec/core",
-  "version": "1.0.0-beta.10",
+  "version": "1.0.0-beta.11",
   "description": "Core secrets management engine — native OS credential store adapters + metadata DB",
   "keywords": [
     "secrets",
