@@ -93,6 +93,9 @@ importers:
       '@envsec/core':
         specifier: workspace:*
         version: link:../core
+      '@envsec/tui':
+        specifier: workspace:*
+        version: link:../tui
       effect:
         specifier: ^3.21.0
         version: 3.21.0
@@ -139,6 +142,22 @@ importers:
         version: 5.9.3
 
   packages/sdk:
+    dependencies:
+      '@envsec/core':
+        specifier: workspace:*
+        version: link:../core
+      effect:
+        specifier: ^3.21.0
+        version: 3.21.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.5.0
+        version: 25.5.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/tui:
     dependencies:
       '@envsec/core':
         specifier: workspace:*

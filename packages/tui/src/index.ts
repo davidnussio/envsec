@@ -1,9 +1,9 @@
 /**
- * TUI entry point — wires the interactive UI to SecretStore.
+ * @envsec/tui — Interactive terminal UI for envsec secrets management.
  */
 
+import type { SecretStore } from "@envsec/core";
 import { Effect } from "effect";
-import type { SecretStore } from "../services/secret-store.js";
 import { enterTUI, exitTUI } from "./components.js";
 import { mainMenuView } from "./views.js";
 

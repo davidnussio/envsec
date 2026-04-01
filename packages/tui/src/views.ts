@@ -4,10 +4,15 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
+import {
+  expiresAtFromNow,
+  formatTimeDistance,
+  icons,
+  parseDuration,
+  type SecretMetadata,
+  SecretStore,
+} from "@envsec/core";
 import { Effect } from "effect";
-import { expiresAtFromNow, parseDuration } from "../domain/duration.js";
-import type { SecretMetadata } from "../services/metadata-store.js";
-import { SecretStore } from "../services/secret-store.js";
 import {
   renderEmpty,
   renderFooter,
@@ -36,39 +41,49 @@ const mainMenuItems = [
   {
     key: "contexts",
     label: "Contexts",
-    icon: "📁",
+    icon: icons.folder,
     hint: "Browse & manage contexts",
   },
   {
     key: "secrets",
     label: "Secrets",
-    icon: "🔑",
+    icon: icons.key,
     hint: "View secrets in current context",
   },
-  { key: "add", label: "Add Secret", icon: "➕", hint: "Store a new secret" },
+  {
+    key: "add",
+    label: "Add Secret",
+    icon: icons.save,
+    hint: "Store a new secret",
+  },
   {
     key: "search",
     label: "Search",
-    icon: "🔍",
+    icon: icons.search,
     hint: "Search secrets or contexts",
   },
   {
     key: "commands",
     label: "Saved Commands",
-    icon: "⚡",
+    icon: icons.bolt,
     hint: "Manage saved commands",
   },
-  { key: "audit", label: "Audit", icon: "📊", hint: "Check expiring secrets" },
+  {
+    key: "audit",
+    label: "Audit",
+    icon: icons.chart,
+    hint: "Check expiring secrets",
+  },
   {
     key: "import",
     label: "Import .env",
-    icon: "⬆",
+    icon: icons.upload,
     hint: "Load secrets from .env file",
   },
   {
     key: "export",
     label: "Export .env",
-    icon: "⬇",
+    icon: icons.download,
     hint: "Export secrets to .env file",
   },
 ];
@@ -291,7 +306,7 @@ const contextsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
         const items = contexts.map((ctx) => ({
           key: ctx.context,
           label: ctx.context,
-          icon: "📁",
+          icon: icons.folder,
           hint: `${ctx.count} secrets`,
         }));
 
@@ -354,7 +369,7 @@ const confirmDeleteContext = (
     renderHeader(context, "Delete All Secrets");
     writeLine(
       5,
-      ` ${c.red("⚠")} ${c.bold("Delete ALL secrets")} in context ${c.bold(c.cyan(`"${context}"`))}?`
+      ` ${icons.warning} ${c.bold("Delete ALL secrets")} in context ${c.bold(c.cyan(`"${context}"`))}?`
     );
     writeLine(7, ` ${c.dim("This cannot be undone.")}`);
     writeLine(
@@ -577,7 +592,10 @@ const confirmDelete = (
   Effect.gen(function* () {
     write(screen.clear);
     renderHeader(context, "Delete Secret");
-    writeLine(5, ` ${c.red("⚠")} Delete secret ${c.bold(c.cyan(`"${key}"`))}?`);
+    writeLine(
+      5,
+      ` ${icons.warning} Delete secret ${c.bold(c.cyan(`"${key}"`))}?`
+    );
     writeLine(
       7,
       ` ${c.green("y")} confirm  ${c.dim("/")}  ${c.red("n")} cancel`
@@ -662,7 +680,9 @@ const searchView = (
     row++;
 
     write(cursor.show);
-    const pattern = yield* readLine(` ${c.cyan("Pattern (glob):")} `);
+    writeLine(row, ` ${c.cyan("Pattern (glob):")}`);
+    row++;
+    const pattern = yield* readLine(` ${c.dim("›")} `);
     write(cursor.hide);
 
     if (pattern === null || pattern.trim() === "") {
@@ -682,7 +702,7 @@ const searchView = (
         writeLine(row, ` ${c.bold(`${results.length} results:`)}`);
         row++;
         for (const r of results.slice(0, 20)) {
-          writeLine(row, `   ${c.yellow("🔑")} ${r.key}`);
+          writeLine(row, `   ${icons.key} ${r.key}`);
           row++;
         }
       }
@@ -699,7 +719,7 @@ const searchView = (
         for (const r of results.slice(0, 20)) {
           writeLine(
             row,
-            `   ${c.blue("📁")} ${r.context} ${c.dim(`(${r.count} secrets)`)}`
+            `   ${icons.folder} ${r.context} ${c.dim(`(${r.count} secrets)`)}`
           );
           row++;
         }
@@ -822,12 +842,10 @@ const auditView = (
           const expired = s.expires_at
             ? new Date(`${s.expires_at}Z`).getTime() <= now
             : false;
-          const icon = expired ? c.red("⏰") : c.yellow("🕐");
+          const icon = expired ? icons.expired : icons.clock;
           const status = expired ? c.red("EXPIRED") : c.yellow("expiring");
-          writeLine(
-            row,
-            `   ${icon} ${s.key}  ${status}  ${c.dim(s.expires_at ?? "")}`
-          );
+          const distance = s.expires_at ? formatTimeDistance(s.expires_at) : "";
+          writeLine(row, `   ${icon} ${s.key}  ${status}  ${c.dim(distance)}`);
           row++;
         }
       }
@@ -852,11 +870,12 @@ const auditView = (
           const expired = s.expires_at
             ? new Date(`${s.expires_at}Z`).getTime() <= now
             : false;
-          const icon = expired ? c.red("⏰") : c.yellow("🕐");
+          const icon = expired ? icons.expired : icons.clock;
           const status = expired ? c.red("EXPIRED") : c.yellow("expiring");
+          const distance = s.expires_at ? formatTimeDistance(s.expires_at) : "";
           writeLine(
             row,
-            `   ${icon} ${c.dim(`[${s.env}]`)} ${s.key}  ${status}  ${c.dim(s.expires_at ?? "")}`
+            `   ${icon} ${c.dim(`[${s.env}]`)} ${s.key}  ${status}  ${c.dim(distance)}`
           );
           row++;
         }

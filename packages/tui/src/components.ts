@@ -2,6 +2,7 @@
  * Reusable TUI components: menus, lists, status bar, etc.
  */
 
+import { icons } from "@envsec/core";
 import { c, cursor, getSize, screen, write, writeLine } from "./terminal.js";
 
 // ── Header ──────────────────────────────────────────────────────────
@@ -13,7 +14,7 @@ export const renderHeader = (
 ): number => {
   const { cols } = getSize();
   const ctx = context ? c.cyan(`[${context}]`) : c.dim("[no context]");
-  const line = `${c.bold(c.green("🔒 envsec"))} ${c.dim("›")} ${c.bold(title)}  ${ctx}`;
+  const line = `${c.bold(c.green(`${icons.lock} envsec`))} ${c.dim("›")} ${c.bold(title)}  ${ctx}`;
   writeLine(startRow, ` ${line}`);
   writeLine(startRow + 1, ` ${c.dim("─".repeat(Math.min(cols - 2, 60)))}`);
   return startRow + 2;
@@ -160,17 +161,13 @@ export const renderMessage = (
   msg: string,
   type: "success" | "error" | "info" | "warning" = "info"
 ): void => {
-  let icon: string;
-  if (type === "success") {
-    icon = c.green("✔");
-  } else if (type === "error") {
-    icon = c.red("✖");
-  } else if (type === "warning") {
-    icon = c.yellow("⚠");
-  } else {
-    icon = c.blue("ℹ");
-  }
-  writeLine(row, ` ${icon} ${msg}`);
+  const iconMap = {
+    success: icons.success,
+    error: icons.error,
+    warning: icons.warning,
+    info: icons.info,
+  };
+  writeLine(row, ` ${iconMap[type]} ${msg}`);
 };
 
 // ── Screen management ───────────────────────────────────────────────
@@ -190,7 +187,7 @@ export const exitTUI = (): void => {
 
 export const renderEmpty = (row: number, message: string): number => {
   writeLine(row, "");
-  writeLine(row + 1, `   ${c.dim("∅")} ${c.dim(message)}`);
+  writeLine(row + 1, `   ${icons.empty} ${c.dim(message)}`);
   writeLine(row + 2, "");
   return row + 3;
 };

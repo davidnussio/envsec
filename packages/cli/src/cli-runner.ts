@@ -26,6 +26,7 @@ import { rootCommand } from "./cli/root.js";
 import { runCommand } from "./cli/run.js";
 import { searchCommand } from "./cli/search.js";
 import { shareCommand } from "./cli/share.js";
+import { tuiCommand } from "./cli/tui.js";
 import { generateCompletions, type ShellType } from "./completions/index.js";
 
 const require = createRequire(import.meta.url);
@@ -48,6 +49,7 @@ const command = rootCommand.pipe(
     envCommand,
     loadCommand,
     shareCommand,
+    tuiCommand,
     auditCommand,
     doctorCommand,
   ])
