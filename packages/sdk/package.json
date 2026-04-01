@@ -14,6 +14,18 @@
   ],
   "license": "MIT",
   "author": "David Nussio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidnussio/envsec.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://envsec.dev",
+  "bugs": {
+    "url": "https://github.com/davidnussio/envsec/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

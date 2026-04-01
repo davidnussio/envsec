@@ -37,7 +37,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/davidnussio/envsec.git"
+    "url": "git+https://github.com/davidnussio/envsec.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://envsec.dev",
+  "bugs": {
+    "url": "https://github.com/davidnussio/envsec/issues"
   },
   "publishConfig": {
     "access": "public"
