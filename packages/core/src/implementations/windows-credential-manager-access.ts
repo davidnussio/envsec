@@ -6,8 +6,9 @@ import { KeychainAccess } from "../services/keychain-access.js";
 /**
  * Windows implementation using PowerShell + Windows Credential Manager.
  *
- * Uses cmdkey with proper double-quote escaping for set/remove, and P/Invoke
- * CredReadW for reading passwords back (cmdkey cannot read passwords).
+ * All operations (set/get/remove) use P/Invoke to call Win32 Credential
+ * Manager APIs (CredWriteW, CredReadW, CredDeleteW) directly via PowerShell.
+ * This avoids cmdkey and its nested shell escaping issues entirely.
  *
  * No extra dependencies required — uses only built-in Windows APIs via PowerShell.
  *
@@ -54,36 +55,77 @@ const runPowerShell = (script: string) =>
 
 /**
  * Escape a string for use inside PowerShell single-quoted strings.
- * Single quotes are doubled, and the string is safe from backtick,
- * dollar sign, and other PS metacharacter interpretation.
- *
- * For here-string contexts or unquoted usage, additional characters
- * (backtick, $, ", null byte) are also escaped to prevent injection.
+ * In PS single-quoted strings, the ONLY special character is the
+ * single quote itself, which is escaped by doubling it.
+ * Null bytes are stripped to prevent truncation attacks.
  */
 const escapePS = (s: string): string =>
-  s
-    .replaceAll("'", "''")
-    .replaceAll("`", "``")
-    .replaceAll("$", "`$")
-    .replaceAll('"', '`"')
-    .replaceAll("\0", "");
-
-/**
- * Escape a string for use inside cmdkey double-quoted parameters.
- * cmdkey is a cmd.exe tool, so we escape cmd metacharacters with ^
- * and wrap the value in double quotes to handle spaces.
- */
-const escapeCmdkey = (s: string): string =>
-  s
-    .replaceAll("^", "^^")
-    .replaceAll('"', '^"')
-    .replaceAll("&", "^&")
-    .replaceAll("|", "^|")
-    .replaceAll("<", "^<")
-    .replaceAll(">", "^>");
+  s.replaceAll("\0", "").replaceAll("'", "''");
 
 const targetName = (service: string, account: string) =>
   `envsec:${service}/${account}`;
+
+/**
+ * P/Invoke-based PowerShell script for writing credentials.
+ * Uses CredWriteW directly — avoids cmdkey and its nested shell escaping issues.
+ * All dynamic values are injected via PS single-quoted strings (escapePS).
+ */
+const credWriteScript = (target: string, user: string, password: string) =>
+  [
+    `Add-Type @'`,
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "using System.Text;",
+    "public class CredWriter {",
+    `  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]`,
+    "  public static extern bool CredWrite(ref CREDENTIAL cred, int flags);",
+    "  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]",
+    "  public struct CREDENTIAL {",
+    "    public int Flags; public int Type;",
+    "    public string TargetName; public string Comment;",
+    "    public long LastWritten; public int CredentialBlobSize;",
+    "    public IntPtr CredentialBlob; public int Persist;",
+    "    public int AttributeCount; public IntPtr Attributes;",
+    "    public string TargetAlias; public string UserName;",
+    "  }",
+    "  public static bool Write(string target, string user, string pass) {",
+    "    var bytes = Encoding.Unicode.GetBytes(pass);",
+    "    var blob = Marshal.AllocHGlobal(bytes.Length);",
+    "    Marshal.Copy(bytes, 0, blob, bytes.Length);",
+    "    var c = new CREDENTIAL();",
+    "    c.Type = 1; c.Persist = 2;",
+    "    c.TargetName = target; c.UserName = user;",
+    "    c.CredentialBlobSize = bytes.Length; c.CredentialBlob = blob;",
+    "    var ok = CredWrite(ref c, 0);",
+    "    Marshal.FreeHGlobal(blob);",
+    "    return ok;",
+    "  }",
+    "}",
+    `'@`,
+    `$ok = [CredWriter]::Write('${target}', '${user}', '${password}')`,
+    "if (-not $ok) { exit 1 }",
+  ].join("\n");
+
+/**
+ * P/Invoke-based PowerShell script for deleting credentials.
+ * Uses CredDeleteW directly — avoids cmdkey and its nested shell escaping issues.
+ */
+const credDeleteScript = (target: string) =>
+  [
+    `Add-Type @'`,
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public class CredDeleter {",
+    `  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]`,
+    "  public static extern bool CredDelete(string target, int type, int flags);",
+    "  public static bool Delete(string target) {",
+    "    return CredDelete(target, 1, 0);",
+    "  }",
+    "}",
+    `'@`,
+    `$ok = [CredDeleter]::Delete('${target}')`,
+    "if (-not $ok) { exit 1 }",
+  ].join("\n");
 
 const make = KeychainAccess.of({
   set: Effect.fn("WindowsCredentialManagerAccess.set")(function* (
@@ -91,18 +133,16 @@ const make = KeychainAccess.of({
     account: string,
     password: string
   ) {
-    const target = escapeCmdkey(targetName(service, account));
-    const user = escapeCmdkey(account);
-    const pass = escapeCmdkey(password);
+    const target = escapePS(targetName(service, account));
+    const user = escapePS(account);
+    const pass = escapePS(password);
 
-    // Use cmdkey with double quotes to handle spaces and special characters
-    const script = `cmd /c 'cmdkey /generic:"${target}" /user:"${user}" /pass:"${pass}"'`;
-
+    const script = credWriteScript(target, user, pass);
     const result = yield* runPowerShell(script);
 
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
-        command: "cmdkey /add",
+        command: "CredWriteW",
         stderr: result.stderr || result.stdout,
         message: `Failed to store credential: ${service}/${account}`,
       });
@@ -171,16 +211,14 @@ const make = KeychainAccess.of({
     service: string,
     account: string
   ) {
-    const target = escapeCmdkey(targetName(service, account));
+    const target = escapePS(targetName(service, account));
 
-    // Use cmdkey with double quotes for consistency
-    const script = `cmd /c 'cmdkey /delete:"${target}"'`;
-
+    const script = credDeleteScript(target);
     const result = yield* runPowerShell(script);
 
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
-        command: "cmdkey /delete",
+        command: "CredDeleteW",
         stderr: result.stderr || result.stdout,
         message: `Failed to remove credential: ${service}/${account}`,
       });
