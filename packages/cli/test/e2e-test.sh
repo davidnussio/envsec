@@ -967,9 +967,46 @@ out=$(node "$CLI" --completions fish 2>/dev/null)
 assert_contains "completions fish: complete" "complete -c envsec" "$out"
 assert_contains "completions fish: __complete" "__complete" "$out"
 
-# ─── 22. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 22. SHELL ────────────────────────────────────────────────────────────────
 echo ""
-echo "── 22. CLEANUP ──"
+echo "── 22. SHELL ──"
+
+CTX_SHELL="test.e2e"
+
+# shell command: ENVSEC_CONTEXT is set inside subshell
+result=$(echo 'echo $ENVSEC_CONTEXT' | node "$CLI" -c "$CTX_SHELL" shell --quiet --shell bash 2>/dev/null)
+assert_eq "shell: ENVSEC_CONTEXT set" "$CTX_SHELL" "$result"
+
+# shell command: secret is visible inside subshell (use api.token which is stable)
+expected_val=$(run_ok -c "$CTX_SHELL" get api.token)
+result=$(echo 'echo $API_TOKEN' | node "$CLI" -c "$CTX_SHELL" shell --quiet --shell bash 2>/dev/null)
+assert_eq "shell: secret visible" "$expected_val" "$result"
+
+# shell command: --no-inherit hides parent vars
+result=$(echo 'echo ${HOME:-UNSET}' | node "$CLI" -c "$CTX_SHELL" shell --quiet --no-inherit --shell bash 2>/dev/null)
+assert_eq "shell: --no-inherit hides HOME" "UNSET" "$result"
+
+# shell command: --no-inherit preserves PATH
+result=$(echo 'echo ${PATH:-EMPTY}' | node "$CLI" -c "$CTX_SHELL" shell --quiet --no-inherit --shell bash 2>/dev/null)
+assert_not_contains "shell: --no-inherit keeps PATH" "EMPTY" "$result"
+
+# shell command: banner appears on stderr without --quiet
+out=$(echo 'exit 0' | node "$CLI" -c "$CTX_SHELL" shell --shell bash 2>&1 >/dev/null)
+assert_contains "shell: banner on stderr" "envsec shell" "$out"
+assert_contains "shell: banner shows context" "$CTX_SHELL" "$out"
+assert_contains "shell: exit message" "Exiting" "$out"
+
+# shell command: --quiet suppresses banner
+out=$(echo 'exit 0' | node "$CLI" -c "$CTX_SHELL" shell --quiet --shell bash 2>&1 >/dev/null)
+assert_not_contains "shell: --quiet no banner" "envsec shell" "$out"
+
+# shell command: nesting warning when ENVSEC_CONTEXT is already set
+out=$(ENVSEC_CONTEXT="other.ctx" node "$CLI" -c "$CTX_SHELL" shell --quiet --shell bash 2>&1 < /dev/null)
+assert_contains "shell: nesting warning" "Already inside" "$out"
+
+# ─── 23. CLEANUP & VERIFY ────────────────────────────────────────────────────
+echo ""
+echo "── 23. CLEANUP ──"
 
 for key in db.password api.token special.emoji special.utf8; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true

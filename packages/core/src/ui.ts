@@ -57,6 +57,7 @@ export const icons = {
   cancel: dim("⊘"), // U+2298
   broom: yellow("~"), // tilde
   env: cyan("$"), // env var
+  shell: green("▶"), // U+25B6
 } as const;
 
 // ── Formatting Helpers ──────────────────────────────────────────────
