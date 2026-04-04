@@ -332,6 +332,42 @@ envsec -c myapp.dev env --unset --shell fish
 
 Supported shells: `bash` (default), `zsh`, `fish`, `powershell`. Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`). Output goes to stdout so it can be piped to `eval` or sourced directly — no file is written to disk.
 
+### Start a secrets-scoped shell session
+
+Spawn an interactive subshell with all secrets from the context injected as
+environment variables. When you `exit`, the secrets are gone — no cleanup needed.
+
+```bash
+envsec -c myapp.dev shell
+```
+
+```
+▶ envsec shell — context: myapp.dev (8 secrets loaded)
+Type 'exit' or press Ctrl+D to leave the session.
+
+(envsec:myapp.dev) ~ $ echo $DATABASE_URL
+postgres://user:pass@localhost/mydb
+
+(envsec:myapp.dev) ~ $ exit
+→ Exiting envsec shell — secrets cleared.
+```
+
+Options:
+
+```bash
+# Force a specific shell
+envsec -c myapp.dev shell --shell zsh
+
+# Only envsec secrets in env (no parent variables, except PATH)
+envsec -c myapp.dev shell --no-inherit
+
+# Suppress the startup/exit banner
+envsec -c myapp.dev shell --quiet
+```
+
+The variable `ENVSEC_CONTEXT` is always set inside the session, so you can
+reference it in scripts or prompt customizations.
+
 ### Load secrets from a .env file
 
 ```bash

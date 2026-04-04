@@ -31,6 +31,7 @@ export {
   MetadataStoreError,
   MissingSecretsError,
   SecretNotFoundError,
+  ShellNotFoundError,
   UnsupportedPlatformError,
 } from "./errors.js";
 export { LinuxSecretServiceAccessLive } from "./implementations/linux-secret-service-access.js";

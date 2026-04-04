@@ -116,3 +116,11 @@ export class GPGEncryptionError extends Schema.TaggedError<GPGEncryptionError>()
     message: Schema.String,
   }
 ) {}
+
+export class ShellNotFoundError extends Schema.TaggedError<ShellNotFoundError>()(
+  "ShellNotFoundError",
+  {
+    shell: Schema.String,
+    message: Schema.String,
+  }
+) {}
