@@ -85,7 +85,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for npm registry propagation
-        run: sleep 30
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Waiting for @envsec/core@${VERSION} to be available on npm..."
+          for i in $(seq 1 30); do
+            if npm view "@envsec/core@${VERSION}" version 2>/dev/null; then
+              echo "Package available on registry after attempt $i"
+              break
+            fi
+            echo "Attempt $i/30: not yet available, waiting 30s..."
+            sleep 30
+          done
 
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
@@ -127,7 +137,7 @@ jobs:
             depends_on "node"
 
             def install
-              system "npm", "install", *std_npm_args
+              system "npm", "install", *std_npm_args, "--min-release-age=0"
               bin.install_symlink libexec.glob("bin/*")
               generate_completions_from_executable(bin/"envsec", "--completions", shells: [:bash, :zsh, :fish])
             end
