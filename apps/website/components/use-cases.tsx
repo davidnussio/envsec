@@ -294,6 +294,43 @@ const USE_CASES = [
     ],
   },
   {
+    id: "nextjs-without-env-file",
+    question: "How do I use Next.js without keeping secrets in .env.local?",
+    problem:
+      "Vercel's CLI pulls environment variables into a local .env.local file, but that file sits on disk with real credentials. Import it into envsec, delete the file, and use envsec shell to inject secrets at runtime — no plaintext file needed.",
+    lines: [
+      { prompt: false, text: "# Pull env vars from Vercel" },
+      { prompt: true, text: "vercel env pull" },
+      {
+        prompt: false,
+        text: "Downloading `development` Environment Variables for my-nextjs-app",
+      },
+      { prompt: false, text: "✅  Created .env.local file  [251ms]" },
+      { prompt: false, text: "" },
+      { prompt: false, text: "# Import into envsec and delete the file" },
+      {
+        prompt: true,
+        text: "envsec -c my-nextjs-app load -i .env.local",
+      },
+      { prompt: false, text: "✔ Done: 8 added, 0 overwritten, 0 skipped" },
+      { prompt: true, text: "rm .env.local" },
+      { prompt: false, text: "" },
+      { prompt: false, text: "# Start a shell with secrets injected" },
+      { prompt: true, text: "envsec -c my-nextjs-app shell" },
+      {
+        prompt: false,
+        text: "● envsec shell — context: my-nextjs-app (8 secrets loaded)",
+      },
+      {
+        prompt: false,
+        text: "Type 'exit' or press Ctrl+D to leave the session.",
+      },
+      { prompt: true, text: "pnpm run dev" },
+      { prompt: false, text: "  ▲ Next.js 15.3.1" },
+      { prompt: false, text: "  - Local:  http://localhost:3000" },
+    ],
+  },
+  {
     id: "export-secrets-to-shell",
     question:
       "How do I export secrets as environment variables in my current shell?",

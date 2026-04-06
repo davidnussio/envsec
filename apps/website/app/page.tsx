@@ -85,6 +85,14 @@ const faqJsonLd = {
     },
     {
       "@type": "Question",
+      name: "How do I use Next.js without keeping secrets in .env.local?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Pull env vars with 'vercel env pull', import them with 'envsec -c my-nextjs-app load -i .env.local', delete the file, then run 'envsec -c my-nextjs-app shell' to start a shell with secrets injected as environment variables. Run 'pnpm run dev' inside that shell — Next.js picks them up automatically, no .env.local on disk.",
+      },
+    },
+    {
+      "@type": "Question",
       name: "How do I export secrets as environment variables in my current shell?",
       acceptedAnswer: {
         "@type": "Answer",

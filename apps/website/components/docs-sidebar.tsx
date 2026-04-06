@@ -28,6 +28,7 @@ const SECTIONS = [
       { id: "cmd", label: "cmd" },
       { id: "env-file", label: "env-file" },
       { id: "env", label: "env" },
+      { id: "shell", label: "shell" },
       { id: "load", label: "load" },
       { id: "share", label: "share" },
       { id: "audit", label: "audit" },

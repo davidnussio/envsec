@@ -342,6 +342,41 @@ eval $(envsec -c myapp.dev env --unset)`}
         </P>
       </Section>
 
+      <Section id="shell">
+        <H2>envsec shell</H2>
+        <P>
+          Spawn a new shell with all secrets from a context injected as
+          environment variables. The parent environment is inherited by default.
+          Type <Mono>exit</Mono> or press <Mono>Ctrl+D</Mono> to leave — secrets
+          are cleared when the session ends.
+        </P>
+        <CodeBlock
+          code={`# Start a shell with secrets loaded
+envsec -c myapp.dev shell
+
+# Use a specific shell
+envsec -c myapp.dev shell --shell fish
+
+# Don't inherit parent environment variables
+envsec -c myapp.dev shell --no-inherit
+
+# Suppress startup/exit banner
+envsec -c myapp.dev shell --quiet`}
+        />
+        <P>
+          Keys are converted to UPPER_SNAKE_CASE (e.g. <Mono>api.token</Mono> →{" "}
+          <Mono>API_TOKEN</Mono>). On bash and zsh the prompt is prefixed with{" "}
+          <Mono>(envsec:context)</Mono> so you know you&apos;re inside an envsec
+          session.
+        </P>
+        <P>
+          Supported shells: <Mono>bash</Mono>, <Mono>zsh</Mono>,{" "}
+          <Mono>fish</Mono>, <Mono>powershell</Mono> / <Mono>pwsh</Mono>. When
+          no <Mono>--shell</Mono> flag is given, envsec auto-detects from the{" "}
+          <Mono>$SHELL</Mono> environment variable.
+        </P>
+      </Section>
+
       <Section id="load">
         <H2>envsec load</H2>
         <P>Import secrets from a .env file into a context.</P>
