@@ -71,6 +71,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Alias pre-release to latest (beta phase)
+        if: steps.version.outputs.tag != 'latest'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          npm dist-tag add "@envsec/core@${VERSION}" latest
+          npm dist-tag add "@envsec/sdk@${VERSION}" latest
+          npm dist-tag add "@envsec/tui@${VERSION}" latest
+          npm dist-tag add "envsec@${VERSION}" latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Commit version bump
         run: |
           VERSION="${{ steps.version.outputs.version }}"
