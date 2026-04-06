@@ -1,6 +1,6 @@
 {
   "name": "@envsec/tui",
-  "version": "1.0.0-beta.14",
+  "version": "1.0.0-beta.15",
   "description": "Interactive terminal UI for envsec secrets management",
   "keywords": [
     "tui",
