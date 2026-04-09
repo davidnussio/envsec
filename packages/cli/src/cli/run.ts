@@ -8,6 +8,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import { fetchContextSecrets } from "./inject-secrets.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
@@ -30,6 +31,14 @@ const name = Options.text("name").pipe(
   Options.optional
 );
 
+const inject = Options.boolean("inject").pipe(
+  Options.withAlias("i"),
+  Options.withDescription(
+    "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"
+  ),
+  Options.withDefault(false)
+);
+
 const readLine = (prompt: string): Effect.Effect<string> =>
   Effect.async((resume) => {
     process.stdout.write(prompt);
@@ -46,14 +55,15 @@ const readLine = (prompt: string): Effect.Effect<string> =>
   });
 
 const executeCommand = (
-  resolved: ResolvedCommand
+  resolved: ResolvedCommand,
+  injectedEnv: Record<string, string> = {}
 ): Effect.Effect<void, CommandExecutionError> =>
   Effect.try({
     try: () => {
       execSync(resolved.command, {
         stdio: "inherit",
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-        env: { ...process.env, ...resolved.env },
+        env: { ...process.env, ...injectedEnv, ...resolved.env },
       });
     },
     catch: (e) => {
@@ -71,8 +81,8 @@ const executeCommand = (
 
 export const runCommand = Command.make(
   "run",
-  { cmd, save, name },
-  ({ cmd, save, name }) =>
+  { cmd, save, name, inject },
+  ({ cmd, save, name, inject }) =>
     Effect.gen(function* () {
       const ctx = yield* requireContext;
 
@@ -95,6 +105,11 @@ export const runCommand = Command.make(
       }
 
       const resolved = yield* resolveCommand(cmd, ctx);
-      yield* executeCommand(resolved);
+
+      const injectedEnv = inject
+        ? yield* fetchContextSecrets(ctx)
+        : ({} as Record<string, string>);
+
+      yield* executeCommand(resolved, injectedEnv);
     })
 );

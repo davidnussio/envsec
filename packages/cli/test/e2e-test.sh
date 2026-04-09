@@ -320,6 +320,22 @@ out=$(run_all -c "$CTX" run "echo {nonexistent.key}") || ec=$?
 assert_exit "run: missing secret fails" "1" "$ec"
 assert_contains "run: missing message" "Missing" "$out"
 
+# --inject: all context secrets available as env vars
+out=$(run_ok -c "$CTX" run --inject 'echo $DB_PASSWORD')
+assert_contains "run --inject: db.password as env" "newpassword" "$out"
+
+out=$(run_ok -c "$CTX" run -i 'echo $API_TOKEN')
+assert_contains "run -i: api.token as env" "tok_abc_999" "$out"
+
+# --inject combined with placeholder interpolation
+out=$(run_ok -c "$CTX" run --inject 'echo {db.password} $API_TOKEN')
+assert_contains "run --inject+placeholder: interpolated" "newpassword" "$out"
+assert_contains "run --inject+placeholder: env var" "tok_abc_999" "$out"
+
+# without --inject: env vars should NOT be set
+out=$(run_ok -c "$CTX" run 'echo ${DB_PASSWORD:-UNSET}')
+assert_eq "run: no inject means no env" "UNSET" "$out"
+
 # ─── 8. CMD ──────────────────────────────────────────────────────────────────
 echo ""
 echo "── 8. CMD ──"
@@ -341,6 +357,16 @@ assert_not_contains "cmd run -q: no resolved msg" "Resolved" "$out"
 out=$(run_ok cmd run --quiet test-echo)
 assert_contains "cmd run --quiet: executed" "newpassword" "$out"
 assert_not_contains "cmd run --quiet: no resolved msg" "Resolved" "$out"
+
+# cmd run --inject: all context secrets as env vars
+out=$(run_ok -c "$CTX" run -s -n test-multi "echo {db.password} \$API_TOKEN")
+assert_contains "cmd save multi: executed" "newpassword" "$out"
+
+out=$(run_ok cmd run --inject test-multi)
+assert_contains "cmd run --inject: placeholder" "newpassword" "$out"
+assert_contains "cmd run --inject: env var" "tok_abc_999" "$out"
+
+node "$CLI" cmd delete "test-multi" >/dev/null 2>&1 || true
 
 out=$(run_ok cmd search "test*")
 assert_contains "cmd search: test-echo" "test-echo" "$out"

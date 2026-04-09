@@ -339,6 +339,22 @@ $ec = $LASTEXITCODE
 Assert-NonZeroExit "run: missing secret fails" $ec
 Assert-Contains "run: missing message" "Missing" $out
 
+# --inject: all context secrets available as env vars
+$out = Run-Ok @("-c", $CTX, "run", "--inject", "echo %DB_PASSWORD%")
+Assert-Contains "run --inject: db.password as env" "newpassword" $out
+
+$out = Run-Ok @("-c", $CTX, "run", "-i", "echo %API_TOKEN%")
+Assert-Contains "run -i: api.token as env" "tok_abc_999" $out
+
+# --inject combined with placeholder interpolation
+$out = Run-Ok @("-c", $CTX, "run", "--inject", "echo {db.password} %API_TOKEN%")
+Assert-Contains "run --inject+placeholder: interpolated" "newpassword" $out
+Assert-Contains "run --inject+placeholder: env var" "tok_abc_999" $out
+
+# without --inject: env vars should NOT be set (cmd.exe leaves %VAR% as-is when undefined)
+$out = Run-Ok @("-c", $CTX, "run", "echo %DB_PASSWORD%")
+Assert-NotContains "run: no inject means no env" "newpassword" $out
+
 # ─── 8. CMD ──────────────────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "── 8. CMD ──"
@@ -360,6 +376,16 @@ Assert-NotContains "cmd run -q: no resolved msg" "Resolved" $out
 $out = Run-Ok @("cmd", "run", "--quiet", "test-echo")
 Assert-Contains "cmd run --quiet: executed" "newpassword" $out
 Assert-NotContains "cmd run --quiet: no resolved msg" "Resolved" $out
+
+# cmd run --inject: all context secrets as env vars
+$out = Run-Ok @("-c", $CTX, "run", "-s", "-n", "test-multi", "echo {db.password} %API_TOKEN%")
+Assert-Contains "cmd save multi: executed" "newpassword" $out
+
+$out = Run-Ok @("cmd", "run", "--inject", "test-multi")
+Assert-Contains "cmd run --inject: placeholder" "newpassword" $out
+Assert-Contains "cmd run --inject: env var" "tok_abc_999" $out
+
+& node $CLI cmd delete "test-multi" 2>$null | Out-Null
 
 $out = Run-Ok @("cmd", "search", "test*")
 Assert-Contains "cmd search: test-echo" "test-echo" $out

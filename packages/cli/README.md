@@ -217,6 +217,13 @@ envsec -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
 # Any {dotted.key} in the command string is replaced with its value
 envsec -c myapp.prod run 'psql {db.connection_string}'
 
+# Inject ALL context secrets as environment variables (KEY.NAME → KEY_NAME)
+envsec -c myapp.dev run --inject 'node server.js'
+envsec -c myapp.dev run -i 'docker compose up'
+
+# Combine --inject with placeholders
+envsec -c myapp.dev run --inject 'curl {api.url} -H "Authorization: Bearer $API_TOKEN"'
+
 # Save the command for later use with --save (-s) and --name (-n)
 envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manifest}'
 
@@ -252,6 +259,10 @@ envsec cmd run deploy -q
 # Override the context at execution time
 envsec cmd run deploy --override-context myapp.prod
 envsec cmd run deploy -o myapp.prod
+
+# Inject all context secrets as env vars when running a saved command
+envsec cmd run deploy --inject
+envsec cmd run deploy -i
 
 # Search saved commands (searches both names and command strings)
 envsec cmd search psql

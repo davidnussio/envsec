@@ -9,6 +9,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
+import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---
@@ -31,10 +32,23 @@ const cmdRunQuiet = Options.boolean("quiet").pipe(
   Options.withDefault(false)
 );
 
+const cmdRunInject = Options.boolean("inject").pipe(
+  Options.withAlias("i"),
+  Options.withDescription(
+    "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"
+  ),
+  Options.withDefault(false)
+);
+
 const cmdRunCommand = Command.make(
   "run",
-  { name: cmdRunName, context: cmdRunContextOverride, quiet: cmdRunQuiet },
-  ({ name, context, quiet }) =>
+  {
+    name: cmdRunName,
+    context: cmdRunContextOverride,
+    quiet: cmdRunQuiet,
+    inject: cmdRunInject,
+  },
+  ({ name, context, quiet, inject }) =>
     Effect.gen(function* () {
       const saved = yield* SecretStore.getCommand(name);
       const rawCtx = Option.isSome(context) ? context.value : saved.context;
@@ -42,12 +56,16 @@ const cmdRunCommand = Command.make(
 
       const resolved = yield* resolveCommand(saved.command, ctx, { quiet });
 
+      const injectedEnv = inject
+        ? yield* fetchContextSecrets(ctx)
+        : ({} as Record<string, string>);
+
       yield* Effect.try({
         try: () => {
           execSync(resolved.command, {
             stdio: "inherit",
             shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-            env: { ...process.env, ...resolved.env },
+            env: { ...process.env, ...injectedEnv, ...resolved.env },
           });
         },
         catch: (e) => {

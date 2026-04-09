@@ -278,9 +278,23 @@ envsec -c myapp.dev copy "redis.*" --to myapp.staging --force -y`}
           code={`# Run with secret interpolation
 envsec -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
 
+# Inject ALL context secrets as environment variables
+envsec -c myapp.dev run --inject 'node server.js'
+envsec -c myapp.dev run -i 'docker compose up'
+
+# Combine --inject with placeholders
+envsec -c myapp.dev run --inject 'curl {api.url} -H "Authorization: Bearer $API_TOKEN"'
+
 # Save the command for later
 envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manifest}'`}
         />
+        <P>
+          With <Mono>--inject</Mono> (<Mono>-i</Mono>), every secret in the
+          context is exported as an environment variable using UPPER_SNAKE_CASE
+          (e.g. <Mono>db.password</Mono> → <Mono>DB_PASSWORD</Mono>). Explicit{" "}
+          <Mono>{"{key}"}</Mono> placeholders take precedence over injected
+          variables.
+        </P>
       </Section>
 
       <Section id="cmd">
@@ -296,6 +310,10 @@ envsec cmd run deploy
 # Run quietly (suppress informational output)
 envsec cmd run deploy --quiet
 envsec cmd run deploy -q
+
+# Inject all context secrets as env vars
+envsec cmd run deploy --inject
+envsec cmd run deploy -i
 
 # Override context at execution time
 envsec cmd run deploy --override-context myapp.prod

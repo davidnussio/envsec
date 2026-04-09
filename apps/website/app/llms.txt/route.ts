@@ -126,10 +126,13 @@ envsec -c myapp.dev copy "redis.*" --to myapp.staging --force -y
 
 \`\`\`bash
 envsec -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
+envsec -c myapp.dev run --inject 'node server.js'       # inject ALL context secrets as env vars
+envsec -c myapp.dev run -i 'docker compose up'           # short form
+envsec -c myapp.dev run --inject 'curl {api.url} -H "Authorization: Bearer $API_TOKEN"'  # combine with placeholders
 envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manifest}'
 \`\`\`
 
-Placeholders \`{key}\` are resolved to secret values. Secrets are injected as environment variables (not interpolated into the command string), so they don't appear in \`ps\` output or shell history.
+Placeholders \`{key}\` are resolved to secret values. Secrets are injected as environment variables (not interpolated into the command string), so they don't appear in \`ps\` output or shell history. With \`--inject\` (\`-i\`), all context secrets are exported as UPPER_SNAKE_CASE env vars (e.g. \`db.password\` → \`DB_PASSWORD\`). Explicit \`{key}\` placeholders take precedence over injected variables.
 
 ### Saved commands
 
@@ -138,6 +141,8 @@ envsec cmd list                              # list all saved commands
 envsec cmd run deploy                        # run a saved command
 envsec cmd run deploy -o myapp.prod          # override context
 envsec cmd run deploy --quiet                # suppress info output
+envsec cmd run deploy --inject               # inject all context secrets as env vars
+envsec cmd run deploy -i                     # short form
 envsec cmd search psql                       # search commands
 envsec cmd search deploy -n                  # search by name only
 envsec cmd delete deploy                     # delete a saved command

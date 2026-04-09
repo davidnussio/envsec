@@ -2,16 +2,9 @@ import { execFileSync, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
 import { Command, Options } from "@effect/cli";
-import {
-  badge,
-  bold,
-  dim,
-  icons,
-  type SecretNotFoundError,
-  SecretStore,
-  ShellNotFoundError,
-} from "@envsec/core";
+import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { fetchContextSecrets } from "./inject-secrets.js";
 import { requireContext } from "./root.js";
 
 const shellOption = Options.text("shell").pipe(
@@ -32,9 +25,6 @@ const quiet = Options.boolean("quiet").pipe(
   Options.withDescription("Suppress startup/exit banner"),
   Options.withDefault(false)
 );
-
-const toEnvKey = (key: string): string =>
-  key.toUpperCase().replaceAll(".", "_");
 
 const resolveShell = (name: string): { bin: string; args: string[] } => {
   switch (name) {
@@ -85,44 +75,6 @@ const shellExists = (bin: string): Effect.Effect<void, ShellNotFoundError> =>
       }),
   });
 
-const fetchSecrets = (ctx: string) =>
-  Effect.gen(function* () {
-    const secrets = yield* SecretStore.list(ctx);
-    const secretEnv: Record<string, string> = {};
-
-    if (secrets.length === 0) {
-      return secretEnv;
-    }
-
-    const results = yield* Effect.forEach(
-      secrets,
-      (item) =>
-        SecretStore.get(ctx, item.key).pipe(
-          Effect.map((value) => ({
-            key: item.key,
-            found: true as const,
-            value: String(value),
-          })),
-          Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
-            Effect.succeed({
-              key: item.key,
-              found: false as const,
-              value: "",
-            })
-          )
-        ),
-      { concurrency: 10 }
-    );
-
-    for (const result of results) {
-      if (result.found) {
-        secretEnv[toEnvKey(result.key)] = result.value;
-      }
-    }
-
-    return secretEnv;
-  });
-
 const buildChildEnv = (
   ctx: string,
   secretEnv: Record<string, string>,
@@ -161,7 +113,7 @@ export const shellCommand = Command.make(
         );
       }
 
-      const secretEnv = yield* fetchSecrets(ctx);
+      const secretEnv = yield* fetchContextSecrets(ctx);
 
       const { bin, args } = detectShell(
         shellOpt._tag === "Some" ? shellOpt.value : undefined
