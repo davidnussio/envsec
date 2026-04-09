@@ -49,7 +49,7 @@ export function Navbar() {
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/compare"
           >
-            vs dotenv
+            Compare
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
@@ -120,7 +120,7 @@ export function Navbar() {
               href="/compare"
               onClick={() => setMobileOpen(false)}
             >
-              vs dotenv
+              Compare
             </Link>
             <Link
               className="text-muted-foreground text-sm"

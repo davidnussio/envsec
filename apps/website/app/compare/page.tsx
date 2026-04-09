@@ -4,9 +4,9 @@ import { Footer } from "@/components/footer";
 import { Navbar } from "@/components/navbar";
 
 export const metadata: Metadata = {
-  title: "envsec vs dotenv — Comparison",
+  title: "envsec vs dotenv vs 1Password CLI — Comparison",
   description:
-    "envsec vs dotenv: store Node.js secrets in your OS keychain instead of plaintext .env files. No git leak risk, no cloud, MIT licensed.",
+    "Compare envsec, dotenv, and 1Password CLI for managing secrets. OS-native encryption vs plaintext files vs cloud vault — features, trade-offs, and migration guide.",
   alternates: {
     canonical: "/compare",
   },

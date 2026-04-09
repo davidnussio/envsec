@@ -512,6 +512,41 @@ What gets completed dynamically:
 - `--override-context` / `-o` — lists contexts for `cmd run`
 - Subcommands, flags, and static choices (shells, etc.) are also completed
 
+## Comparison
+
+How does envsec compare to other tools for managing environment secrets?
+
+| Feature | envsec | dotenv / dotenvx | 1Password CLI (`op`) |
+|---|---|---|---|
+| Secret storage | OS credential store (Keychain, Secret Service, Credential Manager) | `.env` files on disk (dotenvx adds encryption) | 1Password cloud vault |
+| Encryption at rest | Delegated to OS (Keychain, GNOME Keyring, DPAPI) | None (dotenv) / ECIES per-file (dotenvx) | AES-256 in 1Password cloud |
+| Secrets on disk | Never — values go straight to OS credential store | Always — `.env` files are plaintext by default | Never locally (fetched at runtime from cloud) |
+| Offline access | Full — secrets are local in OS store | Full — files are local | Requires network (cached items available offline in app) |
+| Account / subscription | None — free, open source, no signup | Free (dotenv) / free open source (dotenvx) | Paid subscription (from ~$3/mo individual, ~$8/user/mo business) |
+| Cross-platform | macOS, Linux, Windows | Any platform with Node.js / any runtime (dotenvx) | macOS, Linux, Windows |
+| Context / environment organization | Contexts (e.g. `myapp.dev`, `stripe.prod`) | Separate `.env` files per environment | Vaults and items |
+| Run commands with secrets | `envsec run` — placeholder interpolation + `--inject` env vars | `dotenvx run -- cmd` — injects from encrypted `.env` | `op run -- cmd` — injects via secret references |
+| Export to `.env` file | `envsec env-file` (tracked for audit) | Native format — `.env` files are the source of truth | `op inject --out-file` |
+| Import from `.env` file | `envsec load` (with conflict detection) | N/A — `.env` is the primary store | Manual item creation |
+| Shell env export | `eval $(envsec env)` — bash, zsh, fish, powershell | `dotenvx run` or `node -r dotenv/config` | `op run --env-file` |
+| Interactive shell session | `envsec shell` — scoped subshell with auto-cleanup | Not built-in | Not built-in |
+| Secret search | Glob patterns on keys and contexts | Not built-in | `op item list --tags/--category` filtering |
+| Expiry / rotation audit | `envsec audit` — expired, expiring, tracked `.env` files | Not built-in | Watchtower (in app, not CLI) |
+| Saved commands | `envsec cmd` — save, list, search, run, delete | Not built-in | Not built-in |
+| Move / copy secrets | `envsec move` and `envsec copy` between contexts | Manual file copy | `op item move` between vaults |
+| Rename secrets | `envsec rename` (preserves value and metadata) | Manual edit of `.env` file | `op item edit` |
+| GPG-encrypted sharing | `envsec share --encrypt-to` | Encrypted `.env` files committed to git (dotenvx) | Built-in vault sharing, team provisioning |
+| Interactive TUI | `envsec tui` — full-screen terminal UI | Not built-in | Not built-in |
+| Health diagnostics | `envsec doctor` — checks platform, keychain, DB integrity | Not built-in | Not built-in |
+| Shell completions | Dynamic (contexts, keys, commands) for bash, zsh, fish | Not built-in | Static completions for bash, zsh, fish, powershell |
+| SDK / programmatic access | `@envsec/sdk` for Node.js / Bun | `require('dotenv').config()` — core use case | 1Password SDKs (Node.js, Python, Go, etc.) |
+| Team / multi-user | GPG sharing (manual) | Git-based sharing with encrypted `.env` (dotenvx) | Built-in team management, RBAC, audit logs |
+<!-- | CI/CD integration | Standard CLI — works anywhere Node.js runs | `dotenvx run` in any CI pipeline | Service accounts, native CI/CD integrations | -->
+| Biometric auth | Inherits OS biometrics (e.g. macOS Keychain unlock) | None | Fingerprint / Touch ID via app integration |
+| Metadata tracking | SQLite (key names, timestamps — never values) | None | Cloud-based item history and audit logs |
+
+In short: dotenv is the simplest approach (files on disk), 1Password CLI is the most feature-rich for teams with cloud sync and RBAC, and envsec sits in between — offering OS-native encryption with zero accounts, zero cloud dependencies, and a developer-focused workflow that goes beyond what `.env` files can do.
+
 ## How it works
 
 Secrets are stored in the native OS credential store. The backend is selected automatically based on the platform:

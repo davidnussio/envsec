@@ -11,7 +11,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect } from "effect";
 
-const placeholderPattern = /\{([^}]+)\}/g;
+const placeholderPattern = /(?<!\$)\{([^}]+)\}/g;
 
 export interface ResolvedCommand {
   readonly command: string;

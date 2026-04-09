@@ -1,87 +1,239 @@
-import { Check, X } from "lucide-react";
+import { Check, Minus, X } from "lucide-react";
 
 const COMPARISON_ROWS = [
   {
     feature: "Secret storage",
     envsec:
       "OS native credential store (Keychain, GNOME Keyring, Credential Manager)",
-    dotenv: "Plaintext .env files on disk",
+    dotenv: "Plaintext .env files on disk (dotenvx adds per-file encryption)",
+    onepassword: "1Password cloud vault (AES-256 encrypted)",
   },
   {
-    feature: "Encryption",
+    feature: "Encryption at rest",
     envsec: "Handled by OS — battle-tested, hardware-backed on macOS",
-    dotenv: "None — values stored as-is",
+    dotenv: "None (dotenv) / ECIES per-file (dotenvx)",
+    onepassword: "AES-256 in 1Password cloud, dual-key derivation",
+  },
+  {
+    feature: "Secrets on disk",
+    envsec: "Never — values go straight to OS credential store",
+    dotenv: ".env files are plaintext by default",
+    onepassword: "Never locally — fetched at runtime from cloud",
   },
   {
     feature: "Git leak risk",
     envsec: "Zero — secrets never exist as files",
     dotenv: "High — requires .gitignore discipline",
+    onepassword: "Zero — secrets live in cloud vault",
+  },
+  {
+    feature: "Offline access",
+    envsec: "Full — secrets are local in OS store",
+    dotenv: "Full — files are local",
+    onepassword: "Requires network (cached items available offline in app)",
+  },
+  {
+    feature: "Account / subscription",
+    envsec: "None — free, open source, no signup",
+    dotenv: "Free and open source",
+    onepassword: "Paid — from ~$3/mo individual, ~$8/user/mo business",
   },
   {
     feature: "Multi-environment",
     envsec: "Built-in contexts (myapp.dev, myapp.prod, …)",
     dotenv: "Manual file management (.env.dev, .env.prod, …)",
+    onepassword: "Vaults and items, 1Password Environments (beta)",
   },
   {
     feature: "Secret search",
-    envsec: "Glob search across all contexts",
+    envsec: "Glob search across all contexts and keys",
     dotenv: "grep through files",
+    onepassword: "op item list with --tags / --category filtering",
   },
   {
     feature: "Expiry & audit",
-    envsec: "Set TTL on secrets, audit for expired credentials",
+    envsec:
+      "Set TTL on secrets, audit for expired credentials and tracked .env files",
     dotenv: "Not supported",
+    onepassword: "Watchtower (in app, not CLI)",
   },
   {
     feature: "Team sharing",
     envsec: "GPG-encrypted export/import",
-    dotenv: "Copy-paste via Slack/email",
+    dotenv: "Git-based sharing with encrypted .env (dotenvx)",
+    onepassword: "Built-in vault sharing, RBAC, team provisioning, audit logs",
   },
   {
     feature: "Shell integration",
     envsec: "eval $(envsec env) — supports bash, zsh, fish, PowerShell",
     dotenv: "source .env or framework-specific loaders",
+    onepassword: "op run --env-file, shell plugins with biometric auth",
   },
   {
     feature: "Command runner",
     envsec:
-      "{key} placeholders injected as env vars — secrets never appear in ps output or shell history",
-    dotenv: "Requires dotenv-cli or similar wrapper",
+      "{key} placeholders + --inject env vars — secrets never in ps output or history",
+    dotenv: "dotenvx run -- cmd injects from encrypted .env",
+    onepassword:
+      "op run -- cmd injects via secret references (op://Vault/Item/field)",
+  },
+  {
+    feature: "Interactive shell session",
+    envsec: "envsec shell — scoped subshell with auto-cleanup",
+    dotenv: "Not built-in",
+    onepassword: "Not built-in",
+  },
+  {
+    feature: "Saved commands",
+    envsec: "envsec cmd — save, list, search, run, delete",
+    dotenv: "Not built-in",
+    onepassword: "Not built-in",
+  },
+  {
+    feature: "Move / copy / rename",
+    envsec: "move, copy, rename between contexts with metadata preserved",
+    dotenv: "Manual file editing",
+    onepassword: "op item move between vaults, op item edit",
+  },
+  {
+    feature: "Interactive TUI",
+    envsec: "envsec tui — full-screen terminal UI for all operations",
+    dotenv: "Not built-in",
+    onepassword: "Not built-in (desktop app is GUI)",
+  },
+  {
+    feature: "Health diagnostics",
+    envsec: "envsec doctor — checks platform, keychain, DB integrity",
+    dotenv: "Not built-in",
+    onepassword: "Not built-in",
+  },
+  {
+    feature: "Shell completions",
+    envsec: "Dynamic — contexts, keys, commands for bash, zsh, fish",
+    dotenv: "Not built-in",
+    onepassword: "Static completions for bash, zsh, fish, PowerShell",
+  },
+  {
+    feature: "SDK / programmatic access",
+    envsec: "@envsec/sdk for Node.js / Bun",
+    dotenv: "require('dotenv').config() — core use case",
+    onepassword: "1Password SDKs for Node.js, Python, Go, and more",
   },
   {
     feature: "Cross-platform",
     envsec: "macOS, Linux, Windows — auto-detected backend",
     dotenv: "File-based, works everywhere but no OS integration",
-  },
-  {
-    feature: "Interactive prompts",
-    envsec: "Masked input prompts, context-aware shell completions",
-    dotenv: "Not available",
+    onepassword: "macOS, Linux, Windows",
   },
   {
     feature: ".env compatibility",
     envsec: "Import from and export to .env files on demand",
-    dotenv: "Native format",
+    dotenv: "Native format — .env files are the source of truth",
+    onepassword: "op inject --out-file for config file templating",
+  },
+  // {
+  //   feature: "CI/CD integration",
+  //   envsec: "Standard CLI — works anywhere Node.js runs",
+  //   dotenv: "dotenvx run in any CI pipeline",
+  //   onepassword:
+  //     "Service accounts, native CI/CD integrations (GitHub Actions, etc.)",
+  // },
+  {
+    feature: "Biometric auth",
+    envsec: "Inherits OS biometrics (e.g. macOS Keychain unlock)",
+    dotenv: "None",
+    onepassword: "Fingerprint / Touch ID via app integration and shell plugins",
   },
 ] as const;
 
-type CheckValue = true | false | "asterisk";
+type CheckValue = true | false | "partial" | "asterisk";
 
 const CHECKLIST: readonly {
   label: string;
   envsec: CheckValue;
   dotenv: CheckValue;
+  onepassword: CheckValue;
 }[] = [
-  { label: "Secrets encrypted at rest", envsec: true, dotenv: false },
-  { label: "No plaintext files on disk", envsec: true, dotenv: false },
-  { label: "OS-level access control", envsec: true, dotenv: false },
-  { label: "Built-in secret rotation audit", envsec: true, dotenv: false },
-  { label: "Context-based organization", envsec: true, dotenv: false },
-  { label: "GPG-encrypted sharing", envsec: true, dotenv: false },
-  { label: "Zero config to start", envsec: "asterisk", dotenv: true },
-  { label: "Works with existing .env files", envsec: true, dotenv: true },
-  { label: "Framework agnostic", envsec: true, dotenv: true },
-  { label: "Open source", envsec: true, dotenv: true },
+  {
+    label: "Secrets encrypted at rest",
+    envsec: true,
+    dotenv: false,
+    onepassword: true,
+  },
+  {
+    label: "No plaintext files on disk",
+    envsec: true,
+    dotenv: false,
+    onepassword: true,
+  },
+  {
+    label: "OS-level access control",
+    envsec: true,
+    dotenv: false,
+    onepassword: false,
+  },
+  {
+    label: "Works offline",
+    envsec: true,
+    dotenv: true,
+    onepassword: "partial",
+  },
+  {
+    label: "No account or subscription",
+    envsec: true,
+    dotenv: true,
+    onepassword: false,
+  },
+  {
+    label: "Built-in secret rotation audit",
+    envsec: true,
+    dotenv: false,
+    onepassword: "partial",
+  },
+  {
+    label: "Context-based organization",
+    envsec: true,
+    dotenv: false,
+    onepassword: true,
+  },
+  {
+    label: "GPG-encrypted sharing",
+    envsec: true,
+    dotenv: false,
+    onepassword: false,
+  },
+  { label: "Interactive TUI", envsec: true, dotenv: false, onepassword: false },
+  {
+    label: "Saved command templates",
+    envsec: true,
+    dotenv: false,
+    onepassword: false,
+  },
+  {
+    label: "Team management & RBAC",
+    envsec: false,
+    dotenv: false,
+    onepassword: true,
+  },
+  {
+    label: "Zero config to start",
+    envsec: "asterisk",
+    dotenv: true,
+    onepassword: false,
+  },
+  {
+    label: "Works with existing .env files",
+    envsec: true,
+    dotenv: true,
+    onepassword: "partial",
+  },
+  {
+    label: "Framework agnostic",
+    envsec: true,
+    dotenv: true,
+    onepassword: true,
+  },
+  { label: "Open source", envsec: true, dotenv: true, onepassword: false },
 ] as const;
 
 function CheckIcon() {
@@ -103,6 +255,14 @@ function CheckAsteriskIcon() {
   );
 }
 
+function PartialIcon() {
+  return (
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500/10">
+      <Minus className="h-4 w-4 text-yellow-400" />
+    </span>
+  );
+}
+
 function XIcon() {
   return (
     <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-red-500/10">
@@ -115,21 +275,25 @@ function StatusIcon({ value }: { value: CheckValue }) {
   if (value === "asterisk") {
     return <CheckAsteriskIcon />;
   }
+  if (value === "partial") {
+    return <PartialIcon />;
+  }
   return value ? <CheckIcon /> : <XIcon />;
 }
 
 export function Comparison() {
   return (
     <div className="px-4 py-32 sm:px-6">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-20 animate-reveal text-center">
           <p className="mb-3 font-mono text-emerald-400 text-sm">Comparison</p>
           <h1 className="mb-4 font-bold text-4xl tracking-tight md:text-5xl">
-            envsec vs dotenv
+            envsec vs dotenv vs 1Password CLI
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground leading-relaxed">
-            dotenv loads secrets from disk. envsec never writes them there.
+            Three approaches to managing secrets. One stores them in plaintext
+            files, one locks them in the cloud, and one keeps them in your OS.
           </p>
         </div>
 
@@ -139,7 +303,7 @@ export function Comparison() {
             At a glance
           </h2>
           <div className="overflow-hidden rounded-xl border border-white/10 bg-zinc-950/50">
-            <div className="grid grid-cols-[1fr_80px_80px] gap-4 border-white/5 border-b px-6 py-3 sm:grid-cols-[1fr_120px_120px]">
+            <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 border-white/5 border-b px-4 py-3 sm:grid-cols-[1fr_100px_100px_100px] sm:gap-4 sm:px-6">
               <span className="font-medium text-muted-foreground text-xs uppercase tracking-wider">
                 Capability
               </span>
@@ -149,10 +313,13 @@ export function Comparison() {
               <span className="text-center font-mono text-muted-foreground text-xs uppercase tracking-wider">
                 dotenv
               </span>
+              <span className="text-center font-mono text-blue-400 text-xs uppercase tracking-wider">
+                1Password
+              </span>
             </div>
             {CHECKLIST.map((row) => (
               <div
-                className="grid grid-cols-[1fr_80px_80px] items-center gap-4 border-white/5 border-b px-6 py-3 text-sm last:border-0 sm:grid-cols-[1fr_120px_120px]"
+                className="grid grid-cols-[1fr_60px_60px_60px] items-center gap-2 border-white/5 border-b px-4 py-3 text-sm last:border-0 sm:grid-cols-[1fr_100px_100px_100px] sm:gap-4 sm:px-6"
                 key={row.label}
               >
                 <span>{row.label}</span>
@@ -161,6 +328,9 @@ export function Comparison() {
                 </span>
                 <span className="flex justify-center">
                   <StatusIcon value={row.dotenv} />
+                </span>
+                <span className="flex justify-center">
+                  <StatusIcon value={row.onepassword} />
                 </span>
               </div>
             ))}
@@ -174,7 +344,14 @@ export function Comparison() {
               and an active D-Bus session.
             </p>
             <p className="text-muted-foreground text-xs">
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-yellow-500/10 align-text-bottom">
+                <Minus className="h-3 w-3 text-yellow-400" />
+              </span>{" "}
+              = partial support or requires additional setup.
+            </p>
+            <p className="text-muted-foreground text-xs">
               envsec requires Node.js &ge; 22. dotenv supports Node.js &ge; 12.
+              1Password CLI is a standalone binary.
             </p>
           </div>
         </div>
@@ -263,7 +440,7 @@ export function Comparison() {
           <p className="mx-auto mb-4 max-w-2xl text-center font-semibold text-sm">
             Or use the SDK — no .env file, no shell wrapper
           </p>
-          <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-2">
+          <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-3">
             {/* envsec SDK */}
             <div className="overflow-hidden rounded-xl border border-emerald-500/20 bg-zinc-950">
               <div className="flex items-center gap-2 border-emerald-500/10 border-b px-4 py-2">
@@ -284,9 +461,6 @@ export function Comparison() {
                   <span className="text-zinc-200">;</span>
                 </p>
                 <p className="mt-2">
-                  <span className="text-purple-400">const</span>{" "}
-                  <span className="text-zinc-200">secrets</span>{" "}
-                  <span className="text-zinc-500">=</span>{" "}
                   <span className="text-purple-400">await</span>{" "}
                   <span className="text-cyan-300">loadSecrets</span>
                   <span className="text-zinc-200">({"{"}</span>
@@ -305,9 +479,6 @@ export function Comparison() {
                 <p>
                   <span className="text-zinc-200">{"})"}</span>
                   <span className="text-zinc-200">;</span>
-                </p>
-                <p className="mt-2 text-zinc-500">
-                  {"// process.env.API_KEY is now set"}
                 </p>
               </div>
             </div>
@@ -331,20 +502,34 @@ export function Comparison() {
                   <span className="text-zinc-400">dotenv</span>
                   <span className="text-zinc-500">.</span>
                   <span className="text-zinc-400">config</span>
-                  <span className="text-zinc-400">({"{"}</span>
-                </p>
-                <p>
-                  <span className="text-zinc-400">{"  "}path:</span>{" "}
-                  <span className="text-zinc-500">
-                    &quot;/custom/path/to/.env&quot;
-                  </span>
-                </p>
-                <p>
-                  <span className="text-zinc-400">{"})"}</span>
+                  <span className="text-zinc-400">()</span>
                   <span className="text-zinc-400">;</span>
                 </p>
                 <p className="mt-2 text-zinc-600">
-                  {"// reads plaintext from disk"}
+                  {"// reads plaintext .env"}
+                </p>
+              </div>
+            </div>
+
+            {/* 1Password */}
+            <div className="overflow-hidden rounded-xl border border-blue-500/20 bg-zinc-950">
+              <div className="flex items-center gap-2 border-blue-500/10 border-b px-4 py-2">
+                <span className="font-mono text-blue-400 text-xs">op CLI</span>
+              </div>
+              <div className="p-4 font-mono text-sm leading-relaxed">
+                <p className="text-zinc-500">{"# inject via secret refs"}</p>
+                <p>
+                  <span className="text-blue-400">op</span>{" "}
+                  <span className="text-zinc-200">run --</span>{" "}
+                  <span className="text-zinc-400">node app.js</span>
+                </p>
+                <p className="mt-2 text-zinc-500">
+                  {"# or read a single secret"}
+                </p>
+                <p>
+                  <span className="text-blue-400">op</span>{" "}
+                  <span className="text-zinc-200">read</span>{" "}
+                  <span className="text-zinc-400">op://vault/item/key</span>
                 </p>
               </div>
             </div>
@@ -363,7 +548,7 @@ export function Comparison() {
                 key={row.feature}
               >
                 <h3 className="mb-4 font-semibold">{row.feature}</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
                     <span className="mb-1 block font-mono text-emerald-400 text-xs">
                       envsec
@@ -380,6 +565,14 @@ export function Comparison() {
                       {row.dotenv}
                     </span>
                   </div>
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+                    <span className="mb-1 block font-mono text-blue-400 text-xs">
+                      1Password CLI
+                    </span>
+                    <span className="text-sm leading-relaxed">
+                      {row.onepassword}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -388,13 +581,17 @@ export function Comparison() {
 
         {/* Bottom note */}
         <div className="animate-reveal text-center">
-          <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-zinc-950/50 px-8 py-6">
-            <p className="mb-2 font-semibold">Not a replacement — an upgrade</p>
+          <div className="mx-auto max-w-3xl rounded-xl border border-white/10 bg-zinc-950/50 px-8 py-6">
+            <p className="mb-2 font-semibold">Three tools, three trade-offs</p>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              envsec imports your existing .env files and can generate them on
-              demand for tools that need them. You keep full compatibility with
-              your current workflow while gaining OS-level encryption, audit
-              trails, and team sharing.
+              dotenv is the simplest approach — files on disk, zero setup.
+              1Password CLI is the most feature-rich for teams with cloud sync,
+              RBAC, and audit logs — but requires a paid subscription. envsec
+              sits in between: OS-native encryption with zero accounts, zero
+              cloud dependencies, and a developer-focused workflow that goes
+              beyond what .env files can do. It imports your existing .env files
+              and can generate them on demand, so you keep full compatibility
+              while gaining encryption, audit trails, and team sharing.
             </p>
           </div>
         </div>
