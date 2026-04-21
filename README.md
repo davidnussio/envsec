@@ -118,6 +118,15 @@ mise use -g npm:envsec
 Most commands require a context specified with `--context` (or `-c`).
 A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
 
+### Global options
+
+These options are available on all commands:
+
+- `--context`, `-c` — Context name (e.g. `myapp.dev`, `stripe-api.prod`). Also reads `ENVSEC_CONTEXT` env var
+- `--debug`, `-d` — Enable debug logging
+- `--json` — Output in JSON format for scripting
+- `--db` — Path to SQLite database file (default: `~/.envsec/store.sqlite`). Also reads `ENVSEC_DB` env var
+
 ### Custom database path
 
 By default, metadata is stored at `~/.envsec/store.sqlite`. You can override this with `--db` or the `ENVSEC_DB` environment variable:
@@ -134,6 +143,12 @@ envsec -c myapp.dev list
 The `--db` flag takes precedence over `ENVSEC_DB`. Use cases include per-project databases, team-shared databases on network drives, and CI/CD with ephemeral storage.
 
 ### Add a secret
+
+Store a secret in the OS credential store.
+
+- `<key>` — Secret key name (e.g. `api.key`, `db.password`)
+- `--value`, `-v` — Value to store (omit for interactive masked prompt)
+- `--expires`, `-e` — Expiry duration (e.g. `30m`, `2h`, `7d`, `4w`, `3mo`, `1y`)
 
 ```bash
 # Store a value inline
@@ -155,6 +170,12 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 
 ### Get a secret
 
+Retrieve a secret value from the OS credential store.
+
+- `<key>` — Secret key name to retrieve
+- `--quiet`, `-q` — Print only the raw value (no warnings or extra output)
+- `--json` — Output in JSON format (includes context, key, value, expires_at)
+
 ```bash
 envsec -c myapp.dev get api.key
 
@@ -164,6 +185,12 @@ envsec -c myapp.dev get api.key -q
 ```
 
 ### Delete a secret
+
+Remove a secret from the OS credential store.
+
+- `<key>` — Secret key name to delete (optional if `--all` is used)
+- `--yes`, `-y` — Skip confirmation prompt
+- `--all` — Delete all secrets in the context
 
 ```bash
 envsec -c myapp.dev delete api.key
@@ -176,6 +203,10 @@ envsec -c myapp.dev del api.key
 
 Rename a secret key within the same context. The value and expiry metadata are preserved.
 
+- `<old-key>` — Current secret key name
+- `<new-key>` — New secret key name
+- `--force`, `-f` — Overwrite target if it already exists
+
 ```bash
 # Rename a key
 envsec -c myapp.dev rename old.key new.key
@@ -186,11 +217,19 @@ envsec -c myapp.dev rename old.key existing.key --force
 
 ### List all secrets in a context
 
+List all secret keys and metadata in a context.
+
+- `--json` — Output in JSON format
+
 ```bash
 envsec -c myapp.dev list
 ```
 
 ### List all contexts
+
+List all available contexts with secret counts.
+
+- `--json` — Output in JSON format
 
 ```bash
 # Without --context, lists all available contexts with secret counts
@@ -198,6 +237,11 @@ envsec list
 ```
 
 ### Search secrets
+
+Search secrets or contexts using glob patterns.
+
+- `<pattern>` — Glob pattern to search for (e.g. `api.*`, `myapp.*`)
+- `--json` — Output in JSON format
 
 ```bash
 # Search secrets within a context
@@ -210,6 +254,12 @@ envsec search "myapp.*"
 ### Move secrets between contexts
 
 Move secrets from one context to another. The source secrets are removed after moving.
+
+- `<pattern>` — Glob pattern or exact key to move (optional if `--all` is used)
+- `--to`, `-t` — Target context to move secrets to
+- `--all` — Move all secrets from source context
+- `--force`, `-f` — Overwrite existing secrets in the target context
+- `--yes`, `-y` — Skip confirmation prompt
 
 ```bash
 # Move a single secret
@@ -229,6 +279,12 @@ envsec -c myapp.dev move "redis.*" --to myapp.prod --force -y
 
 Copy secrets from one context to another. The source secrets remain intact.
 
+- `<pattern>` — Glob pattern or exact key to copy (optional if `--all` is used)
+- `--to`, `-t` — Target context to copy secrets to
+- `--all` — Copy all secrets from source context
+- `--force`, `-f` — Overwrite existing secrets in the target context
+- `--yes`, `-y` — Skip confirmation prompt
+
 ```bash
 # Copy a single secret
 envsec -c myapp.dev copy api.token --to myapp.staging
@@ -244,6 +300,13 @@ envsec -c myapp.dev copy "redis.*" --to myapp.staging --force -y
 ```
 
 ### Run a command with secrets
+
+Execute a command with secret values interpolated via placeholders or injected as environment variables.
+
+- `<command>` — Command to execute. Use `{key}` placeholders for secret interpolation
+- `--inject`, `-i` — Inject all context secrets as environment variables (`KEY.NAME` → `KEY_NAME`)
+- `--save`, `-s` — Save this command for later use
+- `--name`, `-n` — Name for the saved command (prompted interactively if omitted with `--save`)
 
 ```bash
 # Placeholders {key} are resolved with secret values before execution
@@ -280,11 +343,24 @@ Add them with: envsec -c myapp.dev add <key>
 
 Saved commands live under the `cmd` subcommand, keeping them separate from secret operations.
 
-```bash
-# List all saved commands
-envsec cmd list
+#### cmd list
 
-# Run a saved command (uses the context it was saved with)
+List all saved commands.
+
+```bash
+envsec cmd list
+```
+
+#### cmd run
+
+Run a saved command (uses the context it was saved with).
+
+- `<name>` — Name of the saved command to execute
+- `--override-context`, `-o` — Override the saved context at execution time
+- `--quiet`, `-q` — Suppress informational output (print only command output)
+- `--inject`, `-i` — Inject all context secrets as environment variables
+
+```bash
 envsec cmd run deploy
 
 # Run quietly (suppress informational output like "Resolved N secret(s)")
@@ -298,8 +374,17 @@ envsec cmd run deploy -o myapp.prod
 # Inject all context secrets as env vars when running a saved command
 envsec cmd run deploy --inject
 envsec cmd run deploy -i
+```
 
-# Search saved commands (searches both names and command strings)
+#### cmd search
+
+Search saved commands by name or command string.
+
+- `<pattern>` — Search pattern
+- `--name`, `-n` — Search only in command names
+- `--command`, `-m` — Search only in command strings
+
+```bash
 envsec cmd search psql
 
 # Search only by name
@@ -307,12 +392,23 @@ envsec cmd search deploy -n
 
 # Search only by command string
 envsec cmd search kubectl -m
+```
 
-# Delete a saved command
+#### cmd delete
+
+Delete a saved command.
+
+- `<name>` — Name of the command to delete
+
+```bash
 envsec cmd delete deploy
 ```
 
 ### Generate a .env file
+
+Export all secrets from a context to a `.env` file.
+
+- `--output`, `-o` — Output file path (default: `.env`)
 
 ```bash
 # Creates .env with all secrets from the context
@@ -325,6 +421,11 @@ envsec -c myapp.dev env-file --output .env.local
 Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`).
 
 ### Export secrets as environment variables
+
+Output export statements for use with `eval` or shell sourcing.
+
+- `--shell`, `-s` — Target shell syntax: `bash` (default), `zsh`, `fish`, `powershell`
+- `--unset`, `-u` — Output unset/remove commands instead of export
 
 ```bash
 # Output export statements for eval (bash/zsh)
@@ -348,6 +449,10 @@ Supported shells: `bash` (default), `zsh`, `fish`, `powershell`. Keys are conver
 Spawn an interactive subshell with all secrets from the context injected as
 environment variables. When you `exit`, the secrets are gone — no cleanup needed.
 
+- `--shell`, `-s` — Shell to spawn (`bash`, `zsh`, `fish`, `powershell`). Default: auto-detect
+- `--no-inherit` — Do not inherit parent environment variables
+- `--quiet`, `-q` — Suppress startup/exit banner
+
 ```bash
 envsec -c myapp.dev shell
 ```
@@ -362,8 +467,6 @@ postgres://user:pass@localhost/mydb
 (envsec:myapp.dev) ~ $ exit
 → Exiting envsec shell — secrets cleared.
 ```
-
-Options:
 
 ```bash
 # Force a specific shell
@@ -381,6 +484,12 @@ reference it in scripts or prompt customizations.
 
 ### Load secrets from a .env file
 
+Import secrets from a `.env` file into a context.
+
+- `--input`, `-i` — Input `.env` file path (default: `.env`)
+- `--force`, `-f` — Overwrite existing secrets without prompting
+- `--batch`, `-b` — Batch mode: defer database persistence until all secrets are imported
+
 ```bash
 # Import secrets from .env into the context
 envsec -c myapp.dev load
@@ -396,6 +505,12 @@ Keys are converted from `UPPER_SNAKE_CASE` to `dotted.lowercase` (e.g. `API_TOKE
 
 ### Share secrets (GPG encrypted)
 
+Encrypt all secrets from a context for a team member using GPG.
+
+- `--encrypt-to` — GPG recipient key (email, key ID, or fingerprint) to encrypt for
+- `--output`, `-o` — Output file path (default: stdout). Use `-` for stdout explicitly
+- `--json` — Use JSON format inside the encrypted payload (default: `.env` format)
+
 ```bash
 # Encrypt all secrets from a context for a team member
 envsec -c myapp.dev share --encrypt-to alice@example.com
@@ -410,6 +525,11 @@ envsec -c myapp.dev --json share --encrypt-to alice@example.com -o secrets.enc
 The recipient can decrypt with `gpg --decrypt secrets.enc` and pipe the result into `envsec load`. By default the encrypted payload uses `.env` format (`KEY="value"`); with `--json` it uses a structured JSON object. Requires GPG to be installed and the recipient's public key to be in your keyring.
 
 ### Audit secrets for expiry
+
+Check for expired or expiring secrets and tracked `.env` file exports.
+
+- `--within`, `-w` — Show secrets expiring within this duration (default: `30d`). Use `0d` to show only already-expired
+- `--json` — Output in JSON format
 
 ```bash
 # Check for expired or expiring secrets in a context (default window: 30 days)
@@ -433,6 +553,16 @@ Secrets with an `--expires` duration set via `envsec add` are tracked in metadat
 The `audit` command also tracks generated `.env` files. Every time `env-file` is used, the output path, context, and timestamp are recorded. The audit output includes a second section listing these files. If a tracked `.env` file no longer exists on disk, audit automatically removes it from the metadata and reports the cleanup.
 
 ### Generate a random secret
+
+Generate a cryptographically secure random secret, optionally storing it.
+
+- `<key>` — Secret key name (optional; omit for standalone password generation)
+- `--length`, `-l` — Length of the generated secret (default: `32`)
+- `--prefix`, `-p` — Prefix to prepend to the generated secret (e.g. `sk_`)
+- `--expires`, `-e` — Expiry duration (e.g. `30m`, `2h`, `7d`, `4w`, `3mo`, `1y`)
+- `--alphanumeric`, `-a` — Use only alphanumeric characters `[a-zA-Z0-9]` (default)
+- `--special`, `-s` — Include common special characters `[a-zA-Z0-9!@#$%^&*]`
+- `--all-chars`, `-A` — Use all printable ASCII characters for maximum entropy
 
 ```bash
 # Generate and store a 32-char alphanumeric secret
@@ -496,6 +626,10 @@ Keyboard shortcuts:
 | `q` | Quit the TUI |
 
 ### Diagnose your setup
+
+Run health checks to verify your envsec installation.
+
+- `--json` — Output in JSON format for scripting
 
 ```bash
 # Run all health checks

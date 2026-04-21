@@ -1,6 +1,8 @@
 "use client";
 
 import { CodeBlock } from "./code-block";
+import { OptionsList } from "./options-list";
+import { TerminalBlock } from "./terminal-block";
 
 function Section({ id, children }: { id: string; children: React.ReactNode }) {
   return (
@@ -74,7 +76,7 @@ export function DocsContent() {
           Store your first secret. The <Mono>-c</Mono> flag sets the context — a
           label for grouping related secrets.
         </P>
-        <CodeBlock
+        <TerminalBlock
           code={`# Store a secret
 envsec -c myapp.dev add api.key -v "sk-abc123"
 
@@ -118,7 +120,7 @@ envsec -c myapp.dev run 'curl -H "Auth: {api.key}" https://api.example.com'`}
           <Mono>secret-tool</Mono> command), which talks to GNOME Keyring, KDE
           Wallet, or any Secret Service API provider via D-Bus.
         </P>
-        <CodeBlock
+        <TerminalBlock
           code={`# Debian / Ubuntu
 sudo apt install libsecret-tools
 
@@ -139,7 +141,24 @@ sudo pacman -S libsecret`}
       <Section id="add">
         <H2>envsec add</H2>
         <P>Store a secret in the OS credential store.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<key>",
+              description: "Secret key name (e.g. api.key, db.password)",
+            },
+            {
+              name: "--value, -v",
+              description:
+                "Value to store (omit for interactive masked prompt)",
+            },
+            {
+              name: "--expires, -e",
+              description: "Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Inline value
 envsec -c myapp.dev add api.key --value "sk-abc123"
 
@@ -159,7 +178,22 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo`}
       <Section id="get">
         <H2>envsec get</H2>
         <P>Retrieve a single secret value.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            { name: "<key>", description: "Secret key name to retrieve" },
+            {
+              name: "--quiet, -q",
+              description:
+                "Print only the raw value (no warnings or extra output)",
+            },
+            {
+              name: "--json",
+              description:
+                "Output in JSON format (includes context, key, value, expires_at)",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`envsec -c myapp.dev get api.key
 
 # Print only the raw value (no warnings or extra output)
@@ -175,7 +209,18 @@ envsec -c myapp.dev get api.key -q`}
       <Section id="delete">
         <H2>envsec delete</H2>
         <P>Remove a secret from the credential store.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<key>",
+              description:
+                "Secret key name to delete (optional if --all is used)",
+            },
+            { name: "--yes, -y", description: "Skip confirmation prompt" },
+            { name: "--all", description: "Delete all secrets in the context" },
+          ]}
+        />
+        <TerminalBlock
           code={`envsec -c myapp.dev delete api.key
 
 # Skip confirmation prompt
@@ -192,7 +237,17 @@ envsec -c myapp.dev del api.key`}
           Rename a secret key within the same context. The value and expiry
           metadata are preserved.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            { name: "<old-key>", description: "Current secret key name" },
+            { name: "<new-key>", description: "New secret key name" },
+            {
+              name: "--force, -f",
+              description: "Overwrite target if it already exists",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Rename a key
 envsec -c myapp.dev rename old.key new.key
 
@@ -204,7 +259,10 @@ envsec -c myapp.dev rename old.key existing.key --force`}
       <Section id="list">
         <H2>envsec list</H2>
         <P>List all secrets in a context, or list all contexts.</P>
-        <CodeBlock
+        <OptionsList
+          options={[{ name: "--json", description: "Output in JSON format" }]}
+        />
+        <TerminalBlock
           code={`# List secrets in a context
 envsec -c myapp.dev list
 
@@ -216,7 +274,16 @@ envsec list`}
       <Section id="search">
         <H2>envsec search</H2>
         <P>Search secrets or contexts with glob patterns.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<pattern>",
+              description: "Glob pattern to search for (e.g. api.*, myapp.*)",
+            },
+            { name: "--json", description: "Output in JSON format" },
+          ]}
+        />
+        <TerminalBlock
           code={`# Search secrets within a context
 envsec -c myapp.dev search "api.*"
 
@@ -231,7 +298,29 @@ envsec search "myapp.*"`}
           Move secrets from one context to another. The source secrets are
           removed after moving.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<pattern>",
+              description:
+                "Glob pattern or exact key to move (optional if --all is used)",
+            },
+            {
+              name: "--to, -t",
+              description: "Target context to move secrets to",
+            },
+            {
+              name: "--all",
+              description: "Move all secrets from source context",
+            },
+            {
+              name: "--force, -f",
+              description: "Overwrite existing secrets in the target context",
+            },
+            { name: "--yes, -y", description: "Skip confirmation prompt" },
+          ]}
+        />
+        <TerminalBlock
           code={`# Move a single secret
 envsec -c myapp.dev move api.token --to myapp.prod
 
@@ -252,7 +341,29 @@ envsec -c myapp.dev move "redis.*" --to myapp.prod --force -y`}
           Copy secrets from one context to another. The source secrets remain
           intact.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<pattern>",
+              description:
+                "Glob pattern or exact key to copy (optional if --all is used)",
+            },
+            {
+              name: "--to, -t",
+              description: "Target context to copy secrets to",
+            },
+            {
+              name: "--all",
+              description: "Copy all secrets from source context",
+            },
+            {
+              name: "--force, -f",
+              description: "Overwrite existing secrets in the target context",
+            },
+            { name: "--yes, -y", description: "Skip confirmation prompt" },
+          ]}
+        />
+        <TerminalBlock
           code={`# Copy a single secret
 envsec -c myapp.dev copy api.token --to myapp.staging
 
@@ -274,7 +385,30 @@ envsec -c myapp.dev copy "redis.*" --to myapp.staging --force -y`}
           <Mono>{"{key}"}</Mono> are resolved and injected as environment
           variables — values never appear in <Mono>ps</Mono> output.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<command>",
+              description:
+                "Command to execute. Use {key} placeholders for secret interpolation",
+            },
+            {
+              name: "--inject, -i",
+              description:
+                "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)",
+            },
+            {
+              name: "--save, -s",
+              description: "Save this command for later use",
+            },
+            {
+              name: "--name, -n",
+              description:
+                "Name for the saved command (prompted interactively if omitted with --save)",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Run with secret interpolation
 envsec -c myapp.dev run 'curl {api.url} -H "Authorization: Bearer {api.token}"'
 
@@ -300,12 +434,35 @@ envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manife
       <Section id="cmd">
         <H2>envsec cmd</H2>
         <P>Manage saved commands.</P>
-        <CodeBlock
-          code={`# List saved commands
-envsec cmd list
-
-# Run a saved command
-envsec cmd run deploy
+        <H3>cmd list</H3>
+        <P>List all saved commands.</P>
+        <TerminalBlock code="envsec cmd list" />
+        <H3>cmd run</H3>
+        <P>Run a saved command (uses the context it was saved with).</P>
+        <OptionsList
+          options={[
+            {
+              name: "<name>",
+              description: "Name of the saved command to execute",
+            },
+            {
+              name: "--override-context, -o",
+              description: "Override the saved context at execution time",
+            },
+            {
+              name: "--quiet, -q",
+              description:
+                "Suppress informational output (print only command output)",
+            },
+            {
+              name: "--inject, -i",
+              description:
+                "Inject all context secrets as environment variables",
+            },
+          ]}
+        />
+        <TerminalBlock
+          code={`envsec cmd run deploy
 
 # Run quietly (suppress informational output)
 envsec cmd run deploy --quiet
@@ -316,20 +473,43 @@ envsec cmd run deploy --inject
 envsec cmd run deploy -i
 
 # Override context at execution time
-envsec cmd run deploy --override-context myapp.prod
-
-# Search saved commands
-envsec cmd search psql
-
-# Delete a saved command
-envsec cmd delete deploy`}
+envsec cmd run deploy --override-context myapp.prod`}
         />
+        <H3>cmd search</H3>
+        <P>Search saved commands by name or command string.</P>
+        <OptionsList
+          options={[
+            { name: "<pattern>", description: "Search pattern" },
+            { name: "--name, -n", description: "Search only in command names" },
+            {
+              name: "--command, -m",
+              description: "Search only in command strings",
+            },
+          ]}
+        />
+        <TerminalBlock code="envsec cmd search psql" />
+        <H3>cmd delete</H3>
+        <P>Delete a saved command.</P>
+        <OptionsList
+          options={[
+            { name: "<name>", description: "Name of the command to delete" },
+          ]}
+        />
+        <TerminalBlock code="envsec cmd delete deploy" />
       </Section>
 
       <Section id="env-file">
         <H2>envsec env-file</H2>
         <P>Export secrets to a .env file.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--output, -o",
+              description: "Output file path (default: .env)",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Default output: .env
 envsec -c myapp.dev env-file
 
@@ -341,7 +521,20 @@ envsec -c myapp.dev env-file --output .env.local`}
       <Section id="env">
         <H2>envsec env</H2>
         <P>Export secrets as shell environment variable statements.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--shell, -s",
+              description:
+                "Target shell syntax: bash (default), zsh, fish, powershell",
+            },
+            {
+              name: "--unset, -u",
+              description: "Output unset/remove commands instead of export",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# bash/zsh
 eval $(envsec -c myapp.dev env)
 
@@ -368,7 +561,24 @@ eval $(envsec -c myapp.dev env --unset)`}
           Type <Mono>exit</Mono> or press <Mono>Ctrl+D</Mono> to leave — secrets
           are cleared when the session ends.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--shell, -s",
+              description:
+                "Shell to spawn (bash, zsh, fish, powershell). Default: auto-detect",
+            },
+            {
+              name: "--no-inherit",
+              description: "Do not inherit parent environment variables",
+            },
+            {
+              name: "--quiet, -q",
+              description: "Suppress startup/exit banner",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Start a shell with secrets loaded
 envsec -c myapp.dev shell
 
@@ -398,7 +608,24 @@ envsec -c myapp.dev shell --quiet`}
       <Section id="load">
         <H2>envsec load</H2>
         <P>Import secrets from a .env file into a context.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--input, -i",
+              description: "Input .env file path (default: .env)",
+            },
+            {
+              name: "--force, -f",
+              description: "Overwrite existing secrets without prompting",
+            },
+            {
+              name: "--batch, -b",
+              description:
+                "Batch mode: defer database persistence until all secrets are imported",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Import from .env
 envsec -c myapp.dev load
 
@@ -413,7 +640,26 @@ envsec -c myapp.dev load --force`}
       <Section id="share">
         <H2>envsec share</H2>
         <P>Encrypt secrets with GPG for team sharing.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--encrypt-to",
+              description:
+                "GPG recipient key (email, key ID, or fingerprint) to encrypt for",
+            },
+            {
+              name: "--output, -o",
+              description:
+                "Output file path (default: stdout). Use - for stdout explicitly",
+            },
+            {
+              name: "--json",
+              description:
+                "Use JSON format inside the encrypted payload (default: .env format)",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Encrypt for a team member
 envsec -c myapp.dev share --encrypt-to [email]
 
@@ -432,7 +678,17 @@ envsec -c myapp.dev --json share --encrypt-to [email] -o secrets.enc`}
       <Section id="audit">
         <H2>envsec audit</H2>
         <P>Check for expired or expiring secrets.</P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--within, -w",
+              description:
+                "Show secrets expiring within this duration (default: 30d). Use 0d for only already-expired",
+            },
+            { name: "--json", description: "Output in JSON format" },
+          ]}
+        />
+        <TerminalBlock
           code={`# Default window: 30 days
 envsec -c myapp.dev audit
 
@@ -458,7 +714,44 @@ envsec -c myapp.dev audit --json`}
           store. Without either, it works as a standalone password generator
           that prints the raw value to stdout.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "<key>",
+              description:
+                "Secret key name (optional; omit for standalone password generation)",
+            },
+            {
+              name: "--length, -l",
+              description: "Length of the generated secret (default: 32)",
+            },
+            {
+              name: "--prefix, -p",
+              description:
+                'Prefix to prepend to the generated secret (e.g. "sk_")',
+            },
+            {
+              name: "--expires, -e",
+              description: "Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)",
+            },
+            {
+              name: "--alphanumeric, -a",
+              description:
+                "Use only alphanumeric characters [a-zA-Z0-9] (default)",
+            },
+            {
+              name: "--special, -s",
+              description:
+                "Include common special characters [a-zA-Z0-9!@#$%^&*]",
+            },
+            {
+              name: "--all-chars, -A",
+              description:
+                "Use all printable ASCII characters for maximum entropy",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Generate and store a 32-char alphanumeric secret
 envsec -c myapp.dev secret api.key
 
@@ -491,7 +784,15 @@ envsec secret --special --length 64 --prefix "pk_"`}
           Run a suite of health checks to verify your envsec installation and
           environment. Useful when troubleshooting setup issues.
         </P>
-        <CodeBlock
+        <OptionsList
+          options={[
+            {
+              name: "--json",
+              description: "Output in JSON format for scripting",
+            },
+          ]}
+        />
+        <TerminalBlock
           code={`# Run all health checks
 envsec doctor
 
@@ -557,7 +858,7 @@ envsec --json doctor`}
           memorizing commands. Launch it with <Mono>envsec tui</Mono> or
           optionally pass a context to start in.
         </P>
-        <CodeBlock
+        <TerminalBlock
           code={`# Launch the TUI
 envsec tui
 
@@ -736,7 +1037,7 @@ envsec -c myapp.dev tui`}
           Override with <Mono>--db</Mono> or the <Mono>ENVSEC_DB</Mono>{" "}
           environment variable.
         </P>
-        <CodeBlock
+        <TerminalBlock
           code={`# Project-local database
 envsec --db ./local-store.sqlite -c myapp.dev list
 
@@ -758,7 +1059,7 @@ envsec -c myapp.dev list`}
             automatically — you&apos;re already good to go.
           </p>
         </div>
-        <CodeBlock
+        <TerminalBlock
           code={`# Bash (add to ~/.bashrc)
 eval "$(envsec --completions bash)"
 
