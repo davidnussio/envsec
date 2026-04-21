@@ -6,6 +6,7 @@ envsec stores secret values directly in the OS native credential store and track
 
 Key capabilities:
 - Store, retrieve, delete, rename, move, and copy secrets organized by context (e.g. \`myapp.dev\`, \`stripe-api.prod\`)
+- Generate cryptographically secure random secrets with configurable length, charset, and prefix
 - Search contexts and secrets with glob patterns
 - Export secrets to \`.env\` files or as shell environment variables (bash, zsh, fish, powershell)
 - Run commands with secret interpolation via environment variables
@@ -69,6 +70,21 @@ envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 \`\`\`
 
 Supported duration units: \`m\` (minutes), \`h\` (hours), \`d\` (days), \`w\` (weeks), \`mo\` (months), \`y\` (years). Combinable: \`1y6mo\`, \`2w3d\`, \`1d12h\`.
+
+### Generate a secret
+
+\`\`\`bash
+envsec -c myapp.dev secret api.key                              # 32-char alphanumeric (default)
+envsec -c myapp.dev secret api.key --length 64                  # custom length
+envsec -c myapp.dev secret api.key --prefix "sk_" --length 48   # with prefix
+envsec -c myapp.dev secret db.password --special --length 64    # alphanumeric + !@#$%^&*
+envsec -c myapp.dev secret master.key --all-chars --length 128  # all printable ASCII
+envsec -c myapp.dev secret api.key --prefix "sk_" -l 48 --expires 90d  # with expiry
+envsec secret --length 32                                       # standalone password generator
+envsec secret --special --length 64 --prefix "pk_"              # standalone with options
+\`\`\`
+
+Character set options: \`--alphanumeric\` / \`-a\` (default, \`[a-zA-Z0-9]\`), \`--special\` / \`-s\` (adds \`!@#$%^&*\`), \`--all-chars\` (all printable ASCII). The \`--prefix\` / \`-p\` flag prepends a fixed string (e.g. \`sk_\`, \`whsec_\`). Total stored length = prefix + \`--length\`. Uses \`crypto.randomBytes\` with rejection sampling to avoid modulo bias. When both \`--context\` and a key name are provided, the value is stored and printed. Without either, the raw value is printed to stdout — works as a standalone password generator.
 
 ### Get a secret
 

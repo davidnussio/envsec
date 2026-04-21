@@ -99,6 +99,14 @@ const faqJsonLd = {
         text: "Run 'eval $(envsec -c context env)' for bash/zsh. envsec also supports fish ('envsec env --shell fish') and PowerShell ('envsec env --shell powershell'). Keys are converted to UPPER_SNAKE_CASE automatically.",
       },
     },
+    {
+      "@type": "Question",
+      name: "How do I generate secure API keys or passwords from the terminal?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Use 'envsec -c context secret key-name --length 64 --prefix sk_' to generate a cryptographically secure random secret and store it in one step. Choose character sets with --alphanumeric (default), --special, or --all-chars. Add --expires for automatic rotation tracking.",
+      },
+    },
   ],
 };
 

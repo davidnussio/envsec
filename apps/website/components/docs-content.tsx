@@ -156,6 +156,41 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo`}
         />
       </Section>
 
+      <Section id="secret">
+        <H2>envsec secret</H2>
+        <P>
+          Generate a cryptographically secure random secret. When both a context
+          and key name are provided, the value is stored in the credential
+          store. Without either, it works as a standalone password generator
+          that prints the raw value to stdout.
+        </P>
+        <CodeBlock
+          code={`# Generate and store a 32-char alphanumeric secret
+envsec -c myapp.dev secret api.key
+
+# Custom length and prefix
+envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
+
+# Character sets:
+#   --alphanumeric (-a)  [a-zA-Z0-9] (default)
+#   --special (-s)       [a-zA-Z0-9] + !@#$%^&*
+#   --all-chars          all printable ASCII
+envsec -c myapp.dev secret db.password --special --length 64
+
+# With expiry
+envsec -c myapp.dev secret api.key --prefix "sk_" -l 48 --expires 90d
+
+# Standalone password generator (no store, just print)
+envsec secret --length 32
+envsec secret --special --length 64 --prefix "pk_"`}
+        />
+        <P>
+          When both context and key are present, the value is stored and
+          printed. Without either, the raw value goes to stdout — perfect for
+          piping to <Mono>pbcopy</Mono>, <Mono>xclip</Mono>, or any other tool.
+        </P>
+      </Section>
+
       <Section id="get">
         <H2>envsec get</H2>
         <P>Retrieve a single secret value.</P>

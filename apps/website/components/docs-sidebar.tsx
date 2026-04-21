@@ -17,6 +17,7 @@ const SECTIONS = [
     title: "Commands",
     items: [
       { id: "add", label: "add" },
+      { id: "secret", label: "secret" },
       { id: "get", label: "get" },
       { id: "delete", label: "delete" },
       { id: "rename", label: "rename" },

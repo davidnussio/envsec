@@ -107,6 +107,7 @@ function Cleanup-Secrets {
     & node $CLI -c "test.e2e-move-dst" delete --all -y 2>$null | Out-Null
     & node $CLI -c "test.e2e-copy-src" delete --all -y 2>$null | Out-Null
     & node $CLI -c "test.e2e-copy-dst" delete --all -y 2>$null | Out-Null
+    & node $CLI -c "test.e2e-secret" delete --all -y 2>$null | Out-Null
     & node $CLI cmd delete "test-echo" 2>$null | Out-Null
     & node $CLI cmd delete "test-multi" 2>$null | Out-Null
 }
@@ -883,9 +884,107 @@ $DoctorDb = Join-Path $TmpDir "doctor-test.sqlite"
 $out = Run-Ok @("--db", $DoctorDb, "doctor")
 Assert-Contains "doctor --db: shows database" "Database" $out
 
-# ─── 21. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 21. SECRET (generate & store) ────────────────────────────────────────────
 Write-Host ""
-Write-Host "── 21. CLEANUP ──"
+Write-Host "── 21. SECRET ──"
+
+$CTX_SEC = "test.e2e-secret"
+
+# Basic secret generation (default: alphanumeric, 32 chars)
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.basic")
+Assert-Contains "secret: Generated" "Generated" $out
+Assert-Contains "secret: stored" "stored" $out
+Assert-Contains "secret: alphanumeric label" "alphanumeric" $out
+
+# Verify the secret was stored and is retrievable
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.basic")).Trim()
+Assert-Eq "secret: default length 32" "32" "$($val.Length)"
+
+# Custom length
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.long", "--length", "64")
+Assert-Contains "secret long: Generated 64" "64" $out
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.long")).Trim()
+Assert-Eq "secret: custom length 64" "64" "$($val.Length)"
+
+# Short length
+Run-Ok @("-c", $CTX_SEC, "secret", "gen.short", "-l", "8") | Out-Null
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.short")).Trim()
+Assert-Eq "secret: short length 8" "8" "$($val.Length)"
+
+# Alphanumeric only (explicit flag)
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.alnum", "--alphanumeric")
+Assert-Contains "secret alnum: alphanumeric" "alphanumeric" $out
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.alnum")).Trim()
+if ($val -match '^[a-zA-Z0-9]+$') {
+    Green "secret alnum: only alphanumeric chars"; $script:PASS++
+} else {
+    Red "secret alnum: unexpected chars in '$val'"; $script:FAIL++
+}
+
+# Special characters
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.special", "--special")
+Assert-Contains "secret special: special label" "special" $out
+
+# All printable characters
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.all", "--all-chars")
+Assert-Contains "secret all: all printable label" "all printable" $out
+
+# Prefix
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.prefix", "--prefix", "sk_", "--length", "16")
+Assert-Contains "secret prefix: prefix label" "sk_" $out
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.prefix")).Trim()
+Assert-Contains "secret prefix: value starts with sk_" "sk_" $val
+# Total length = prefix (3) + generated (16) = 19
+Assert-Eq "secret prefix: total length" "19" "$($val.Length)"
+
+# With expiry
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.expiry", "--length", "16", "--expires", "7d")
+Assert-Contains "secret expiry: stored" "stored" $out
+Assert-Contains "secret expiry: expires" "expires" $out
+
+# Invalid length (0)
+& node $CLI -c $CTX_SEC secret gen.bad --length 0 2>$null | Out-Null
+Assert-NonZeroExit "secret: length 0 fails" $LASTEXITCODE
+
+# Overwrite existing secret
+$out = Run-Ok @("-c", $CTX_SEC, "secret", "gen.basic", "--length", "16")
+Assert-Contains "secret overwrite: stored" "stored" $out
+$val = (Run-Ok @("-c", $CTX_SEC, "get", "gen.basic")).Trim()
+Assert-Eq "secret overwrite: new length 16" "16" "$($val.Length)"
+
+# ── Standalone mode (no context, no key — password generator) ──
+
+# Standalone: just prints the value, no "stored" message
+$val = (Run-Ok @("secret", "--length", "20")).Trim()
+Assert-Eq "secret standalone: length 20" "20" "$($val.Length)"
+
+# Standalone: with prefix
+$val = (Run-Ok @("secret", "--prefix", "pk_", "--length", "12")).Trim()
+Assert-Eq "secret standalone prefix: total length" "15" "$($val.Length)"
+Assert-Contains "secret standalone prefix: starts with pk_" "pk_" $val
+
+# Standalone: special chars
+$val = (Run-Ok @("secret", "--special", "--length", "32")).Trim()
+Assert-Eq "secret standalone special: length 32" "32" "$($val.Length)"
+
+# Standalone: all chars
+$val = (Run-Ok @("secret", "--all-chars", "--length", "16")).Trim()
+Assert-Eq "secret standalone all: length 16" "16" "$($val.Length)"
+
+# Standalone: no key but with context — still standalone (key missing)
+$val = (Run-Ok @("-c", $CTX_SEC, "secret", "--length", "10")).Trim()
+Assert-Eq "secret no-key: length 10" "10" "$($val.Length)"
+
+# Standalone: key but no context — still standalone (context missing)
+$val = (Run-Ok @("secret", "my.key", "--length", "10")).Trim()
+Assert-Eq "secret no-ctx: length 10" "10" "$($val.Length)"
+
+# Clean up
+Run-Ok @("-c", $CTX_SEC, "delete", "--all", "-y") | Out-Null
+
+# ─── 22. CLEANUP & VERIFY ────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "── 22. CLEANUP ──"
 
 foreach ($key in @("db.password", "api.token", "special.emoji", "special.utf8")) {
     Run-Ok @("-c", $CTX, "delete", "-y", $key) | Out-Null

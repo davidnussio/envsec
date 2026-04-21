@@ -1,5 +1,6 @@
 import {
   Clock,
+  Dices,
   FileText,
   Monitor,
   Play,
@@ -46,6 +47,12 @@ const FEATURES = [
     title: "Expiry & Audit",
     description:
       "Set expiry durations on secrets. Audit across contexts to catch expired or expiring credentials.",
+  },
+  {
+    icon: Dices,
+    title: "Secret Generation",
+    description:
+      "Generate cryptographically secure secrets with configurable length, charset, and prefix. One command to create and store.",
   },
   {
     icon: Share2,

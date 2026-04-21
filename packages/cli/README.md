@@ -118,6 +118,44 @@ envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 ```
 
+### Generate a secret
+
+Generate a cryptographically secure random secret and store it in one step.
+When used without `--context` or without a key name, it works as a standalone password generator.
+
+```bash
+# Generate a 32-char alphanumeric secret (default)
+envsec -c myapp.dev secret api.key
+
+# Custom length
+envsec -c myapp.dev secret api.key --length 64
+envsec -c myapp.dev secret api.key -l 64
+
+# Add a prefix (e.g. sk_, pk_, whsec_)
+envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
+
+# Character set options:
+# --alphanumeric (-a)  Only [a-zA-Z0-9] (default)
+# --special (-s)       Alphanumeric + !@#$%^&*
+# --all-chars          All printable ASCII for maximum entropy
+envsec -c myapp.dev secret db.password --special --length 64
+envsec -c myapp.dev secret master.key --all-chars --length 128
+
+# With expiry
+envsec -c myapp.dev secret api.key --prefix "sk_" -l 48 --expires 90d
+
+# Combine everything
+envsec -c myapp.dev secret api.key --prefix "sk_" --length 64 --special --expires 1y
+
+# Standalone password generator (no context, no key — just prints the value)
+envsec secret --length 32
+envsec secret --special --length 64
+envsec secret --all-chars --length 128 --prefix "pk_"
+```
+
+When both `--context` and a key name are provided, the generated value is stored and printed.
+Without either, it prints the raw value to stdout — perfect for piping or clipboard.
+
 ### Get a secret
 
 ```bash
@@ -460,6 +498,68 @@ import { loadSecrets } from "@envsec/sdk";
 
 const secrets = await loadSecrets({ context: "myapp.dev", inject: true });
 // process.env.API_KEY is now set
+```
+
+## Development
+
+### Build
+
+From the monorepo root:
+
+```bash
+pnpm build
+```
+
+Or build only the CLI package:
+
+```bash
+pnpm --filter envsec build
+```
+
+### Test the local build
+
+#### Option 1 — Global link
+
+Link the CLI globally so the `envsec` command points to your local build:
+
+```bash
+cd packages/cli
+pnpm link --global
+```
+
+Now `envsec` runs your local `dist/main.js` from anywhere. After each code change, rebuild with `pnpm build` and the alias picks it up automatically.
+
+To unlink:
+
+```bash
+pnpm unlink --global envsec
+```
+
+#### Option 2 — Shell alias (no link required)
+
+Add a shell alias that runs the TypeScript source directly via `tsx` (useful for rapid iteration without rebuilding):
+
+```bash
+# Add to your ~/.bashrc or ~/.zshrc
+alias envsec='npx tsx $(pwd)/packages/cli/src/main.ts'
+```
+
+Or if you prefer running the compiled output:
+
+```bash
+alias envsec='node $(pwd)/packages/cli/dist/main.js'
+```
+
+#### Option 3 — Run directly
+
+```bash
+node packages/cli/dist/main.js --help
+```
+
+### Run e2e tests
+
+```bash
+pnpm --filter envsec test
 ```
 
 ## Contributing

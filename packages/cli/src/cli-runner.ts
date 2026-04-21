@@ -25,6 +25,7 @@ import { renameCommand } from "./cli/rename.js";
 import { rootCommand } from "./cli/root.js";
 import { runCommand } from "./cli/run.js";
 import { searchCommand } from "./cli/search.js";
+import { secretCommand } from "./cli/secret.js";
 import { shareCommand } from "./cli/share.js";
 import { shellCommand } from "./cli/shell.js";
 import { tuiCommand } from "./cli/tui.js";
@@ -42,6 +43,7 @@ const command = rootCommand.pipe(
     renameCommand,
     listCommand,
     searchCommand,
+    secretCommand,
     moveCommand,
     copyCommand,
     runCommand,
@@ -95,6 +97,7 @@ const MUTATING_COMMANDS = new Set([
   "rename",
   "move",
   "copy",
+  "secret",
 ]);
 
 const isMutatingCommand = (): boolean => {

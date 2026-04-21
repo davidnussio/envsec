@@ -331,6 +331,91 @@ const USE_CASES = [
     ],
   },
   {
+    id: "generate-secrets-on-the-fly",
+    question:
+      "How do I generate secure API keys or passwords without leaving the terminal?",
+    problem:
+      "You need a cryptographically secure secret for an API key, database password, or webhook signing key. Instead of reaching for an external tool or website, generate and store it in one command — with a prefix, custom length, and character set.",
+    lines: [
+      {
+        prompt: false,
+        text: "# Generate a 48-char API key with prefix",
+      },
+      {
+        prompt: true,
+        text: 'envsec -c myapp.dev secret api.key --prefix "sk_" --length 48',
+      },
+      {
+        prompt: false,
+        text: "⬡ Generated 48-char secret (alphanumeric)",
+      },
+      {
+        prompt: false,
+        text: '  › prefix: "sk_"',
+      },
+      {
+        prompt: false,
+        text: '✔ Secret "api.key" stored in context "myapp.dev"',
+      },
+      {
+        prompt: false,
+        text: "  ◆ sk_a7Bx9kLmN2pQrS4tUvW6xYz...",
+      },
+      {
+        prompt: false,
+        text: "",
+      },
+      {
+        prompt: false,
+        text: "# Generate a strong DB password with special chars",
+      },
+      {
+        prompt: true,
+        text: "envsec -c myapp.dev secret db.password --special --length 64",
+      },
+      {
+        prompt: false,
+        text: "⬡ Generated 64-char secret (alphanumeric + special)",
+      },
+      {
+        prompt: false,
+        text: '✔ Secret "db.password" stored in context "myapp.dev"',
+      },
+      {
+        prompt: false,
+        text: "  ◆ kR#m9Lx&Qp2Nv!Tz...",
+      },
+      {
+        prompt: false,
+        text: "",
+      },
+      {
+        prompt: false,
+        text: "# Generate with expiry for rotation",
+      },
+      {
+        prompt: true,
+        text: 'envsec -c myapp.dev secret webhook.secret --prefix "whsec_" -l 32 --expires 90d',
+      },
+      {
+        prompt: false,
+        text: "⬡ Generated 32-char secret (alphanumeric)",
+      },
+      {
+        prompt: false,
+        text: '✔ Secret "webhook.secret" stored in context "myapp.dev"',
+      },
+      {
+        prompt: false,
+        text: "  ◔ expires: 2026-07-20 10:30:00",
+      },
+      {
+        prompt: false,
+        text: "  ◆ whsec_Xk7mN2pQrS4tUvW6xYzA...",
+      },
+    ],
+  },
+  {
     id: "export-secrets-to-shell",
     question:
       "How do I export secrets as environment variables in my current shell?",

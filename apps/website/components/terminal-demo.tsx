@@ -28,6 +28,15 @@ const LINES = [
   { prompt: true, text: "envsec -c myapp.dev audit" },
   { prompt: false, text: "  ⚠ db.password    expires in 30 days" },
   { prompt: false, text: "  ✓ api.key        no expiry set" },
+  {
+    prompt: true,
+    text: 'envsec -c myapp.dev secret webhook.key --prefix "whsec_" -l 32',
+  },
+  { prompt: false, text: "⬡ Generated 32-char secret (alphanumeric)" },
+  {
+    prompt: false,
+    text: '✓ Secret "webhook.key" stored in context "myapp.dev"',
+  },
 ] as const;
 
 const PROMPT_DELAY = 800;

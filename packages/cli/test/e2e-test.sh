@@ -31,6 +31,7 @@ cleanup_secrets() {
   node "$CLI" -c "test.e2e-move-dst" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "test.e2e-copy-src" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "test.e2e-copy-dst" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "test.e2e-secret" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-echo" >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-multi" >/dev/null 2>&1 || true
 }
@@ -1030,9 +1031,109 @@ assert_not_contains "shell: --quiet no banner" "envsec shell" "$out"
 out=$(ENVSEC_CONTEXT="other.ctx" node "$CLI" -c "$CTX_SHELL" shell --quiet --shell bash 2>&1 < /dev/null)
 assert_contains "shell: nesting warning" "Already inside" "$out"
 
-# ─── 23. CLEANUP & VERIFY ────────────────────────────────────────────────────
+# ─── 23. SECRET (generate & store) ────────────────────────────────────────────
 echo ""
-echo "── 23. CLEANUP ──"
+echo "── 23. SECRET ──"
+
+CTX_SEC="test.e2e-secret"
+
+# Basic secret generation (default: alphanumeric, 32 chars)
+out=$(run_ok -c "$CTX_SEC" secret gen.basic)
+assert_contains "secret: Generated" "Generated" "$out"
+assert_contains "secret: stored" "stored" "$out"
+assert_contains "secret: alphanumeric label" "alphanumeric" "$out"
+
+# Verify the secret was stored and is retrievable
+val=$(run_ok -c "$CTX_SEC" get gen.basic)
+assert_eq "secret: default length 32" "32" "${#val}"
+
+# Custom length
+out=$(run_ok -c "$CTX_SEC" secret gen.long --length 64)
+assert_contains "secret long: Generated 64" "64" "$out"
+val=$(run_ok -c "$CTX_SEC" get gen.long)
+assert_eq "secret: custom length 64" "64" "${#val}"
+
+# Short length
+out=$(run_ok -c "$CTX_SEC" secret gen.short -l 8)
+val=$(run_ok -c "$CTX_SEC" get gen.short)
+assert_eq "secret: short length 8" "8" "${#val}"
+
+# Alphanumeric only (explicit flag)
+out=$(run_ok -c "$CTX_SEC" secret gen.alnum --alphanumeric)
+assert_contains "secret alnum: alphanumeric" "alphanumeric" "$out"
+val=$(run_ok -c "$CTX_SEC" get gen.alnum)
+# Verify only alphanumeric chars
+if echo "$val" | grep -qP '^[a-zA-Z0-9]+$'; then
+  green "  ✓ secret alnum: only alphanumeric chars"; ((PASS++))
+else
+  red "  ✗ secret alnum: unexpected chars in '$val'"; ((FAIL++))
+fi
+
+# Special characters
+out=$(run_ok -c "$CTX_SEC" secret gen.special --special)
+assert_contains "secret special: special label" "special" "$out"
+
+# All printable characters
+out=$(run_ok -c "$CTX_SEC" secret gen.all --all-chars)
+assert_contains "secret all: all printable label" "all printable" "$out"
+
+# Prefix
+out=$(run_ok -c "$CTX_SEC" secret gen.prefix --prefix "sk_" --length 16)
+assert_contains "secret prefix: prefix label" "sk_" "$out"
+val=$(run_ok -c "$CTX_SEC" get gen.prefix)
+assert_contains "secret prefix: value starts with sk_" "sk_" "$val"
+# Total length = prefix (3) + generated (16) = 19
+assert_eq "secret prefix: total length" "19" "${#val}"
+
+# With expiry
+out=$(run_ok -c "$CTX_SEC" secret gen.expiry --length 16 --expires 7d)
+assert_contains "secret expiry: stored" "stored" "$out"
+assert_contains "secret expiry: expires" "expires" "$out"
+
+# Invalid length (0)
+ec=0
+out=$(run_all -c "$CTX_SEC" secret gen.bad --length 0) || ec=$?
+assert_exit "secret: length 0 fails" "1" "$ec"
+
+# Overwrite existing secret
+out=$(run_ok -c "$CTX_SEC" secret gen.basic --length 16)
+assert_contains "secret overwrite: stored" "stored" "$out"
+val=$(run_ok -c "$CTX_SEC" get gen.basic)
+assert_eq "secret overwrite: new length 16" "16" "${#val}"
+
+# ── Standalone mode (no context, no key — password generator) ──
+
+# Standalone: just prints the value, no "stored" message
+val=$(run_ok secret --length 20)
+assert_eq "secret standalone: length 20" "20" "${#val}"
+
+# Standalone: with prefix
+val=$(run_ok secret --prefix "pk_" --length 12)
+assert_eq "secret standalone prefix: total length" "15" "${#val}"
+assert_contains "secret standalone prefix: starts with pk_" "pk_" "$val"
+
+# Standalone: special chars
+val=$(run_ok secret --special --length 32)
+assert_eq "secret standalone special: length 32" "32" "${#val}"
+
+# Standalone: all chars
+val=$(run_ok secret --all-chars --length 16)
+assert_eq "secret standalone all: length 16" "16" "${#val}"
+
+# Standalone: no key but with context — still standalone (key missing)
+val=$(run_ok -c "$CTX_SEC" secret --length 10)
+assert_eq "secret no-key: length 10" "10" "${#val}"
+
+# Standalone: key but no context — still standalone (context missing)
+val=$(run_ok secret my.key --length 10)
+assert_eq "secret no-ctx: length 10" "10" "${#val}"
+
+# Clean up
+run_ok -c "$CTX_SEC" delete --all -y >/dev/null || true
+
+# ─── 24. CLEANUP & VERIFY ────────────────────────────────────────────────────
+echo ""
+echo "── 24. CLEANUP ──"
 
 for key in db.password api.token special.emoji special.utf8; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true
