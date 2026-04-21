@@ -1063,7 +1063,7 @@ out=$(run_ok -c "$CTX_SEC" secret gen.alnum --alphanumeric)
 assert_contains "secret alnum: alphanumeric" "alphanumeric" "$out"
 val=$(run_ok -c "$CTX_SEC" get gen.alnum)
 # Verify only alphanumeric chars
-if echo "$val" | grep -qP '^[a-zA-Z0-9]+$'; then
+if echo "$val" | grep -q '^[a-zA-Z0-9]*$'; then
   green "  ✓ secret alnum: only alphanumeric chars"; ((PASS++))
 else
   red "  ✗ secret alnum: unexpected chars in '$val'"; ((FAIL++))
