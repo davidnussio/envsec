@@ -60,6 +60,10 @@ _envsec() {
                 'rename:Rename a secret key'
                 'move:Move secrets between contexts'
                 'copy:Copy secrets between contexts'
+                'secret:Generate a random secret'
+                'shell:Spawn shell with secrets'
+                'tui:Interactive terminal UI'
+                'doctor:Run health checks'
             )
             _describe 'subcommand' subcommands
             ;;
@@ -91,6 +95,7 @@ _envsec() {
                     _arguments \\
                         '(-s --save)'{-s,--save}'[Save command]' \\
                         '(-n --name)'{-n,--name}'[Command name]:name:' \\
+                        '(-i --inject)'{-i,--inject}'[Inject all secrets as env vars]' \\
                         '1:command:'
                     ;;
                 env)
@@ -103,7 +108,10 @@ _envsec() {
                         '(-o --output)'{-o,--output}'[Output file]:file:_files' \\
                     ;;
                 load)
-                    _arguments '1:file:_files'
+                    _arguments \\
+                        '(-i --input)'{-i,--input}'[Input .env file]:file:_files' \\
+                        '(-f --force)'{-f,--force}'[Overwrite existing secrets]' \\
+                        '(-b --batch)'{-b,--batch}'[Batch mode]'
                     ;;
                 cmd)
                     local -a cmd_subcommands=(
@@ -123,6 +131,7 @@ _envsec() {
                                     _arguments \\
                                         '(-o --override-context)'{-o,--override-context}'[Override context]:context:_envsec_contexts' \\
                                         '(-q --quiet)'{-q,--quiet}'[Suppress output]' \\
+                                        '(-i --inject)'{-i,--inject}'[Inject all secrets as env vars]' \\
                                         '1:name:_envsec_commands'
                                     ;;
                                 delete)
@@ -145,7 +154,8 @@ _envsec() {
                     ;;
                 share)
                     _arguments \\
-                        '(-r --recipient)'{-r,--recipient}'[GPG recipient]:recipient:'
+                        '--encrypt-to[GPG recipient]:recipient:' \\
+                        '(-o --output)'{-o,--output}'[Output file]:file:_files'
                     ;;
                 rename)
                     _arguments \\
@@ -169,6 +179,24 @@ _envsec() {
                         '--all[Copy all secrets]' \\
                         '1:pattern:_envsec_keys'
                     ;;
+                secret)
+                    _arguments \\
+                        '(-l --length)'{-l,--length}'[Secret length]:length:' \\
+                        '(-p --prefix)'{-p,--prefix}'[Prefix]:prefix:' \\
+                        '(-e --expires)'{-e,--expires}'[Expiry duration]:duration:' \\
+                        '(-a --alphanumeric)'{-a,--alphanumeric}'[Alphanumeric only]' \\
+                        '(-s --special)'{-s,--special}'[Include special characters]' \\
+                        '(-A --all-chars)'{-A,--all-chars}'[All printable ASCII]' \\
+                        '1:key:_envsec_keys'
+                    ;;
+                shell)
+                    _arguments \\
+                        '(-s --shell)'{-s,--shell}'[Shell to spawn]:shell:(bash zsh fish powershell)' \\
+                        '--no-inherit[Do not inherit parent env]' \\
+                        '(-q --quiet)'{-q,--quiet}'[Suppress banner]'
+                    ;;
+                tui) ;;
+                doctor) ;;
             esac
             ;;
     esac

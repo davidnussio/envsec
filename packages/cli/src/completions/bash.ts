@@ -16,7 +16,7 @@ _envsec_completions() {
                 context_val="\${COMP_WORDS[i+1]}"
                 ((i++))
                 ;;
-            add|get|delete|del|search|list|run|env|env-file|load|cmd|audit|share|rename|move|copy)
+            add|get|delete|del|search|list|run|env|env-file|load|cmd|audit|share|rename|move|copy|secret|shell|tui|doctor)
                 if [[ -z "$cmd" ]]; then
                     cmd="\${COMP_WORDS[i]}"
                 fi
@@ -80,7 +80,7 @@ _envsec_completions() {
     if [[ "$cur" == -* ]]; then
         case "$cmd" in
             "")
-                opts="-c -d -h --context --debug --json --db --completions --help --version add get delete del search list run env env-file load cmd audit share rename move copy"
+                opts="-c -d -h --context --debug --json --db --completions --help --version add get delete del search list run env env-file load cmd audit share rename move copy secret shell tui doctor"
                 ;;
             add)
                 opts="-v -e -h --value --expires --help"
@@ -98,7 +98,7 @@ _envsec_completions() {
                 opts="-h --help"
                 ;;
             run)
-                opts="-s -n -h --save --name --help"
+                opts="-s -n -i -h --save --name --inject --help"
                 ;;
             env)
                 opts="-s -u -h --shell --unset --help"
@@ -107,7 +107,7 @@ _envsec_completions() {
                 opts="-o -h --output --help"
                 ;;
             load)
-                opts="-h --help"
+                opts="-i -f -b -h --input --force --batch --help"
                 ;;
             cmd)
                 opts="-h --help run search list delete"
@@ -116,7 +116,7 @@ _envsec_completions() {
                 opts="-w -h --within --help"
                 ;;
             share)
-                opts="-r -h --recipient --help"
+                opts="-o -h --encrypt-to --output --help"
                 ;;
             rename)
                 opts="-f -h --force --help"
@@ -127,6 +127,18 @@ _envsec_completions() {
             copy)
                 opts="-t -f -y -h --to --force --yes --all --help"
                 ;;
+            secret)
+                opts="-l -p -e -a -s -A -h --length --prefix --expires --alphanumeric --special --all-chars --help"
+                ;;
+            shell)
+                opts="-s -q -h --shell --no-inherit --quiet --help"
+                ;;
+            tui)
+                opts="-h --help"
+                ;;
+            doctor)
+                opts="-h --help"
+                ;;
         esac
         COMPREPLY=( $(compgen -W "$opts" -- "$cur") )
         return 0
@@ -136,9 +148,9 @@ _envsec_completions() {
     case "$cmd" in
         "")
             # Top-level: complete subcommands
-            COMPREPLY=( $(compgen -W "add get delete del search list run env env-file load cmd audit share rename move copy" -- "$cur") )
+            COMPREPLY=( $(compgen -W "add get delete del search list run env env-file load cmd audit share rename move copy secret shell tui doctor" -- "$cur") )
             ;;
-        get|delete|del|add)
+        get|delete|del|add|secret)
             # Complete secret keys if context is known
             if [[ -n "$context_val" ]]; then
                 local keys

@@ -17,7 +17,6 @@ const SECTIONS = [
     title: "Commands",
     items: [
       { id: "add", label: "add" },
-      { id: "secret", label: "secret" },
       { id: "get", label: "get" },
       { id: "delete", label: "delete" },
       { id: "rename", label: "rename" },
@@ -33,6 +32,7 @@ const SECTIONS = [
       { id: "load", label: "load" },
       { id: "share", label: "share" },
       { id: "audit", label: "audit" },
+      { id: "secret", label: "secret" },
       { id: "doctor", label: "doctor" },
     ],
   },

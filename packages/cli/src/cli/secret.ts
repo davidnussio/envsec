@@ -51,6 +51,7 @@ const specialOption = Options.boolean("special").pipe(
 );
 
 const allCharsOption = Options.boolean("all-chars").pipe(
+  Options.withAlias("A"),
   Options.withDescription(
     "Use all printable ASCII characters for maximum entropy"
   ),

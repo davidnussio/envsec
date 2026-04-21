@@ -432,6 +432,31 @@ Secrets with an `--expires` duration set via `envsec add` are tracked in metadat
 
 The `audit` command also tracks generated `.env` files. Every time `env-file` is used, the output path, context, and timestamp are recorded. The audit output includes a second section listing these files. If a tracked `.env` file no longer exists on disk, audit automatically removes it from the metadata and reports the cleanup.
 
+### Generate a random secret
+
+```bash
+# Generate and store a 32-char alphanumeric secret
+envsec -c myapp.dev secret api.key
+
+# Custom length and prefix
+envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
+
+# Character sets:
+#   --alphanumeric (-a)  [a-zA-Z0-9] (default)
+#   --special (-s)       [a-zA-Z0-9] + !@#$%^&*
+#   --all-chars (-A)     all printable ASCII
+envsec -c myapp.dev secret db.password --special --length 64
+
+# With expiry
+envsec -c myapp.dev secret api.key --prefix "sk_" -l 48 --expires 90d
+
+# Standalone password generator (no store, just print)
+envsec secret --length 32
+envsec secret --special --length 64 --prefix "pk_"
+```
+
+When both context and key are provided, the generated value is stored and printed. Without either, the raw value goes to stdout — useful for piping to `pbcopy`, `xclip`, or other tools.
+
 ### Interactive TUI
 
 envsec includes a full-screen terminal UI for managing secrets interactively — no need to memorize commands.

@@ -84,7 +84,7 @@ envsec secret --length 32                                       # standalone pas
 envsec secret --special --length 64 --prefix "pk_"              # standalone with options
 \`\`\`
 
-Character set options: \`--alphanumeric\` / \`-a\` (default, \`[a-zA-Z0-9]\`), \`--special\` / \`-s\` (adds \`!@#$%^&*\`), \`--all-chars\` (all printable ASCII). The \`--prefix\` / \`-p\` flag prepends a fixed string (e.g. \`sk_\`, \`whsec_\`). Total stored length = prefix + \`--length\`. Uses \`crypto.randomBytes\` with rejection sampling to avoid modulo bias. When both \`--context\` and a key name are provided, the value is stored and printed. Without either, the raw value is printed to stdout — works as a standalone password generator.
+Character set options: \`--alphanumeric\` / \`-a\` (default, \`[a-zA-Z0-9]\`), \`--special\` / \`-s\` (adds \`!@#$%^&*\`), \`--all-chars\` / \`-A\` (all printable ASCII). The \`--prefix\` / \`-p\` flag prepends a fixed string (e.g. \`sk_\`, \`whsec_\`). Total stored length = prefix + \`--length\`. Uses \`crypto.randomBytes\` with rejection sampling to avoid modulo bias. When both \`--context\` and a key name are provided, the value is stored and printed. Without either, the raw value is printed to stdout — works as a standalone password generator.
 
 ### Get a secret
 
