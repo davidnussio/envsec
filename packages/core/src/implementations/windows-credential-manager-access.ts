@@ -10,12 +10,20 @@ import { KeychainAccess } from "../services/keychain-access.js";
  * Manager APIs (CredWriteW, CredReadW, CredDeleteW) directly via PowerShell.
  * This avoids cmdkey and its nested shell escaping issues entirely.
  *
+ * SECURITY: Secret values are passed via the ENVSEC_SECRET environment variable
+ * of the child PowerShell process — never as command-line arguments. This prevents
+ * leakage via process listings, Windows event logs (4688), and EDR tools.
+ *
  * No extra dependencies required — uses only built-in Windows APIs via PowerShell.
  *
  * Credential target format: "envsec:<service>/<account>"
  */
 
-const runPowerShell = (script: string) =>
+/**
+ * Run a PowerShell script with an optional environment variable for secret data.
+ * The secret is passed via env var to avoid command-line leakage.
+ */
+const runPowerShell = (script: string, secretEnv?: Record<string, string>) =>
   Effect.async<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
@@ -23,7 +31,10 @@ const runPowerShell = (script: string) =>
     execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-Command", script],
-      { maxBuffer: 1 * 1024 * 1024 }, // 1MB buffer for large scripts
+      {
+        maxBuffer: 1 * 1024 * 1024,
+        env: { ...process.env, ...secretEnv },
+      },
       (error, stdout, stderr) => {
         if (error && "code" in error && error.code === "ENOENT") {
           resume(
@@ -68,10 +79,13 @@ const targetName = (service: string, account: string) =>
 /**
  * P/Invoke-based PowerShell script for writing credentials.
  * Uses CredWriteW directly — avoids cmdkey and its nested shell escaping issues.
- * All dynamic values are injected via PS single-quoted strings (escapePS).
+ *
+ * SECURITY: The password is read from $env:ENVSEC_SECRET instead of being
+ * interpolated into the script string. This keeps it out of process listings.
  */
-const credWriteScript = (target: string, user: string, password: string) =>
+const credWriteScript = (target: string, user: string) =>
   [
+    "$pass = $env:ENVSEC_SECRET",
     `Add-Type @'`,
     "using System;",
     "using System.Runtime.InteropServices;",
@@ -102,8 +116,46 @@ const credWriteScript = (target: string, user: string, password: string) =>
     "  }",
     "}",
     `'@`,
-    `$ok = [CredWriter]::Write('${target}', '${user}', '${password}')`,
+    `$ok = [CredWriter]::Write('${target}', '${user}', $pass)`,
     "if (-not $ok) { exit 1 }",
+  ].join("\n");
+
+/**
+ * P/Invoke-based PowerShell script for reading credentials.
+ * Target is the only dynamic value — passed via PS single-quoted string.
+ */
+const credReadScript = (target: string) =>
+  [
+    `Add-Type @'`,
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public class CredManager {",
+    `  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]`,
+    "  public static extern bool CredRead(string target, int type, int flags, out IntPtr cred);",
+    `  [DllImport("advapi32.dll")]`,
+    "  public static extern void CredFree(IntPtr cred);",
+    "  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]",
+    "  public struct CREDENTIAL {",
+    "    public int Flags; public int Type;",
+    "    public string TargetName; public string Comment;",
+    "    public long LastWritten; public int CredentialBlobSize;",
+    "    public IntPtr CredentialBlob; public int Persist;",
+    "    public int AttributeCount; public IntPtr Attributes;",
+    "    public string TargetAlias; public string UserName;",
+    "  }",
+    "  public static string Read(string target) {",
+    "    IntPtr ptr;",
+    "    if (!CredRead(target, 1, 0, out ptr)) return null;",
+    "    var c = (CREDENTIAL)Marshal.PtrToStructure(ptr, typeof(CREDENTIAL));",
+    "    var pw = Marshal.PtrToStringUni(c.CredentialBlob, c.CredentialBlobSize / 2);",
+    "    CredFree(ptr);",
+    "    return pw;",
+    "  }",
+    "}",
+    `'@`,
+    `$result = [CredManager]::Read('${target}')`,
+    "if ($result -eq $null) { exit 1 }",
+    "Write-Output $result",
   ].join("\n");
 
 /**
@@ -135,10 +187,10 @@ const make = KeychainAccess.of({
   ) {
     const target = escapePS(targetName(service, account));
     const user = escapePS(account);
-    const pass = escapePS(password);
 
-    const script = credWriteScript(target, user, pass);
-    const result = yield* runPowerShell(script);
+    const script = credWriteScript(target, user);
+    // Pass password via env var — never as a command-line argument
+    const result = yield* runPowerShell(script, { ENVSEC_SECRET: password });
 
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
@@ -154,46 +206,7 @@ const make = KeychainAccess.of({
     account: string
   ) {
     const target = escapePS(targetName(service, account));
-
-    // Read credential using .NET CredentialManager API via PowerShell
-    // This is the only reliable way to read the password back from Credential Manager
-    const script = [
-      "Add-Type -AssemblyName System.Runtime.InteropServices",
-      "$cred = [System.Runtime.InteropServices.Marshal]",
-      `$target = '${target}'`,
-      // Use P/Invoke to call CredReadW
-      `Add-Type @'`,
-      "using System;",
-      "using System.Runtime.InteropServices;",
-      "public class CredManager {",
-      `  [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Unicode)]`,
-      "  public static extern bool CredRead(string target, int type, int flags, out IntPtr cred);",
-      `  [DllImport("advapi32.dll")]`,
-      "  public static extern void CredFree(IntPtr cred);",
-      "  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]",
-      "  public struct CREDENTIAL {",
-      "    public int Flags; public int Type;",
-      "    public string TargetName; public string Comment;",
-      "    public long LastWritten; public int CredentialBlobSize;",
-      "    public IntPtr CredentialBlob; public int Persist;",
-      "    public int AttributeCount; public IntPtr Attributes;",
-      "    public string TargetAlias; public string UserName;",
-      "  }",
-      "  public static string Read(string target) {",
-      "    IntPtr ptr;",
-      "    if (!CredRead(target, 1, 0, out ptr)) return null;",
-      "    var c = (CREDENTIAL)Marshal.PtrToStructure(ptr, typeof(CREDENTIAL));",
-      "    var pw = Marshal.PtrToStringUni(c.CredentialBlob, c.CredentialBlobSize / 2);",
-      "    CredFree(ptr);",
-      "    return pw;",
-      "  }",
-      "}",
-      `'@`,
-      `$result = [CredManager]::Read('${target}')`,
-      "if ($result -eq $null) { exit 1 }",
-      "Write-Output $result",
-    ].join("\n");
-
+    const script = credReadScript(target);
     const result = yield* runPowerShell(script);
 
     if (result.exitCode !== 0) {

@@ -3,9 +3,10 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   writeFileSync,
 } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { Effect, Layer } from "effect";
 import initSqlJs, { type Database } from "sql.js";
 import {
@@ -53,8 +54,14 @@ const initDb = async (dbPath: string): Promise<Database> => {
   return db;
 };
 
+/**
+ * Atomic persist: write to a temp file then rename.
+ * Prevents data loss if the process is killed mid-write.
+ */
 const persist = (db: Database, dbPath: string) => {
-  writeFileSync(dbPath, Buffer.from(db.export()), { mode: FILE_PERMISSIONS });
+  const tmpPath = join(dirname(dbPath), `.store.${process.pid}.tmp`);
+  writeFileSync(tmpPath, Buffer.from(db.export()), { mode: FILE_PERMISSIONS });
+  renameSync(tmpPath, dbPath);
 };
 
 const make = Effect.gen(function* () {

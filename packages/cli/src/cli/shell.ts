@@ -75,6 +75,28 @@ const shellExists = (bin: string): Effect.Effect<void, ShellNotFoundError> =>
       }),
   });
 
+/**
+ * Environment variables that must never be overwritten by secret injection.
+ * Overwriting these could break the shell session or create security risks
+ * (e.g. PATH hijack, LD_PRELOAD injection).
+ */
+const PROTECTED_ENV_VARS = new Set([
+  "PATH",
+  "HOME",
+  "USER",
+  "SHELL",
+  "TERM",
+  "LANG",
+  "IFS",
+  "PWD",
+  "OLDPWD",
+  "TMPDIR",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH",
+]);
+
 const buildChildEnv = (
   ctx: string,
   secretEnv: Record<string, string>,
@@ -85,9 +107,17 @@ const buildChildEnv = (
     ? { ...process.env }
     : { PATH: process.env.PATH ?? "" };
 
+  // Filter out secrets that would overwrite critical env vars
+  const safeSecretEnv: Record<string, string> = {};
+  for (const [key, value] of Object.entries(secretEnv)) {
+    if (!PROTECTED_ENV_VARS.has(key)) {
+      safeSecretEnv[key] = value;
+    }
+  }
+
   const childEnv: Record<string, string> = {
     ...(parentEnv as Record<string, string>),
-    ...secretEnv,
+    ...safeSecretEnv,
     ENVSEC_CONTEXT: ctx,
   };
 

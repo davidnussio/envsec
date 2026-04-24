@@ -1,6 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
 import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import { readConfirmation } from "./prompts.js";
 import { requireContext } from "./root.js";
 
 const key = Args.text({ name: "key" }).pipe(Args.optional);
@@ -15,22 +16,6 @@ const all = Options.boolean("all").pipe(
   Options.withDescription("Delete all secrets in the context"),
   Options.withDefault(false)
 );
-
-const readConfirmation = (message: string): Effect.Effect<boolean, Error> =>
-  Effect.async((resume) => {
-    process.stdout.write(`${message} [y/N] `);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    const onData = (chunk: string) => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      const answer = chunk.toString().trim().toLowerCase();
-      resume(Effect.succeed(answer === "y" || answer === "yes"));
-    };
-
-    process.stdin.on("data", onData);
-  });
 
 const handler = ({
   key,

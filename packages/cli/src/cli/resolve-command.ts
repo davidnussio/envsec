@@ -57,8 +57,10 @@ export const resolveCommand = (
       if (result.found) {
         const envVar = toEnvVarName(key, index);
         env[envVar] = result.value;
+        // Use PowerShell $env:VAR on Windows to avoid cmd.exe %VAR% macro-expansion
+        // which is vulnerable to shell injection via secret values containing & | > etc.
         const shellRef =
-          process.platform === "win32" ? `%${envVar}%` : `$${envVar}`;
+          process.platform === "win32" ? `$env:${envVar}` : `$${envVar}`;
         resolved = resolved.replaceAll(`{${key}}`, shellRef);
       } else {
         missing.push(result.key);

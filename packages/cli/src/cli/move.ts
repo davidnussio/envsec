@@ -1,12 +1,8 @@
 import { Args, Command, Options } from "@effect/cli";
-import {
-  badge,
-  bold,
-  icons,
-  type MetadataStoreError,
-  SecretStore,
-} from "@envsec/core";
-import { Console, Effect, Option } from "effect";
+import { badge, bold, icons, SecretStore } from "@envsec/core";
+import { Console, Effect } from "effect";
+import { checkConflicts, resolveKeys } from "./bulk-ops.js";
+import { readConfirmation } from "./prompts.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const pattern = Args.text({ name: "pattern" }).pipe(Args.optional);
@@ -33,76 +29,6 @@ const yes = Options.boolean("yes").pipe(
   Options.withDefault(false)
 );
 
-const readConfirmation = (message: string): Effect.Effect<boolean, Error> =>
-  Effect.async((resume) => {
-    process.stdout.write(`${message} [y/N] `);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    const onData = (chunk: string) => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      const answer = chunk.toString().trim().toLowerCase();
-      resume(Effect.succeed(answer === "y" || answer === "yes"));
-    };
-
-    process.stdin.on("data", onData);
-  });
-
-/** Convert a glob pattern (with * and ?) to a RegExp */
-const globToRegex = (pat: string): RegExp => {
-  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  const withWildcards = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
-  return new RegExp(`^${withWildcards}$`);
-};
-
-/** Resolve which keys to operate on based on --all flag or glob pattern */
-const resolveKeys = (
-  sourceCtx: string,
-  pat: Option.Option<string>,
-  useAll: boolean
-): Effect.Effect<string[], MetadataStoreError | Error, SecretStore> =>
-  Effect.gen(function* () {
-    if (useAll) {
-      const items = yield* SecretStore.list(sourceCtx);
-      return items.map((i) => i.key);
-    }
-    if (Option.isNone(pat)) {
-      return yield* Effect.fail(
-        new Error(
-          "Provide a <pattern> argument or use --all to move everything"
-        )
-      );
-    }
-    const p = pat.value;
-    if (p.includes("*") || p.includes("?")) {
-      const items = yield* SecretStore.list(sourceCtx);
-      const regex = globToRegex(p);
-      return items.filter((i) => regex.test(i.key)).map((i) => i.key);
-    }
-    return [p];
-  });
-
-/** Check for conflicts in target context */
-const checkConflicts = (
-  targetCtx: string,
-  keys: string[]
-): Effect.Effect<void, Error, SecretStore> =>
-  Effect.gen(function* () {
-    const targetItems = yield* SecretStore.list(targetCtx).pipe(
-      Effect.catchTag("MetadataStoreError", () => Effect.succeed([]))
-    );
-    const targetKeys = new Set(targetItems.map((i) => i.key));
-    const conflicts = keys.filter((k) => targetKeys.has(k));
-    if (conflicts.length > 0) {
-      yield* Effect.fail(
-        new Error(
-          `Target context "${targetCtx}" already has: ${conflicts.join(", ")}. Use --force to overwrite.`
-        )
-      );
-    }
-  });
-
 export const moveCommand = Command.make(
   "move",
   { pattern, to, all, force, yes },
@@ -119,7 +45,7 @@ export const moveCommand = Command.make(
         );
       }
 
-      const keys = yield* resolveKeys(sourceCtx, pattern, all);
+      const keys = yield* resolveKeys(sourceCtx, pattern, all, "move");
 
       if (keys.length === 0) {
         yield* Console.log(
