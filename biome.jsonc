@@ -21,6 +21,19 @@
           }
         }
       }
+    },
+    {
+      "includes": ["apps/website/public/consent-default.js"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUndeclaredVariables": "off"
+          },
+          "complexity": {
+            "noArguments": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -108,6 +108,7 @@ export default function RootLayout({
     >
       <head>
         <link href="/favicon.svg" rel="icon" type="image/svg+xml" />
+        <script src="/consent-default.js" />
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         {children}

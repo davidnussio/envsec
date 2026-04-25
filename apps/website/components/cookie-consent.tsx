@@ -17,21 +17,36 @@ function getConsent(): ConsentState {
   return null;
 }
 
+function updateGtagConsent(state: "granted" | "denied") {
+  window.gtag?.("consent", "update", {
+    analytics_storage: state,
+    ad_storage: state,
+    ad_user_data: state,
+    ad_personalization: state,
+  });
+}
+
 export function useCookieConsent() {
   const [consent, setConsent] = useState<ConsentState>(null);
 
   useEffect(() => {
-    setConsent(getConsent());
+    const stored = getConsent();
+    setConsent(stored);
+    if (stored) {
+      updateGtagConsent(stored);
+    }
   }, []);
 
   const accept = useCallback(() => {
     localStorage.setItem(CONSENT_KEY, "granted");
     setConsent("granted");
+    updateGtagConsent("granted");
   }, []);
 
   const decline = useCallback(() => {
     localStorage.setItem(CONSENT_KEY, "denied");
     setConsent("denied");
+    updateGtagConsent("denied");
   }, []);
 
   return { consent, accept, decline };

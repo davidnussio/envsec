@@ -1,14 +1,12 @@
 "use client";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { CookieBanner, useCookieConsent } from "./cookie-consent";
+import { CookieBanner } from "./cookie-consent";
 
 export function Analytics({ gaId }: { gaId: string }) {
-  const { consent } = useCookieConsent();
-
   return (
     <>
-      {consent === "granted" && <GoogleAnalytics gaId={gaId} />}
+      <GoogleAnalytics gaId={gaId} />
       <CookieBanner />
     </>
   );
