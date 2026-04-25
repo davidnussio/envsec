@@ -1,6 +1,6 @@
-import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "../components/analytics";
 import "./globals.css";
 
 const inter = Inter({
@@ -113,7 +113,7 @@ export default function RootLayout({
         {children}
       </body>
       {process.env.NODE_ENV === "production" && (
-        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID ?? ""} />
+        <Analytics gaId={process.env.NEXT_PUBLIC_GA_ID ?? ""} />
       )}
     </html>
   );
