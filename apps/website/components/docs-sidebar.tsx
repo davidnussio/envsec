@@ -2,6 +2,7 @@
 
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 const SECTIONS = [
   {
@@ -108,6 +109,12 @@ export function DocsSidebar() {
                     <a
                       className="block rounded-md px-2 py-1 font-mono text-muted-foreground text-sm transition-colors hover:bg-white/5 hover:text-foreground"
                       href={`#${item.id}`}
+                      onClick={() =>
+                        trackEvent("docs_nav_click", {
+                          section: section.title,
+                          item: item.id,
+                        })
+                      }
                     >
                       {item.label}
                     </a>

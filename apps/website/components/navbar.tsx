@@ -4,6 +4,7 @@ import { Menu, Shield, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
 export function Navbar() {
@@ -24,36 +25,42 @@ export function Navbar() {
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/#features"
+            onClick={() => trackEvent("nav_click", { link: "features" })}
           >
             Features
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/#how-it-works"
+            onClick={() => trackEvent("nav_click", { link: "how-it-works" })}
           >
             How it works
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/#use-cases"
+            onClick={() => trackEvent("nav_click", { link: "use-cases" })}
           >
             Use Cases
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/#install"
+            onClick={() => trackEvent("nav_click", { link: "install" })}
           >
             Install
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/compare"
+            onClick={() => trackEvent("nav_click", { link: "compare" })}
           >
             Compare
           </Link>
           <Link
             className="text-muted-foreground text-sm transition-colors hover:text-foreground"
             href="/docs"
+            onClick={() => trackEvent("nav_click", { link: "docs" })}
           >
             Docs
           </Link>
@@ -63,6 +70,7 @@ export function Navbar() {
               "bg-emerald-500 text-black hover:bg-emerald-400"
             )}
             href="https://github.com/davidnussio/envsec"
+            onClick={() => trackEvent("nav_click", { link: "github" })}
             rel="noopener noreferrer"
             target="_blank"
           >
@@ -90,42 +98,60 @@ export function Navbar() {
             <Link
               className="text-muted-foreground text-sm"
               href="/#features"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "features" });
+                setMobileOpen(false);
+              }}
             >
               Features
             </Link>
             <Link
               className="text-muted-foreground text-sm"
               href="/#how-it-works"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "how-it-works" });
+                setMobileOpen(false);
+              }}
             >
               How it works
             </Link>
             <Link
               className="text-muted-foreground text-sm"
               href="/#use-cases"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "use-cases" });
+                setMobileOpen(false);
+              }}
             >
               Use Cases
             </Link>
             <Link
               className="text-muted-foreground text-sm"
               href="/#install"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "install" });
+                setMobileOpen(false);
+              }}
             >
               Install
             </Link>
             <Link
               className="text-muted-foreground text-sm"
               href="/compare"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "compare" });
+                setMobileOpen(false);
+              }}
             >
               Compare
             </Link>
             <Link
               className="text-muted-foreground text-sm"
               href="/docs"
-              onClick={() => setMobileOpen(false)}
+              onClick={() => {
+                trackEvent("nav_click", { link: "docs" });
+                setMobileOpen(false);
+              }}
             >
               Docs
             </Link>

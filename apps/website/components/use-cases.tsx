@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import { UseCaseTerminal } from "./use-case-terminal";
 
 const USE_CASES = [
@@ -443,6 +444,7 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
       onToggle={() => {
         if (detailsRef.current?.open) {
           setAnimKey((k) => k + 1);
+          trackEvent("faq_open", { question: item.id });
         }
       }}
       ref={detailsRef}
