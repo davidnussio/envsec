@@ -1,3 +1,4 @@
+import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
@@ -111,6 +112,9 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-background text-foreground">
         {children}
       </body>
+      {process.env.NODE_ENV === "production" && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID ?? ""} />
+      )}
     </html>
   );
 }
