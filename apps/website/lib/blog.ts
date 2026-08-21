@@ -91,6 +91,15 @@ export const POSTS: readonly BlogPost[] = [
     tags: ["performance", "effect", "bun"],
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
+  {
+    date: "2026-08-21",
+    description:
+      "Why emoji break column alignment in terminals (wcwidth, East Asian Width, VS16, ZWJ) and the 27 geometric icons envsec uses instead.",
+    readingTime: "4 min read",
+    slug: "no-emoji-in-the-terminal",
+    tags: ["cli-design"],
+    title: "Why there are no emoji in envsec's output",
+  },
 ];
 
 export const TAG_SLUGS = Object.keys(TAGS) as TagSlug[];
