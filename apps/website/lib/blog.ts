@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-08-25",
+    description:
+      "How envsec share encrypts a context with GPG, how the receiver imports it with envsec load, and what GPG does and doesn't protect.",
+    readingTime: "6 min read",
+    slug: "sharing-secrets-with-gpg",
+    tags: ["security", "comparisons"],
+    title: "Sharing secrets with a teammate, the GPG way",
+  },
+  {
     date: "2026-08-21",
     description:
       "Why emoji break column alignment in terminals (wcwidth, East Asian Width, VS16, ZWJ) and the 27 geometric icons envsec uses instead.",
