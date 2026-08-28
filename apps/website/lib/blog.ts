@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-08-28",
+    description:
+      "How envsec parses expiry durations like 1y6mo (and why a month is 30 days), and how its secret command avoids modulo bias. With the entropy math.",
+    readingTime: "7 min read",
+    slug: "parsing-durations-and-generating-secrets",
+    tags: ["cli-design", "security"],
+    title: "Parsing 1y6mo and generating secrets you can't guess",
+  },
+  {
     date: "2026-08-25",
     description:
       "How envsec share encrypts a context with GPG, how the receiver imports it with envsec load, and what GPG does and doesn't protect.",
