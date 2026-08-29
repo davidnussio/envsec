@@ -1,9 +1,12 @@
-import { Effect } from "effect";
+import { Context, Effect, Layer } from "effect";
 import { parse as parseSecretKey } from "../domain/secret-key.js";
 import { SecretNotFoundError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
-import { DatabaseConfigDefault } from "./database-config.js";
+import {
+  type DatabaseConfig,
+  DatabaseConfigDefault,
+} from "./database-config.js";
 import { KeychainAccess } from "./keychain-access.js";
 import { MetadataStore } from "./metadata-store.js";
 
@@ -25,186 +28,266 @@ const decodeValue = (raw: string): string => {
   return raw;
 };
 
-export class SecretStore extends Effect.Service<SecretStore>()("SecretStore", {
-  accessors: true,
-  dependencies: [
-    PlatformKeychainAccessLive,
-    SqliteMetadataStoreLive,
-    DatabaseConfigDefault,
-  ],
-  scoped: Effect.gen(function* () {
-    const keychain = yield* KeychainAccess;
-    const metadata = yield* MetadataStore;
+export class SecretStore extends Context.Service<SecretStore>()(
+  "envsec/SecretStore",
+  {
+    make: Effect.gen(function* () {
+      const keychain = yield* KeychainAccess;
+      const metadata = yield* MetadataStore;
 
-    const set = Effect.fn("SecretStore.set")(function* (
-      context: string,
-      key: string,
-      value: string,
-      expiresAt?: string | null
-    ) {
-      const parsed = yield* parseSecretKey(key, context);
-      yield* keychain.set(parsed.service, parsed.account, encodeValue(value));
-      yield* metadata
-        .upsert(context, key, expiresAt)
-        .pipe(
-          Effect.catchAll((metadataError) =>
-            keychain
-              .remove(parsed.service, parsed.account)
-              .pipe(Effect.ignore, Effect.andThen(Effect.fail(metadataError)))
+      const set = Effect.fn("SecretStore.set")(function* (
+        context: string,
+        key: string,
+        value: string,
+        expiresAt?: string | null
+      ) {
+        const parsed = yield* parseSecretKey(key, context);
+        yield* keychain.set(parsed.service, parsed.account, encodeValue(value));
+        yield* metadata
+          .upsert(context, key, expiresAt)
+          .pipe(
+            Effect.catch((metadataError) =>
+              keychain
+                .remove(parsed.service, parsed.account)
+                .pipe(Effect.ignore, Effect.andThen(Effect.fail(metadataError)))
+            )
+          );
+      });
+
+      const get = Effect.fn("SecretStore.get")(function* (
+        context: string,
+        key: string
+      ) {
+        yield* metadata.get(context, key);
+        const parsed = yield* parseSecretKey(key, context);
+        return yield* keychain.get(parsed.service, parsed.account).pipe(
+          Effect.map(decodeValue),
+          Effect.catchTag("SecretNotFoundError", () =>
+            Effect.fail(
+              new SecretNotFoundError({
+                key,
+                context,
+                message: `Secret "${key}" has metadata in context "${context}" but is missing from the OS keychain. Run: envsec delete -c ${context} ${key}`,
+              })
+            )
           )
         );
-    });
+      });
 
-    const get = Effect.fn("SecretStore.get")(function* (
-      context: string,
-      key: string
-    ) {
-      yield* metadata.get(context, key);
-      const parsed = yield* parseSecretKey(key, context);
-      return yield* keychain.get(parsed.service, parsed.account).pipe(
-        Effect.map(decodeValue),
-        Effect.catchTag("SecretNotFoundError", () =>
-          Effect.fail(
-            new SecretNotFoundError({
-              key,
-              context,
-              message: `Secret "${key}" has metadata in context "${context}" but is missing from the OS keychain. Run: envsec delete -c ${context} ${key}`,
-            })
-          )
-        )
+      const getMetadata = Effect.fn("SecretStore.getMetadata")(function* (
+        context: string,
+        key: string
+      ) {
+        return yield* metadata.get(context, key);
+      });
+
+      const remove = Effect.fn("SecretStore.remove")(function* (
+        context: string,
+        key: string
+      ) {
+        const parsed = yield* parseSecretKey(key, context);
+        yield* keychain
+          .remove(parsed.service, parsed.account)
+          .pipe(Effect.catchTag("KeychainError", () => Effect.void));
+        yield* metadata.remove(context, key);
+      });
+
+      const search = Effect.fn("SecretStore.search")(function* (
+        context: string,
+        pattern: string
+      ) {
+        return yield* metadata.search(context, pattern);
+      });
+
+      const list = Effect.fn("SecretStore.list")(function* (context: string) {
+        return yield* metadata.list(context);
+      });
+
+      const searchContexts = Effect.fn("SecretStore.searchContexts")(function* (
+        pattern: string
+      ) {
+        return yield* metadata.searchContexts(pattern);
+      });
+
+      const listContexts = Effect.fn("SecretStore.listContexts")(function* () {
+        return yield* metadata.listContexts();
+      });
+
+      const saveCommand = Effect.fn("SecretStore.saveCommand")(function* (
+        name: string,
+        command: string,
+        context: string
+      ) {
+        yield* metadata.saveCommand(name, command, context);
+      });
+
+      const getCommand = Effect.fn("SecretStore.getCommand")(function* (
+        name: string
+      ) {
+        return yield* metadata.getCommand(name);
+      });
+
+      const searchCommands = Effect.fn("SecretStore.searchCommands")(function* (
+        pattern: string,
+        field: "name" | "command" | "all"
+      ) {
+        return yield* metadata.searchCommands(pattern, field);
+      });
+
+      const listCommands = Effect.fn("SecretStore.listCommands")(function* () {
+        return yield* metadata.listCommands();
+      });
+
+      const removeCommand = Effect.fn("SecretStore.removeCommand")(function* (
+        name: string
+      ) {
+        yield* metadata.removeCommand(name);
+      });
+
+      const beginBatch = Effect.fn("SecretStore.beginBatch")(function* () {
+        yield* metadata.beginBatch();
+      });
+
+      const endBatch = Effect.fn("SecretStore.endBatch")(function* () {
+        yield* metadata.endBatch();
+      });
+
+      const listExpiring = Effect.fn("SecretStore.listExpiring")(function* (
+        context: string,
+        withinMs: number
+      ) {
+        return yield* metadata.listExpiring(context, withinMs);
+      });
+
+      const listAllExpiring = Effect.fn("SecretStore.listAllExpiring")(
+        function* (withinMs: number) {
+          return yield* metadata.listAllExpiring(withinMs);
+        }
       );
-    });
 
-    const getMetadata = Effect.fn("SecretStore.getMetadata")(function* (
-      context: string,
-      key: string
-    ) {
-      return yield* metadata.get(context, key);
-    });
+      const trackEnvFileExport = Effect.fn("SecretStore.trackEnvFileExport")(
+        function* (context: string, path: string) {
+          yield* metadata.trackEnvFileExport(context, path);
+        }
+      );
 
-    const remove = Effect.fn("SecretStore.remove")(function* (
-      context: string,
-      key: string
-    ) {
-      const parsed = yield* parseSecretKey(key, context);
-      yield* keychain
-        .remove(parsed.service, parsed.account)
-        .pipe(Effect.catchTag("KeychainError", () => Effect.void));
-      yield* metadata.remove(context, key);
-    });
+      const listEnvFileExports = Effect.fn("SecretStore.listEnvFileExports")(
+        function* () {
+          return yield* metadata.listEnvFileExports();
+        }
+      );
 
-    const search = Effect.fn("SecretStore.search")(function* (
-      context: string,
-      pattern: string
-    ) {
-      return yield* metadata.search(context, pattern);
-    });
+      const removeEnvFileExport = Effect.fn("SecretStore.removeEnvFileExport")(
+        function* (path: string) {
+          yield* metadata.removeEnvFileExport(path);
+        }
+      );
 
-    const list = Effect.fn("SecretStore.list")(function* (context: string) {
-      return yield* metadata.list(context);
-    });
+      return {
+        set,
+        get,
+        getMetadata,
+        remove,
+        search,
+        list,
+        searchContexts,
+        listContexts,
+        saveCommand,
+        getCommand,
+        searchCommands,
+        listCommands,
+        removeCommand,
+        beginBatch,
+        endBatch,
+        listExpiring,
+        listAllExpiring,
+        trackEnvFileExport,
+        listEnvFileExports,
+        removeEnvFileExport,
+      };
+    }),
+  }
+) {
+  static readonly layerNoDeps = Layer.effect(this, this.make);
 
-    const searchContexts = Effect.fn("SecretStore.searchContexts")(function* (
-      pattern: string
-    ) {
-      return yield* metadata.searchContexts(pattern);
-    });
-
-    const listContexts = Effect.fn("SecretStore.listContexts")(function* () {
-      return yield* metadata.listContexts();
-    });
-
-    const saveCommand = Effect.fn("SecretStore.saveCommand")(function* (
-      name: string,
-      command: string,
-      context: string
-    ) {
-      yield* metadata.saveCommand(name, command, context);
-    });
-
-    const getCommand = Effect.fn("SecretStore.getCommand")(function* (
-      name: string
-    ) {
-      return yield* metadata.getCommand(name);
-    });
-
-    const searchCommands = Effect.fn("SecretStore.searchCommands")(function* (
-      pattern: string,
-      field: "name" | "command" | "all"
-    ) {
-      return yield* metadata.searchCommands(pattern, field);
-    });
-
-    const listCommands = Effect.fn("SecretStore.listCommands")(function* () {
-      return yield* metadata.listCommands();
-    });
-
-    const removeCommand = Effect.fn("SecretStore.removeCommand")(function* (
-      name: string
-    ) {
-      yield* metadata.removeCommand(name);
-    });
-
-    const beginBatch = Effect.fn("SecretStore.beginBatch")(function* () {
-      yield* metadata.beginBatch();
-    });
-
-    const endBatch = Effect.fn("SecretStore.endBatch")(function* () {
-      yield* metadata.endBatch();
-    });
-
-    const listExpiring = Effect.fn("SecretStore.listExpiring")(function* (
-      context: string,
-      withinMs: number
-    ) {
-      return yield* metadata.listExpiring(context, withinMs);
-    });
-
-    const listAllExpiring = Effect.fn("SecretStore.listAllExpiring")(function* (
-      withinMs: number
-    ) {
-      return yield* metadata.listAllExpiring(withinMs);
-    });
-
-    const trackEnvFileExport = Effect.fn("SecretStore.trackEnvFileExport")(
-      function* (context: string, path: string) {
-        yield* metadata.trackEnvFileExport(context, path);
-      }
+  static readonly layer = (
+    databaseConfig: Layer.Layer<DatabaseConfig> = DatabaseConfigDefault
+  ) =>
+    this.layerNoDeps.pipe(
+      Layer.provide(
+        Layer.merge(
+          PlatformKeychainAccessLive,
+          SqliteMetadataStoreLive.pipe(Layer.provide(databaseConfig))
+        )
+      )
     );
 
-    const listEnvFileExports = Effect.fn("SecretStore.listEnvFileExports")(
-      function* () {
-        return yield* metadata.listEnvFileExports();
-      }
-    );
+  static readonly Default = this.layer();
 
-    const removeEnvFileExport = Effect.fn("SecretStore.removeEnvFileExport")(
-      function* (path: string) {
-        yield* metadata.removeEnvFileExport(path);
-      }
-    );
+  static readonly set = (
+    context: string,
+    key: string,
+    value: string,
+    expiresAt?: string | null
+  ) => this.use((store) => store.set(context, key, value, expiresAt));
 
-    return {
-      set,
-      get,
-      getMetadata,
-      remove,
-      search,
-      list,
-      searchContexts,
-      listContexts,
-      saveCommand,
-      getCommand,
-      searchCommands,
-      listCommands,
-      removeCommand,
-      beginBatch,
-      endBatch,
-      listExpiring,
-      listAllExpiring,
-      trackEnvFileExport,
-      listEnvFileExports,
-      removeEnvFileExport,
-    };
-  }),
-}) {}
+  static readonly get = (context: string, key: string) =>
+    this.use((store) => store.get(context, key));
+
+  static readonly getMetadata = (context: string, key: string) =>
+    this.use((store) => store.getMetadata(context, key));
+
+  static readonly remove = (context: string, key: string) =>
+    this.use((store) => store.remove(context, key));
+
+  static readonly search = (context: string, pattern: string) =>
+    this.use((store) => store.search(context, pattern));
+
+  static readonly list = (context: string) =>
+    this.use((store) => store.list(context));
+
+  static readonly searchContexts = (pattern: string) =>
+    this.use((store) => store.searchContexts(pattern));
+
+  static readonly listContexts = () =>
+    this.use((store) => store.listContexts());
+
+  static readonly saveCommand = (
+    name: string,
+    command: string,
+    context: string
+  ) => this.use((store) => store.saveCommand(name, command, context));
+
+  static readonly getCommand = (name: string) =>
+    this.use((store) => store.getCommand(name));
+
+  static readonly searchCommands = (
+    pattern: string,
+    field: "name" | "command" | "all"
+  ) => this.use((store) => store.searchCommands(pattern, field));
+
+  static readonly listCommands = () =>
+    this.use((store) => store.listCommands());
+
+  static readonly removeCommand = (name: string) =>
+    this.use((store) => store.removeCommand(name));
+
+  static readonly beginBatch = () => this.use((store) => store.beginBatch());
+
+  static readonly endBatch = () => this.use((store) => store.endBatch());
+
+  static readonly listExpiring = (context: string, withinMs: number) =>
+    this.use((store) => store.listExpiring(context, withinMs));
+
+  static readonly listAllExpiring = (withinMs: number) =>
+    this.use((store) => store.listAllExpiring(withinMs));
+
+  static readonly trackEnvFileExport = (context: string, path: string) =>
+    this.use((store) => store.trackEnvFileExport(context, path));
+
+  static readonly listEnvFileExports = () =>
+    this.use((store) => store.listEnvFileExports());
+
+  static readonly removeEnvFileExport = (path: string) =>
+    this.use((store) => store.removeEnvFileExport(path));
+}

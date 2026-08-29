@@ -1,7 +1,7 @@
 import { platform } from "node:os";
-import { Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { UnsupportedPlatformError } from "../errors.js";
-import type { KeychainAccess } from "../services/keychain-access.js";
+import { KeychainAccess } from "../services/keychain-access.js";
 import { LinuxSecretServiceAccessLive } from "./linux-secret-service-access.js";
 import { MacOsKeychainAccessLive } from "./mac-os-keychain-access.js";
 import { WindowsCredentialManagerAccessLive } from "./windows-credential-manager-access.js";
@@ -25,11 +25,14 @@ export const PlatformKeychainAccessLive: Layer.Layer<
     case "win32":
       return WindowsCredentialManagerAccessLive;
     default:
-      return Layer.fail(
-        new UnsupportedPlatformError({
-          platform: platform(),
-          message: `Unsupported platform: ${platform()}. Supported: macOS, Linux, Windows.`,
-        })
+      return Layer.effect(
+        KeychainAccess,
+        Effect.fail(
+          new UnsupportedPlatformError({
+            platform: platform(),
+            message: `Unsupported platform: ${platform()}. Supported: macOS, Linux, Windows.`,
+          })
+        )
       );
   }
 })();

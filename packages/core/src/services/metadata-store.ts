@@ -12,7 +12,7 @@ export interface SecretMetadata {
   readonly updated_at: string;
 }
 
-export class MetadataStore extends Context.Tag("MetadataStore")<
+export class MetadataStore extends Context.Service<
   MetadataStore,
   {
     readonly upsert: (
@@ -97,7 +97,7 @@ export class MetadataStore extends Context.Tag("MetadataStore")<
       path: string
     ) => Effect.Effect<void, MetadataStoreError>;
   }
->() {}
+>()("envsec/MetadataStore") {}
 
 export interface CommandMetadata {
   readonly command: string;

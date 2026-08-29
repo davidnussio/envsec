@@ -4,7 +4,7 @@ import { KeychainError, SecretNotFoundError } from "../errors.js";
 import { KeychainAccess } from "../services/keychain-access.js";
 
 const run = (args: string[]) =>
-  Effect.async<
+  Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
   >((resume) => {

@@ -16,7 +16,7 @@ import { KeychainAccess } from "../services/keychain-access.js";
  */
 
 const run = (args: string[], stdin?: string) =>
-  Effect.async<
+  Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
   >((resume) => {

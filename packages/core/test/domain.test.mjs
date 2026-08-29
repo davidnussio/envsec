@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { Duration, Effect, Schema } from "effect";
-import { ContextName, parseDuration, parseSecretKey } from "../dist/index.js";
+import {
+  ContextName,
+  DatabaseConfigFrom,
+  parseDuration,
+  parseSecretKey,
+  SecretStore,
+} from "../dist/index.js";
 
 test("accepts valid context names and rejects unsafe names", () => {
   const decodeContextName = Schema.decodeUnknownSync(ContextName);
@@ -33,4 +42,24 @@ test("parses combined durations", async () => {
   const duration = await Effect.runPromise(parseDuration("1d12h"));
 
   assert.equal(Duration.toMillis(duration), 129_600_000);
+});
+
+test("uses the database path supplied to the SecretStore layer", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "envsec-effect-4-"));
+  const databasePath = join(directory, "custom.sqlite");
+
+  try {
+    const layer = SecretStore.layer(DatabaseConfigFrom(databasePath));
+    await Effect.runPromise(
+      Effect.scoped(
+        SecretStore.saveCommand("test", "echo ok", "test.context").pipe(
+          Effect.provide(layer)
+        )
+      )
+    );
+
+    assert.equal(existsSync(databasePath), true);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

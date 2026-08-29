@@ -84,7 +84,7 @@ export const parseDuration = Effect.fn("parseDuration")(function* (
  * Format: "YYYY-MM-DD HH:mm:ss" (compatible with SQLite text comparison).
  */
 export const expiresAtFromNow = (duration: Duration.Duration): string => {
-  const future = DateTime.addDuration(DateTime.unsafeNow(), duration);
+  const future = DateTime.addDuration(DateTime.nowUnsafe(), duration);
   return DateTime.formatIso(future)
     .replace("T", " ")
     .replace("Z", "")
@@ -107,10 +107,10 @@ export const formatLocalDateTime = (utcDate: string): string => {
  * Format a human-readable "time remaining" or "time ago" string from an ISO datetime.
  */
 export const formatTimeDistance = (isoDate: string): string => {
-  const now = DateTime.unsafeNow();
-  const target = DateTime.unsafeMake(`${isoDate}Z`);
-  const diffMs = Math.abs(DateTime.distance(now, target));
-  const past = DateTime.lessThan(target, now);
+  const now = DateTime.nowUnsafe();
+  const target = DateTime.makeUnsafe(`${isoDate}Z`);
+  const diffMs = Math.abs(Duration.toMillis(DateTime.distance(now, target)));
+  const past = DateTime.isLessThan(target, now);
 
   const totalMinutes = Math.floor(diffMs / (60 * 1000));
   const totalHours = Math.floor(diffMs / (60 * 60 * 1000));

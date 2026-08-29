@@ -1,7 +1,7 @@
 import { Context, type Effect } from "effect";
 import type { KeychainError, SecretNotFoundError } from "../errors.js";
 
-export class KeychainAccess extends Context.Tag("KeychainAccess")<
+export class KeychainAccess extends Context.Service<
   KeychainAccess,
   {
     readonly set: (
@@ -18,4 +18,4 @@ export class KeychainAccess extends Context.Tag("KeychainAccess")<
       account: string
     ) => Effect.Effect<void, KeychainError>;
   }
->() {}
+>()("envsec/KeychainAccess") {}
