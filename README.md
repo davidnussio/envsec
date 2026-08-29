@@ -761,6 +761,10 @@ We believe in being upfront about what envsec does not yet cover. These are real
 - Node.js >= 22
 - pnpm
 
+The core, SDK, CLI, and TUI packages use Effect 4 and are currently pinned to
+`4.0.0-rc.112`. Keep the Effect and `@effect/platform-node` versions aligned
+across the workspace while Effect 4 remains in release-candidate status.
+
 ### Setup
 
 ```bash
@@ -794,9 +798,26 @@ pnpm run check
 # Auto-fix lint and formatting
 pnpm run fix
 
+# Run package unit and contract tests
+pnpm run test:unit
+
+# Run the CLI end-to-end suite with isolated database and credential fixtures
+pnpm --filter envsec test
+
 # Release (build + changeset publish)
 pnpm run release
 ```
+
+The isolated E2E suite never accesses the native credential store. To exercise
+the real OS adapter on macOS or Linux, build first and opt in explicitly:
+
+```bash
+ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \
+  ENVSEC_E2E_ISOLATED=0 \
+  pnpm --filter envsec test
+```
+
+Native E2E tests use dedicated `test.e2e*` contexts and remove them afterward.
 
 ### Running locally without installing
 

@@ -23,9 +23,11 @@ pnpm add @envsec/core
 
 ## Architecture
 
-Built with [Effect](https://effect.website) using the layered service pattern:
+Built with [Effect 4](https://effect.website) using the layered service pattern.
+The workspace currently pins `effect@4.0.0-rc.112` while Effect 4 is in
+release-candidate status.
 
-1. **Services** define interfaces as `Context.Tag`
+1. **Services** define interfaces as `Context.Service`
 2. **Implementations** provide concrete `Layer` instances
 3. **SecretStore** composes `KeychainAccess` + `MetadataStore` into a single facade
 
