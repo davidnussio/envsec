@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@envsec/core": "workspace:*",
-    "effect": "^3.21.0"
+    "effect": "4.0.0-rc.112"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
