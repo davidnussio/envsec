@@ -1,6 +1,6 @@
-import { Command } from "@effect/cli";
 import { runTUI } from "@envsec/tui";
 import { Effect, Option } from "effect";
+import { Command } from "effect/unstable/cli";
 import { optionalContext } from "./root.js";
 
 export const tuiCommand = Command.make("tui", {}, () =>

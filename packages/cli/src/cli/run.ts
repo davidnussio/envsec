@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { Args, Command, Options } from "@effect/cli";
 import {
   bold,
   CommandExecutionError,
@@ -8,12 +7,17 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
 
-const cmd = Args.text({ name: "command" }).pipe(
+const cmd = Args.string("command").pipe(
   Args.withDescription(
     "Command to execute. Use {key} placeholders for secret interpolation"
   )
@@ -25,7 +29,7 @@ const save = Options.boolean("save").pipe(
   Options.withDefault(false)
 );
 
-const name = Options.text("name").pipe(
+const name = Options.string("name").pipe(
   Options.withAlias("n"),
   Options.withDescription("Name for the saved command"),
   Options.optional
@@ -40,7 +44,7 @@ const inject = Options.boolean("inject").pipe(
 );
 
 const readLine = (prompt: string): Effect.Effect<string> =>
-  Effect.async((resume) => {
+  Effect.callback((resume) => {
     process.stdout.write(prompt);
     process.stdin.resume();
     process.stdin.setEncoding("utf-8");

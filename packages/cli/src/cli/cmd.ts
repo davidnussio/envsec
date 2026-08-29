@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { Args, Command, Options } from "@effect/cli";
 import {
   bold,
   CommandExecutionError,
@@ -9,16 +8,21 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---
 
-const cmdRunName = Args.text({ name: "name" }).pipe(
+const cmdRunName = Args.string("name").pipe(
   Args.withDescription("Name of the saved command to execute")
 );
 
-const cmdRunContextOverride = Options.text("override-context").pipe(
+const cmdRunContextOverride = Options.string("override-context").pipe(
   Options.withAlias("o"),
   Options.withDescription("Override the saved context"),
   Options.optional
@@ -52,7 +56,7 @@ const cmdRunCommand = Command.make(
     Effect.gen(function* () {
       const saved = yield* SecretStore.getCommand(name);
       const rawCtx = Option.isSome(context) ? context.value : saved.context;
-      const ctx = yield* Schema.decode(ContextName)(rawCtx);
+      const ctx = yield* Schema.decodeEffect(ContextName)(rawCtx);
 
       const resolved = yield* resolveCommand(saved.command, ctx, { quiet });
 
@@ -85,7 +89,7 @@ const cmdRunCommand = Command.make(
 
 // --- cmd search <pattern> ---
 
-const cmdSearchPattern = Args.text({ name: "pattern" }).pipe(
+const cmdSearchPattern = Args.string("pattern").pipe(
   Args.withDescription("Search pattern")
 );
 
@@ -154,7 +158,7 @@ const cmdListCommand = Command.make("list", {}, () =>
 
 // --- cmd delete <name> ---
 
-const cmdDeleteName = Args.text({ name: "name" }).pipe(
+const cmdDeleteName = Args.string("name").pipe(
   Args.withDescription("Name of the command to delete")
 );
 

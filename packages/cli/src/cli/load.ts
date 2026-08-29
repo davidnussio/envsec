@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { Command, Options } from "@effect/cli";
 import { bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { Command, Flag as Options } from "effect/unstable/cli";
 import { requireContext } from "./root.js";
 
-const input = Options.text("input").pipe(
+const input = Options.string("input").pipe(
   Options.withAlias("i"),
   Options.withDescription("Input .env file path (default: .env)"),
   Options.withDefault(".env")
@@ -12,7 +12,8 @@ const input = Options.text("input").pipe(
 
 const force = Options.boolean("force").pipe(
   Options.withAlias("f"),
-  Options.withDescription("Overwrite existing secrets without prompting")
+  Options.withDescription("Overwrite existing secrets without prompting"),
+  Options.withDefault(false)
 );
 
 const batch = Options.boolean("batch").pipe(

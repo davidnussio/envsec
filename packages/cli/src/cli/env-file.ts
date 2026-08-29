@@ -1,6 +1,5 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { Command, Options } from "@effect/cli";
 import {
   badge,
   bold,
@@ -10,9 +9,10 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { Command, Flag as Options } from "effect/unstable/cli";
 import { requireContext } from "./root.js";
 
-const output = Options.text("output").pipe(
+const output = Options.string("output").pipe(
   Options.withAlias("o"),
   Options.withDescription("Output file path (default: .env)"),
   Options.withDefault(".env")

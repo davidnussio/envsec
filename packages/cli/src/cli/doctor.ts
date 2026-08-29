@@ -3,7 +3,6 @@ import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir, platform, release } from "node:os";
 import { dirname, join } from "node:path";
-import { Command } from "@effect/cli";
 import {
   badge,
   bold,
@@ -16,6 +15,7 @@ import {
   yellow,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { Command } from "effect/unstable/cli";
 import { isJsonOutput } from "./root.js";
 
 const require = createRequire(import.meta.url);
@@ -265,7 +265,7 @@ const checkDatabaseIntegrity = (
     }
     // If we can list contexts, the DB schema is valid and readable
     const contexts = yield* SecretStore.listContexts().pipe(
-      Effect.catchAll(() => Effect.succeed(null))
+      Effect.catch(() => Effect.succeed(null))
     );
     if (contexts === null) {
       return fail(
@@ -289,14 +289,14 @@ const checkOrphanedSecrets = (
       return pass("Orphaned secrets", "Skipped (no database file yet)");
     }
     const contexts = yield* SecretStore.listContexts().pipe(
-      Effect.catchAll(() =>
+      Effect.catch(() =>
         Effect.succeed([] as Array<{ context: string; count: number }>)
       )
     );
     let orphanCount = 0;
     for (const ctx of contexts) {
       const secrets = yield* SecretStore.list(ctx.context).pipe(
-        Effect.catchAll(() =>
+        Effect.catch(() =>
           Effect.succeed(
             [] as Array<{
               key: string;
@@ -309,7 +309,7 @@ const checkOrphanedSecrets = (
       for (const s of secrets) {
         const result = yield* SecretStore.get(ctx.context, s.key).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false))
+          Effect.catch(() => Effect.succeed(false))
         );
         if (!result) {
           orphanCount++;
@@ -334,7 +334,7 @@ const checkExpiredSecrets = (
       return pass("Expired secrets", "Skipped (no database file yet)");
     }
     const expired = yield* SecretStore.listAllExpiring(0).pipe(
-      Effect.catchAll(() => Effect.succeed([]))
+      Effect.catch(() => Effect.succeed([]))
     );
     if (expired.length > 0) {
       return fail(
@@ -415,13 +415,13 @@ export const doctorCommand = Command.make("doctor", {}, () =>
     const credStore = yield* Effect.tryPromise({
       try: () => checkCredentialStore(),
       catch: (e) => fail("Credential store", `Check failed: ${e}`),
-    }).pipe(Effect.merge);
+    }).pipe(Effect.catch((result) => Effect.succeed(result)));
     results.push(credStore);
 
     const credRW = yield* Effect.tryPromise({
       try: () => checkKeychainReadWrite(),
       catch: (e) => fail("Keychain read/write", `Check failed: ${e}`),
-    }).pipe(Effect.merge);
+    }).pipe(Effect.catch((result) => Effect.succeed(result)));
     results.push(credRW);
 
     // Database checks

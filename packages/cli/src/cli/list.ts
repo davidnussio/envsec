@@ -1,4 +1,3 @@
-import { Command } from "@effect/cli";
 import {
   badge,
   bold,
@@ -8,6 +7,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import { Command } from "effect/unstable/cli";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (

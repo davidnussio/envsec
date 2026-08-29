@@ -1,4 +1,3 @@
-import { Args, Command, Options } from "@effect/cli";
 import {
   badge,
   bold,
@@ -7,11 +6,16 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const pattern = Args.text({ name: "pattern" }).pipe(Args.optional);
+const pattern = Args.string("pattern").pipe(Args.optional);
 
-const to = Options.text("to").pipe(
+const to = Options.string("to").pipe(
   Options.withAlias("t"),
   Options.withDescription("Target context to move secrets to")
 );
@@ -34,7 +38,7 @@ const yes = Options.boolean("yes").pipe(
 );
 
 const readConfirmation = (message: string): Effect.Effect<boolean, Error> =>
-  Effect.async((resume) => {
+  Effect.callback((resume) => {
     process.stdout.write(`${message} [y/N] `);
     process.stdin.resume();
     process.stdin.setEncoding("utf-8");

@@ -18,7 +18,7 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "test": "bash test/e2e-test.sh",
-    "test:unit": "node --test test/*.test.mjs",
+    "test:unit": "pnpm run build && node --test test/*.test.mjs",
     "clean": "rm -rf dist"
   },
   "keywords": [

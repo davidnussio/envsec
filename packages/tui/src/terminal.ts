@@ -138,7 +138,7 @@ const parseKey = (data: Buffer): KeyPress => {
   return { ...base, name: raw };
 };
 
-export const readKey: Effect.Effect<KeyPress> = Effect.async<KeyPress>(
+export const readKey: Effect.Effect<KeyPress> = Effect.callback<KeyPress>(
   (resume) => {
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.isTTY) {
@@ -165,7 +165,7 @@ export const readLine = (
   prompt: string,
   opts?: { mask?: boolean }
 ): Effect.Effect<string | null> =>
-  Effect.async<string | null>((resume) => {
+  Effect.callback<string | null>((resume) => {
     write(prompt);
     const wasRaw = process.stdin.isRaw;
     if (process.stdin.isTTY) {

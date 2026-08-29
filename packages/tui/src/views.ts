@@ -271,7 +271,7 @@ const selectContext = (
 ): Effect.Effect<string | null, never, SecretStore> =>
   Effect.gen(function* () {
     const contexts = yield* SecretStore.listContexts().pipe(
-      Effect.catchAll(() => Effect.succeed([]))
+      Effect.catch(() => Effect.succeed([]))
     );
 
     if (contexts.length === 0) {
@@ -340,7 +340,7 @@ const contextsView = (): Effect.Effect<
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: interactive TUI loop
       Effect.gen(function* () {
         const contexts = yield* SecretStore.listContexts().pipe(
-          Effect.catchAll(() => Effect.succeed([]))
+          Effect.catch(() => Effect.succeed([]))
         );
 
         write(screen.clear);
@@ -450,15 +450,15 @@ const confirmDeleteContext = (
     const key = yield* readKey;
     if (key.name === "y") {
       const secrets = yield* SecretStore.list(context).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
+        Effect.catch(() => Effect.succeed([]))
       );
-      yield* SecretStore.beginBatch().pipe(Effect.catchAll(() => Effect.void));
+      yield* SecretStore.beginBatch().pipe(Effect.catch(() => Effect.void));
       for (const s of secrets) {
         yield* SecretStore.remove(context, s.key).pipe(
-          Effect.catchAll(() => Effect.void)
+          Effect.catch(() => Effect.void)
         );
       }
-      yield* SecretStore.endBatch().pipe(Effect.catchAll(() => Effect.void));
+      yield* SecretStore.endBatch().pipe(Effect.catch(() => Effect.void));
       return true;
     }
     return false;
@@ -480,7 +480,7 @@ const secretsView = (
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: interactive TUI loop
       Effect.gen(function* () {
         const secrets = yield* SecretStore.list(context).pipe(
-          Effect.catchAll(() => Effect.succeed([] as SecretMetadata[]))
+          Effect.catch(() => Effect.succeed([] as SecretMetadata[]))
         );
 
         write(screen.clear);
@@ -598,7 +598,7 @@ const revealSecretView = (
     row++;
 
     const meta = yield* SecretStore.getMetadata(context, key).pipe(
-      Effect.catchAll(() => Effect.succeed(null))
+      Effect.catch(() => Effect.succeed(null))
     );
 
     writeLine(row, ` ${c.bold("Key:")}     ${c.cyan(key)}`);
@@ -633,7 +633,7 @@ const revealSecretView = (
 
         if (k.name === "r") {
           const value = yield* SecretStore.get(context, key).pipe(
-            Effect.catchAll((e) => Effect.succeed(`[error: ${e._tag}]`))
+            Effect.catch((e) => Effect.succeed(`[error: ${e._tag}]`))
           );
           row++;
           writeLine(row, ` ${c.bold("Value:")}   ${c.green(String(value))}`);
@@ -674,7 +674,7 @@ const confirmDelete = (
     const k = yield* readKey;
     if (k.name === "y") {
       yield* SecretStore.remove(context, key).pipe(
-        Effect.catchAll(() => Effect.void)
+        Effect.catch(() => Effect.void)
       );
       return true;
     }
@@ -716,7 +716,7 @@ const addSecretView = (
     let expiresAt: string | null = null;
     if (expiresInput && expiresInput.trim() !== "") {
       const duration = yield* parseDuration(expiresInput.trim()).pipe(
-        Effect.catchAll(() => Effect.succeed(null))
+        Effect.catch(() => Effect.succeed(null))
       );
       if (duration) {
         expiresAt = expiresAtFromNow(duration);
@@ -724,7 +724,7 @@ const addSecretView = (
     }
 
     yield* SecretStore.set(context, key.trim(), value, expiresAt).pipe(
-      Effect.catchAll((e) => {
+      Effect.catch((e) => {
         renderMessage(row + 2, `Error: ${e.message}`, "error");
         return Effect.void;
       })
@@ -763,7 +763,7 @@ const searchView = (
 
     if (context) {
       const results = yield* SecretStore.search(context, pattern.trim()).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
+        Effect.catch(() => Effect.succeed([]))
       );
 
       if (results.length === 0) {
@@ -778,7 +778,7 @@ const searchView = (
       }
     } else {
       const results = yield* SecretStore.searchContexts(pattern.trim()).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
+        Effect.catch(() => Effect.succeed([]))
       );
 
       if (results.length === 0) {
@@ -812,7 +812,7 @@ const commandsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
       // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: interactive TUI loop
       Effect.gen(function* () {
         const commands = yield* SecretStore.listCommands().pipe(
-          Effect.catchAll(() => Effect.succeed([]))
+          Effect.catch(() => Effect.succeed([]))
         );
 
         write(screen.clear);
@@ -870,7 +870,7 @@ const commandsView = (): Effect.Effect<ViewResult, never, SecretStore> =>
           const cmd = commands[selected];
           if (cmd) {
             yield* SecretStore.removeCommand(cmd.name).pipe(
-              Effect.catchAll(() => Effect.void)
+              Effect.catch(() => Effect.void)
             );
           }
         }
@@ -897,7 +897,7 @@ const auditView = (
 
     if (context) {
       const secrets = yield* SecretStore.listExpiring(context, windowMs).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
+        Effect.catch(() => Effect.succeed([]))
       );
 
       if (secrets.length === 0) {
@@ -921,7 +921,7 @@ const auditView = (
       }
     } else {
       const secrets = yield* SecretStore.listAllExpiring(windowMs).pipe(
-        Effect.catchAll(() => Effect.succeed([]))
+        Effect.catch(() => Effect.succeed([]))
       );
 
       if (secrets.length === 0) {
@@ -972,7 +972,7 @@ const renderEnvFileExports = (
     let row = startRow;
 
     const allExports = yield* SecretStore.listEnvFileExports().pipe(
-      Effect.catchAll(() => Effect.succeed([] as EnvFileExport[]))
+      Effect.catch(() => Effect.succeed([] as EnvFileExport[]))
     );
 
     // Prune stale exports (files no longer on disk)
@@ -987,7 +987,7 @@ const renderEnvFileExports = (
     }
     for (const e of stale) {
       yield* SecretStore.removeEnvFileExport(e.path).pipe(
-        Effect.catchAll(() => Effect.void)
+        Effect.catch(() => Effect.void)
       );
     }
 
@@ -1060,7 +1060,7 @@ const importView = (
       try: () => readFileSync(path, "utf-8"),
       catch: () => new Error(`Cannot read file: ${path}`),
     }).pipe(
-      Effect.catchAll((e) => {
+      Effect.catch((e) => {
         renderMessage(row + 1, String(e), "error");
         return Effect.succeed(null);
       })
@@ -1076,7 +1076,7 @@ const importView = (
     const lines = content.split("\n");
     let added = 0;
 
-    yield* SecretStore.beginBatch().pipe(Effect.catchAll(() => Effect.void));
+    yield* SecretStore.beginBatch().pipe(Effect.catch(() => Effect.void));
 
     for (const line of lines) {
       const trimmed = line.trim();
@@ -1094,12 +1094,12 @@ const importView = (
         .replace(/^["']|["']$/g, "");
       const secretKey = key.toLowerCase().replaceAll("_", ".");
       yield* SecretStore.set(context, secretKey, value).pipe(
-        Effect.catchAll(() => Effect.void)
+        Effect.catch(() => Effect.void)
       );
       added++;
     }
 
-    yield* SecretStore.endBatch().pipe(Effect.catchAll(() => Effect.void));
+    yield* SecretStore.endBatch().pipe(Effect.catch(() => Effect.void));
 
     row++;
     renderMessage(row, `Imported ${added} secrets from ${path}`, "success");
@@ -1135,7 +1135,7 @@ const exportView = (
     writeLine(row, ` ${c.dim("Exporting secrets...")}`);
 
     const secrets = yield* SecretStore.list(context).pipe(
-      Effect.catchAll(() => Effect.succeed([] as SecretMetadata[]))
+      Effect.catch(() => Effect.succeed([] as SecretMetadata[]))
     );
 
     if (secrets.length === 0) {
@@ -1150,7 +1150,7 @@ const exportView = (
     const lines: string[] = [];
     for (const item of secrets) {
       const value = yield* SecretStore.get(context, item.key).pipe(
-        Effect.catchAll(() => Effect.succeed(""))
+        Effect.catch(() => Effect.succeed(""))
       );
       const envKey = item.key.toUpperCase().replaceAll(".", "_");
       const escaped = String(value)
@@ -1164,7 +1164,7 @@ const exportView = (
       try: () => writeFileSync(path, `${lines.join("\n")}\n`, "utf-8"),
       catch: () => new Error(`Failed to write: ${path}`),
     }).pipe(
-      Effect.catchAll((e) => {
+      Effect.catch((e) => {
         renderMessage(row + 1, String(e), "error");
         return Effect.void;
       })
@@ -1172,7 +1172,7 @@ const exportView = (
 
     const absolutePath = resolve(path);
     yield* SecretStore.trackEnvFileExport(context, absolutePath).pipe(
-      Effect.catchAll(() => Effect.void)
+      Effect.catch(() => Effect.void)
     );
 
     row++;

@@ -1,5 +1,4 @@
 import { randomBytes } from "node:crypto";
-import { Args, Command, Options } from "@effect/cli";
 import {
   bold,
   dim,
@@ -12,9 +11,14 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { optionalContext } from "./root.js";
 
-const key = Args.text({ name: "key" }).pipe(Args.optional);
+const key = Args.string("key").pipe(Args.optional);
 
 const lengthOption = Options.integer("length").pipe(
   Options.withAlias("l"),
@@ -22,7 +26,7 @@ const lengthOption = Options.integer("length").pipe(
   Options.withDefault(32)
 );
 
-const prefixOption = Options.text("prefix").pipe(
+const prefixOption = Options.string("prefix").pipe(
   Options.withAlias("p"),
   Options.withDescription(
     'Prefix to prepend to the generated secret (e.g. "sk_")'
@@ -30,7 +34,7 @@ const prefixOption = Options.text("prefix").pipe(
   Options.optional
 );
 
-const expiresOption = Options.text("expires").pipe(
+const expiresOption = Options.string("expires").pipe(
   Options.withAlias("e"),
   Options.withDescription("Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)"),
   Options.optional
