@@ -5,7 +5,7 @@ import {
   SecretStore,
   type UnsupportedPlatformError,
 } from "@envsec/core";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Effect, ManagedRuntime } from "effect";
 import type { EnvsecClientOptions } from "./types.js";
 
 function toEnvKey(key: string): string {
@@ -49,7 +49,7 @@ export class EnvsecClient {
     const dbLayer = opts.dbPath
       ? DatabaseConfigFrom(opts.dbPath)
       : DatabaseConfigDefault;
-    const storeLayer = SecretStore.Default.pipe(Layer.provide(dbLayer));
+    const storeLayer = SecretStore.layer(dbLayer);
     const runtime = ManagedRuntime.make(storeLayer);
     const contexts = Array.isArray(opts.context)
       ? opts.context
@@ -62,13 +62,11 @@ export class EnvsecClient {
    * searches right-to-left (last context wins).
    */
   get(key: string): Promise<string | null> {
+    const contexts = this.contexts;
     return this.runtime.runPromise(
-      Effect.gen(this, function* () {
-        for (let i = this.contexts.length - 1; i >= 0; i--) {
-          const value = yield* SecretStore.get(
-            this.contexts[i] as string,
-            key
-          ).pipe(
+      Effect.gen(function* () {
+        for (let i = contexts.length - 1; i >= 0; i--) {
+          const value = yield* SecretStore.get(contexts[i] as string, key).pipe(
             Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
           );
           if (value !== null) {

@@ -7,6 +7,7 @@
     "start": "turbo run start",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
     "clean": "turbo run clean",
     "check": "turbo run check",
     "fix": "turbo run fix",
@@ -24,6 +25,12 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      "@effect/platform-node": "4.0.0-rc.112",
+      "effect": "4.0.0-rc.112"
+    }
+  },
   "workspaces": [
     "packages/*",
     "apps/*"

@@ -1,13 +1,13 @@
 import { createRequire } from "node:module";
-import { Command } from "@effect/cli";
-import { NodeContext, NodeRuntime } from "@effect/platform-node";
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import {
   DatabaseConfigDefault,
   DatabaseConfigFrom,
   refreshCache,
   SecretStore,
 } from "@envsec/core";
-import { Console, Effect, Layer } from "effect";
+import { Console, Effect, type Layer } from "effect";
+import { Command } from "effect/unstable/cli";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";
@@ -59,10 +59,9 @@ const command = rootCommand.pipe(
   ])
 );
 
-const cli = Command.run(command, {
-  name: "envsec",
+const cli = Command.runWith(command, {
   version: pkg.version,
-});
+})(process.argv.slice(2));
 
 const interceptCompletions = (): ShellType | null => {
   const idx = process.argv.indexOf("--completions");
@@ -105,9 +104,9 @@ const isMutatingCommand = (): boolean => {
   return args.some((a) => MUTATING_COMMANDS.has(a));
 };
 
-export const runCli = (
-  customDbPath: string | undefined,
-  cachePath: string
+export const runCliWithLayer = (
+  cachePath: string,
+  secretStoreLayer: Layer.Layer<SecretStore, unknown>
 ): void => {
   const shell = interceptCompletions();
   const complete = interceptComplete();
@@ -117,11 +116,6 @@ export const runCli = (
     Console.log(generateCompletions(shell, bin)).pipe(NodeRuntime.runMain);
     return;
   }
-
-  const dbLayer = customDbPath
-    ? DatabaseConfigFrom(customDbPath)
-    : DatabaseConfigDefault;
-  const secretStoreLayer = SecretStore.Default.pipe(Layer.provide(dbLayer));
 
   if (complete) {
     handleComplete(complete.type, complete.arg, cachePath).pipe(
@@ -134,12 +128,23 @@ export const runCli = (
   const shouldRefreshCache = isMutatingCommand();
 
   const program = shouldRefreshCache
-    ? cli(process.argv).pipe(Effect.tap(() => refreshCache(cachePath)))
-    : cli(process.argv);
+    ? cli.pipe(Effect.tap(() => refreshCache(cachePath)))
+    : cli;
 
   program.pipe(
     Effect.provide(secretStoreLayer),
-    Effect.provide(NodeContext.layer),
+    Effect.provide(NodeServices.layer),
     NodeRuntime.runMain
   );
+};
+
+export const runCli = (
+  customDbPath: string | undefined,
+  cachePath: string
+): void => {
+  const dbLayer = customDbPath
+    ? DatabaseConfigFrom(customDbPath)
+    : DatabaseConfigDefault;
+
+  runCliWithLayer(cachePath, SecretStore.layer(dbLayer));
 };

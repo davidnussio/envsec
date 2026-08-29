@@ -1,9 +1,9 @@
-import { Args, Command } from "@effect/cli";
 import { bold, dim, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import { Argument as Args, Command } from "effect/unstable/cli";
 import { isJsonOutput, optionalContext } from "./root.js";
 
-const pattern = Args.text({ name: "pattern" });
+const pattern = Args.string("pattern");
 
 export const searchCommand = Command.make(
   "search",

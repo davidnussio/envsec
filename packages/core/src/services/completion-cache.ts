@@ -37,4 +37,4 @@ export const refreshCache = (
     const dir = dirname(cachePath);
     mkdirSync(dir, { recursive: true, mode: DIR_PERMISSIONS });
     writeFileSync(cachePath, JSON.stringify(data), { mode: FILE_PERMISSIONS });
-  }).pipe(Effect.catchAll(() => Effect.void));
+  }).pipe(Effect.catch(() => Effect.void));

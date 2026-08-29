@@ -533,4 +533,4 @@ const make = Effect.gen(function* () {
   });
 });
 
-export const SqliteMetadataStoreLive = Layer.scoped(MetadataStore, make);
+export const SqliteMetadataStoreLive = Layer.effect(MetadataStore, make);

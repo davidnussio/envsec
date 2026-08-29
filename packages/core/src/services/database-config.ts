@@ -6,10 +6,10 @@ export interface DatabaseConfigShape {
   readonly path: string;
 }
 
-export class DatabaseConfig extends Context.Tag("DatabaseConfig")<
+export class DatabaseConfig extends Context.Service<
   DatabaseConfig,
   DatabaseConfigShape
->() {}
+>()("envsec/DatabaseConfig") {}
 
 const defaultDbPath = join(homedir(), ".envsec", "store.sqlite");
 

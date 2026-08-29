@@ -5,12 +5,16 @@ on:
     branches: [main]
     paths:
       - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
   pull_request:
     branches: [main]
     paths:
       - "packages/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "turbo.json"
 
@@ -43,6 +47,9 @@ jobs:
 
       - name: Run E2E tests
         run: bash packages/cli/test/e2e-test.sh
+        env:
+          ENVSEC_E2E_CLI: ${{ github.workspace }}/packages/cli/dist/main.js
+          ENVSEC_E2E_ISOLATED: "0"
 
   e2e-windows:
     runs-on: windows-latest
@@ -56,3 +63,6 @@ jobs:
       - name: Run E2E tests
         shell: pwsh
         run: ./packages/cli/test/e2e-test.ps1
+        env:
+          ENVSEC_E2E_CLI: ${{ github.workspace }}/packages/cli/dist/main.js
+          ENVSEC_E2E_ISOLATED: "0"

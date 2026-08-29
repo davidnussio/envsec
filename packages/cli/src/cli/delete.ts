@@ -1,9 +1,13 @@
-import { Args, Command, Options } from "@effect/cli";
 import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { requireContext } from "./root.js";
 
-const key = Args.text({ name: "key" }).pipe(Args.optional);
+const key = Args.string("key").pipe(Args.optional);
 
 const yes = Options.boolean("yes").pipe(
   Options.withAlias("y"),
@@ -17,7 +21,7 @@ const all = Options.boolean("all").pipe(
 );
 
 const readConfirmation = (message: string): Effect.Effect<boolean, Error> =>
-  Effect.async((resume) => {
+  Effect.callback((resume) => {
     process.stdout.write(`${message} [y/N] `);
     process.stdin.resume();
     process.stdin.setEncoding("utf-8");

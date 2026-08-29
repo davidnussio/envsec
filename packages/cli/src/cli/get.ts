@@ -1,4 +1,3 @@
-import { Args, Command, Options } from "@effect/cli";
 import {
   bold,
   formatTimeDistance,
@@ -7,9 +6,14 @@ import {
   yellow,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
+import {
+  Argument as Args,
+  Command,
+  Flag as Options,
+} from "effect/unstable/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const key = Args.text({ name: "key" });
+const key = Args.string("key");
 
 const quiet = Options.boolean("quiet").pipe(
   Options.withAlias("q"),

@@ -21,26 +21,38 @@ const reservedNames = new Set([
 ]);
 
 export const ContextName = Schema.String.pipe(
-  Schema.filter((s) => s.length > 0 || "Context name cannot be empty"),
-  Schema.filter(
-    (s) =>
-      s.length <= maxLength ||
-      `Context name is too long (${s.length} chars, max ${maxLength})`
+  Schema.check(
+    Schema.makeFilter(
+      (s: string) => s.length > 0 || "Context name cannot be empty"
+    )
   ),
-  Schema.filter(
-    (s) =>
-      !(s.includes("/") || s.includes("\\")) ||
-      String.raw`Context name "${s}" must not contain path separators (/ or \)`
+  Schema.check(
+    Schema.makeFilter(
+      (s: string) =>
+        s.length <= maxLength ||
+        `Context name is too long (${s.length} chars, max ${maxLength})`
+    )
   ),
-  Schema.filter(
-    (s) =>
-      !reservedNames.has(s) ||
-      `Context name "${s}" is reserved and cannot be used`
+  Schema.check(
+    Schema.makeFilter(
+      (s: string) =>
+        !(s.includes("/") || s.includes("\\")) ||
+        String.raw`Context name "${s}" must not contain path separators (/ or \)`
+    )
   ),
-  Schema.filter(
-    (s) =>
-      contextPattern.test(s) ||
-      `Context name "${s}" is invalid — use only alphanumeric characters, dots, hyphens, and underscores (e.g. "myapp.dev", "stripe-api.prod")`
+  Schema.check(
+    Schema.makeFilter(
+      (s: string) =>
+        !reservedNames.has(s) ||
+        `Context name "${s}" is reserved and cannot be used`
+    )
+  ),
+  Schema.check(
+    Schema.makeFilter(
+      (s: string) =>
+        contextPattern.test(s) ||
+        `Context name "${s}" is invalid — use only alphanumeric characters, dots, hyphens, and underscores (e.g. "myapp.dev", "stripe-api.prod")`
+    )
   ),
   Schema.brand("ContextName")
 );

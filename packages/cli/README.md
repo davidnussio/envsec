@@ -558,9 +558,23 @@ node packages/cli/dist/main.js --help
 
 ### Run e2e tests
 
+The default suite uses temporary SQLite and file-backed credential fixtures, so
+it does not access your native credential store:
+
 ```bash
 pnpm --filter envsec test
 ```
+
+To exercise the real macOS or Linux credential-store adapter, build first and
+opt in explicitly:
+
+```bash
+ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \
+  ENVSEC_E2E_ISOLATED=0 \
+  pnpm --filter envsec test
+```
+
+Native E2E tests use dedicated `test.e2e*` contexts and remove them afterward.
 
 ## Contributing
 

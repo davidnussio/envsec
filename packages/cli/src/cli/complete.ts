@@ -43,4 +43,4 @@ export const handleComplete = (
 
     // Rebuild cache after slow path query
     yield* refreshCache(cachePath);
-  }).pipe(Effect.catchAll(() => Effect.void));
+  }).pipe(Effect.catch(() => Effect.void));

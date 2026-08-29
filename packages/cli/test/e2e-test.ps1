@@ -11,7 +11,13 @@ param()
 $ErrorActionPreference = "Continue"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$CLI = Join-Path $ScriptDir ".." "dist" "main.js"
+if ($env:ENVSEC_E2E_CLI) {
+    $CLI = $env:ENVSEC_E2E_CLI
+    if (-not $env:ENVSEC_E2E_ISOLATED) { $env:ENVSEC_E2E_ISOLATED = "0" }
+} else {
+    $CLI = Join-Path $ScriptDir "e2e-main.mjs"
+    $env:ENVSEC_E2E_ISOLATED = "1"
+}
 $CTX = "test.e2e"
 $CTX2 = "test.e2e-second"
 $script:PASS = 0
@@ -112,10 +118,12 @@ function Cleanup-Secrets {
     & node $CLI cmd delete "test-multi" 2>$null | Out-Null
 }
 
-Cleanup-Secrets
-
 $TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "envsec-e2e-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
 New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
+$env:ENVSEC_DB = Join-Path $TmpDir "store.sqlite"
+$env:ENVSEC_E2E_KEYCHAIN = Join-Path $TmpDir "keychain.json"
+
+Cleanup-Secrets
 
 try {
 
@@ -603,9 +611,12 @@ Run-Ok @("-c", $CTX_STALE, "add", "stale.secret", "-v", "will-be-orphaned") | Ou
 $out = Run-Ok @("-c", $CTX_STALE, "get", "stale.secret")
 Assert-Eq "stale: get before removal" "will-be-orphaned" $out.Trim()
 
-# Delete directly from Windows Credential Manager (bypass envsec), leaving metadata orphaned
-# target = envsec:<service>/<account> where service = envsec.<context>.<prefix>, account = <last part>
-& cmd /c "cmdkey /delete:`"envsec:envsec.${CTX_STALE}.stale/secret`"" 2>$null | Out-Null
+# Delete directly from the credential store (bypass envsec), leaving metadata orphaned.
+if ($env:ENVSEC_E2E_ISOLATED -eq "1") {
+    & node $CLI "__e2e_delete_keychain" "envsec.${CTX_STALE}.stale" "secret" | Out-Null
+} else {
+    & cmd /c "cmdkey /delete:`"envsec:envsec.${CTX_STALE}.stale/secret`"" 2>$null | Out-Null
+}
 
 # get should fail with a helpful message suggesting delete
 $out = Run-All @("-c", $CTX_STALE, "get", "stale.secret")
@@ -859,30 +870,34 @@ Run-Ok @("-c", $CTX_CDST, "delete", "--all", "-y") | Out-Null
 Write-Host ""
 Write-Host "── 20. DOCTOR ──"
 
-# Basic doctor run should succeed
-$out = Run-Ok @("doctor")
-$ec = $LASTEXITCODE
-Assert-ExitCode "doctor: exit 0" 0 $ec
-Assert-Contains "doctor: shows version" "Version" $out
-Assert-Contains "doctor: shows platform" "Platform" $out
-Assert-Contains "doctor: shows node" "Node.js" $out
-Assert-Contains "doctor: shows credential store" "Credential store" $out
-Assert-Contains "doctor: shows database" "Database" $out
-Assert-Contains "doctor: shows integrity" "integrity" $out
-Assert-Contains "doctor: shows orphaned" "Orphaned" $out
-Assert-Contains "doctor: shows expired" "Expired" $out
-Assert-Contains "doctor: all passed" "passed" $out
+if ($env:ENVSEC_E2E_ISOLATED -eq "1") {
+    Write-Host "  ⚠ Skipping doctor tests with the isolated credential-store fixture" -ForegroundColor Yellow
+} else {
+    # Basic doctor run should succeed
+    $out = Run-Ok @("doctor")
+    $ec = $LASTEXITCODE
+    Assert-ExitCode "doctor: exit 0" 0 $ec
+    Assert-Contains "doctor: shows version" "Version" $out
+    Assert-Contains "doctor: shows platform" "Platform" $out
+    Assert-Contains "doctor: shows node" "Node.js" $out
+    Assert-Contains "doctor: shows credential store" "Credential store" $out
+    Assert-Contains "doctor: shows database" "Database" $out
+    Assert-Contains "doctor: shows integrity" "integrity" $out
+    Assert-Contains "doctor: shows orphaned" "Orphaned" $out
+    Assert-Contains "doctor: shows expired" "Expired" $out
+    Assert-Contains "doctor: all passed" "passed" $out
 
-# JSON output
-$out = Run-Ok @("--json", "doctor")
-Assert-Contains "doctor json: is array" "[" $out
-Assert-Contains "doctor json: has name" '"name"' $out
-Assert-Contains "doctor json: has ok" '"ok"' $out
+    # JSON output
+    $out = Run-Ok @("--json", "doctor")
+    Assert-Contains "doctor json: is array" "[" $out
+    Assert-Contains "doctor json: has name" '"name"' $out
+    Assert-Contains "doctor json: has ok" '"ok"' $out
 
-# Doctor with custom --db
-$DoctorDb = Join-Path $TmpDir "doctor-test.sqlite"
-$out = Run-Ok @("--db", $DoctorDb, "doctor")
-Assert-Contains "doctor --db: shows database" "Database" $out
+    # Doctor with custom --db
+    $DoctorDb = Join-Path $TmpDir "doctor-test.sqlite"
+    $out = Run-Ok @("--db", $DoctorDb, "doctor")
+    Assert-Contains "doctor --db: shows database" "Database" $out
+}
 
 # ─── 21. SECRET (generate & store) ────────────────────────────────────────────
 Write-Host ""

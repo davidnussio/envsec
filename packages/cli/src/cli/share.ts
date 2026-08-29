@@ -1,6 +1,5 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { Command, Options } from "@effect/cli";
 import {
   badge,
   bold,
@@ -11,15 +10,16 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
+import { Command, Flag as Options } from "effect/unstable/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const encryptTo = Options.text("encrypt-to").pipe(
+const encryptTo = Options.string("encrypt-to").pipe(
   Options.withDescription(
     "GPG recipient key (email, key ID, or fingerprint) to encrypt for"
   )
 );
 
-const output = Options.text("output").pipe(
+const output = Options.string("output").pipe(
   Options.withAlias("o"),
   Options.withDescription(
     "Output file path (default: stdout). Use - for stdout explicitly"

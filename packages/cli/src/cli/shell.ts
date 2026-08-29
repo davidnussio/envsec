@@ -1,13 +1,13 @@
 import { execFileSync, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
-import { Command, Options } from "@effect/cli";
 import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { Command, Flag as Options } from "effect/unstable/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { requireContext } from "./root.js";
 
-const shellOption = Options.text("shell").pipe(
+const shellOption = Options.string("shell").pipe(
   Options.withAlias("s"),
   Options.withDescription(
     "Shell to spawn (bash, zsh, fish, powershell). Default: auto-detect"
@@ -132,7 +132,7 @@ export const shellCommand = Command.make(
         );
       }
 
-      yield* Effect.async<void, never>((resume) => {
+      yield* Effect.callback<void, never>((resume) => {
         const child = spawn(bin, args, {
           env: childEnv,
           stdio: "inherit",

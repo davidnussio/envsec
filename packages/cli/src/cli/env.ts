@@ -1,4 +1,3 @@
-import { Command, Options } from "@effect/cli";
 import {
   badge,
   bold,
@@ -7,6 +6,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
+import { Command, Flag as Options } from "effect/unstable/cli";
 import { requireContext } from "./root.js";
 
 type Shell = "bash" | "zsh" | "fish" | "powershell";

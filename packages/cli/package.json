@@ -18,6 +18,7 @@
     "check": "ultracite check",
     "fix": "ultracite fix",
     "test": "bash test/e2e-test.sh",
+    "test:unit": "pnpm run build && node --test test/*.test.mjs",
     "clean": "rm -rf dist"
   },
   "keywords": [
@@ -50,10 +51,8 @@
   "dependencies": {
     "@envsec/core": "workspace:*",
     "@envsec/tui": "workspace:*",
-    "@effect/cli": "^0.75.0",
-    "@effect/platform": "^0.96.0",
-    "@effect/platform-node": "^0.106.0",
-    "effect": "^3.21.0",
+    "@effect/platform-node": "4.0.0-rc.112",
+    "effect": "4.0.0-rc.112",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {

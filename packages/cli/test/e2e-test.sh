@@ -9,7 +9,13 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CLI="$SCRIPT_DIR/../dist/main.js"
+if [[ -n "${ENVSEC_E2E_CLI:-}" ]]; then
+  CLI="$ENVSEC_E2E_CLI"
+  export ENVSEC_E2E_ISOLATED="${ENVSEC_E2E_ISOLATED:-0}"
+else
+  CLI="$SCRIPT_DIR/e2e-main.mjs"
+  export ENVSEC_E2E_ISOLATED=1
+fi
 CTX="test.e2e"
 CTX2="test.e2e-second"
 PASS=0
@@ -36,11 +42,12 @@ cleanup_secrets() {
   node "$CLI" cmd delete "test-multi" >/dev/null 2>&1 || true
 }
 
-cleanup_secrets
-
-# Create tmpdir AFTER initial cleanup so it survives
 TMPDIR_TEST=$(mktemp -d)
+export ENVSEC_DB="$TMPDIR_TEST/store.sqlite"
+export ENVSEC_E2E_KEYCHAIN="$TMPDIR_TEST/keychain.json"
 trap 'cleanup_secrets; rm -rf "$TMPDIR_TEST"' EXIT
+
+cleanup_secrets
 
 green()  { printf "\033[32m%s\033[0m\n" "$1"; }
 red()    { printf "\033[31m%s\033[0m\n" "$1"; }
@@ -597,7 +604,7 @@ Expire-Date: 0
 %commit
 GPGEOF
 
-  GNUPGHOME="$GPG_HOME" gpg --batch --gen-key "$GPG_HOME/keygen-params" 2>/dev/null
+  if GNUPGHOME="$GPG_HOME" gpg --batch --gen-key "$GPG_HOME/keygen-params" 2>/dev/null; then
 
   # Seed secrets for share test
   run_ok -c "$CTX" add db.password -v "sharepass123" >/dev/null
@@ -644,6 +651,9 @@ GPGEOF
   ec=0
   out=$(GNUPGHOME="$GPG_HOME" run_all -c "$CTX" share --encrypt-to nonexistent-key@invalid 2>&1) || ec=$?
   assert_exit "share: invalid GPG key fails" "1" "$ec"
+  else
+    echo "  ⚠ Unable to create an isolated GPG key — skipping share tests"
+  fi
 
   # Clean up GPG home
   rm -rf "$GPG_HOME"
@@ -664,9 +674,10 @@ run_ok -c "$CTX_STALE" add stale.secret -v "will-be-orphaned" >/dev/null
 out=$(run_ok -c "$CTX_STALE" get stale.secret)
 assert_eq "stale: get before removal" "will-be-orphaned" "$out"
 
-# Delete directly from OS keychain (bypass envsec), leaving metadata orphaned
-# service = envsec.<context>.<prefix>, account = <last part>
-if [[ "$(uname)" == "Darwin" ]]; then
+# Delete directly from the credential store (bypass envsec), leaving metadata orphaned.
+if [[ "$ENVSEC_E2E_ISOLATED" == "1" ]]; then
+  node "$CLI" __e2e_delete_keychain "envsec.${CTX_STALE}.stale" "secret"
+elif [[ "$(uname)" == "Darwin" ]]; then
   security delete-generic-password -s "envsec.${CTX_STALE}.stale" -a "secret" >/dev/null 2>&1 || true
 else
   secret-tool clear service "envsec.${CTX_STALE}.stale" account "secret" >/dev/null 2>&1 || true
@@ -927,8 +938,10 @@ run_ok -c "$CTX_CDST" delete --all -y >/dev/null || true
 echo ""
 echo "── 20. DOCTOR ──"
 
-# Skip doctor tests on Linux in CI (hangs in GitHub Actions)
-if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "${CI:-}" ]]; then
+# Doctor probes the native credential store directly and cannot use the injected fixture.
+if [[ "$ENVSEC_E2E_ISOLATED" == "1" ]]; then
+  echo "  ⚠ Skipping doctor tests with the isolated credential-store fixture"
+elif [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "${CI:-}" ]]; then
   echo "  ⚠ Skipping doctor tests on Linux CI (known to hang in GitHub Actions)"
 else
   # Basic doctor run should succeed
