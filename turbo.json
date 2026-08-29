@@ -13,7 +13,11 @@
     "lint": { "dependsOn": ["^build"] },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts"]
+      "inputs": ["src/**/*.ts", "test/**"]
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "test/**"]
     },
     "clean": { "cache": false }
   }

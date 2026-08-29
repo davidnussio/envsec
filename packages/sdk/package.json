@@ -41,6 +41,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
+    "test:unit": "tsc --noEmit -p tsconfig.test.json",
     "clean": "rm -rf dist"
   },
   "dependencies": {

@@ -39,6 +39,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
+    "test:unit": "node --test test/*.test.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {
