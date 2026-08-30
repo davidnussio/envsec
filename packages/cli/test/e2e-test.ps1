@@ -120,7 +120,8 @@ function Cleanup-Secrets {
 
 $TmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "envsec-e2e-$([System.Guid]::NewGuid().ToString('N').Substring(0,8))"
 New-Item -ItemType Directory -Path $TmpDir -Force | Out-Null
-$env:ENVSEC_DB = Join-Path $TmpDir "store.sqlite"
+$PrimaryDb = Join-Path $TmpDir "store.sqlite"
+$env:ENVSEC_DB = $PrimaryDb
 $env:ENVSEC_E2E_KEYCHAIN = Join-Path $TmpDir "keychain.json"
 
 Cleanup-Secrets
@@ -477,7 +478,7 @@ Assert-Eq "ENVSEC_DB: get" "envvar-value" $out.Trim()
 # --db flag takes precedence over ENVSEC_DB
 $out = Run-Ok @("--db", $CustomDb, "-c", $CTX, "get", "db.custom")
 Assert-Eq "db flag precedence over ENVSEC_DB" "custom-value" $out.Trim()
-$env:ENVSEC_DB = $null
+$env:ENVSEC_DB = $PrimaryDb
 
 if (Test-Path $CustomDb) {
     Green "db flag: file created"; $script:PASS++
@@ -489,7 +490,7 @@ if (Test-Path $CustomDb) {
 Run-Ok @("--db", $CustomDb, "-c", $CTX, "delete", "-y", "db.custom") | Out-Null
 $env:ENVSEC_DB = $CustomDb2
 Run-Ok @("-c", $CTX, "delete", "-y", "db.envvar") | Out-Null
-$env:ENVSEC_DB = $null
+$env:ENVSEC_DB = $PrimaryDb
 
 # ─── 13. SECRET EXPIRY & AUDIT ───────────────────────────────────────────────
 Write-Host ""
