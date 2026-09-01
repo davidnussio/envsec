@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-01",
+    description:
+      "How envsec completes contexts, keys and saved commands at Tab time in bash, zsh and fish, what each shell makes awkward, and the latency budget.",
+    readingTime: "7 min read",
+    slug: "dynamic-shell-completions",
+    tags: ["shell", "cli-design"],
+    title: "Dynamic tab completion in bash, zsh and fish",
+  },
+  {
     date: "2026-08-28",
     description:
       "How envsec parses expiry durations like 1y6mo (and why a month is 30 days), and how its secret command avoids modulo bias. With the entropy math.",
