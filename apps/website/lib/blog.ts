@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-04",
+    description:
+      "One release tag, seven Bun targets, npm, Homebrew and mise: how the envsec release workflow ships a TypeScript CLI, and what it still does not do.",
+    readingTime: "6 min read",
+    slug: "shipping-a-bun-binary",
+    tags: ["shipping", "bun"],
+    title: "Shipping one CLI to Homebrew, npm, mise and a standalone binary",
+  },
+  {
     date: "2026-09-01",
     description:
       "How envsec completes contexts, keys and saved commands at Tab time in bash, zsh and fish, what each shell makes awkward, and the latency budget.",
