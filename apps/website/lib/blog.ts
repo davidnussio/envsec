@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-08",
+    description:
+      "How envsec's end-to-end tests reach the real macOS Keychain, GNOME Keyring and Windows Credential Manager on GitHub Actions, and what broke along the way.",
+    readingTime: "7 min read",
+    slug: "testing-keychains-in-ci",
+    tags: ["shipping", "cross-platform"],
+    title: "Testing a keychain CLI on macOS, Linux and Windows in CI",
+  },
+  {
     date: "2026-09-04",
     description:
       "One release tag, seven Bun targets, npm, Homebrew and mise: how the envsec release workflow ships a TypeScript CLI, and what it still does not do.",
