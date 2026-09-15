@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-15",
+    description:
+      "envsec keeps secret values in the OS keychain and names, expiry and export records in SQLite: why, what that reveals, and what happens when one write fails.",
+    readingTime: "7 min read",
+    slug: "keychain-for-values-sqlite-for-metadata",
+    tags: ["internals", "performance"],
+    title: "Why secret values live in the keychain and metadata in SQLite",
+  },
+  {
     date: "2026-09-11",
     description:
       "How envsec is built on effect/cli in Effect 4: commands, flags, shared options, services and layers, typed errors with exit codes, and tests.",
