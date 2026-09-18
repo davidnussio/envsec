@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-18",
+    description:
+      "How envsec stores secrets through macOS security, Linux secret-tool and Windows CredWrite behind one Effect service, and why every value is base64.",
+    readingTime: "8 min read",
+    slug: "one-cli-three-keychains",
+    tags: ["internals", "cross-platform"],
+    title: "One CLI, three keychains",
+  },
+  {
     date: "2026-09-15",
     description:
       "envsec keeps secret values in the OS keychain and names, expiry and export records in SQLite: why, what that reveals, and what happens when one write fails.",
