@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-22",
+    description:
+      "An honest threat model for envsec: what the OS keychain protects, and what it doesn't: same-user processes, environment variables, argv, metadata, env-file.",
+    readingTime: "7 min read",
+    slug: "envsec-threat-model",
+    tags: ["security", "shell"],
+    title: "What envsec does not protect you from",
+  },
+  {
     date: "2026-09-18",
     description:
       "How envsec stores secrets through macOS security, Linux secret-tool and Windows CredWrite behind one Effect service, and why every value is base64.",
