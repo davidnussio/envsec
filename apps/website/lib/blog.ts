@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-25",
+    description:
+      "A step-by-step migration of a Node or Next.js project from a dotenv file to the OS keychain with envsec load, run, cmd and shell.",
+    readingTime: "6 min read",
+    slug: "migrate-from-dotenv-to-keychain",
+    tags: ["guides", "shell"],
+    title: "From .env to the keychain in five minutes",
+  },
+  {
     date: "2026-09-22",
     description:
       "An honest threat model for envsec: what the OS keychain protects, and what it doesn't: same-user processes, environment variables, argv, metadata, env-file.",
