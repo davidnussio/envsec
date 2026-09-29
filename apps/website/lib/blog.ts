@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-09-29",
+    description:
+      "Where dotenv, direnv, 1Password CLI and envsec keep secrets, how they get them into a process, and when each one is the better choice.",
+    readingTime: "7 min read",
+    slug: "envsec-vs-dotenv-1password-direnv",
+    tags: ["comparisons", "security"],
+    title: "envsec vs dotenv vs 1Password CLI vs direnv: which one, when",
+  },
+  {
     date: "2026-09-25",
     description:
       "A step-by-step migration of a Node or Next.js project from a dotenv file to the OS keychain with envsec load, run, cmd and shell.",
