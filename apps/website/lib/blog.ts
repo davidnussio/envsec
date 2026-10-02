@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
   {
+    date: "2026-10-02",
+    description:
+      "Coding agents read files and run commands as you. How a plaintext .env gets exposed, what moving it to the OS keychain fixes, and what it can't.",
+    readingTime: "6 min read",
+    slug: "ai-coding-agents-read-your-env",
+    tags: ["ai", "security"],
+    title: "Your coding agent can read your .env",
+  },
+  {
     date: "2026-09-29",
     description:
       "Where dotenv, direnv, 1Password CLI and envsec keep secrets, how they get them into a process, and when each one is the better choice.",
