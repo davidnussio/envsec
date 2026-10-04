@@ -24,6 +24,8 @@ import { isJsonOutput } from "./root.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string };
+// The Effect runtime actually resolved at run time (not the declared range).
+const effectPkg = require("effect/package.json") as { version: string };
 
 interface CheckResult {
   readonly detail?: string;
@@ -405,6 +407,7 @@ export const doctorCommand = Command.make("doctor", {}, () =>
     // Sync checks
     const results: CheckResult[] = [
       pass("Version", pkg.version),
+      pass("Effect", effectPkg.version),
       checkPlatform(),
       checkNodeVersion(),
       checkShell(),

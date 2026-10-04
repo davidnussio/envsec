@@ -638,6 +638,7 @@ envsec --json doctor
 
 The `doctor` command verifies your envsec installation is working correctly. It checks:
 
+- envsec and Effect runtime versions
 - Platform support and Node.js version
 - Credential store availability (macOS Keychain, Linux secret-tool, Windows cmdkey)
 - Keychain read/write access
