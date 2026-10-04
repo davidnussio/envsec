@@ -142,16 +142,18 @@ export const moveCommand = Command.make(
         yield* checkConflicts(to, keys);
       }
 
-      yield* SecretStore.beginBatch();
       let moved = 0;
-      for (const key of keys) {
-        const value = yield* SecretStore.get(sourceCtx, key);
-        const meta = yield* SecretStore.getMetadata(sourceCtx, key);
-        yield* SecretStore.set(to, key, value, meta.expires_at);
-        yield* SecretStore.remove(sourceCtx, key);
-        moved++;
-      }
-      yield* SecretStore.endBatch();
+      yield* SecretStore.withBatch(
+        Effect.gen(function* () {
+          for (const key of keys) {
+            const value = yield* SecretStore.get(sourceCtx, key);
+            const meta = yield* SecretStore.getMetadata(sourceCtx, key);
+            yield* SecretStore.set(to, key, value, meta.expires_at);
+            yield* SecretStore.remove(sourceCtx, key);
+            moved++;
+          }
+        })
+      );
 
       if (jsonMode) {
         yield* Console.log(

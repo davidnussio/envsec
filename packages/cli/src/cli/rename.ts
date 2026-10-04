@@ -43,10 +43,11 @@ export const renameCommand = Command.make(
         );
       }
 
-      yield* SecretStore.beginBatch();
-      yield* SecretStore.set(ctx, newKey, value, meta.expires_at);
-      yield* SecretStore.remove(ctx, oldKey);
-      yield* SecretStore.endBatch();
+      yield* SecretStore.withBatch(
+        SecretStore.set(ctx, newKey, value, meta.expires_at).pipe(
+          Effect.andThen(SecretStore.remove(ctx, oldKey))
+        )
+      );
 
       if (jsonMode) {
         yield* Console.log(

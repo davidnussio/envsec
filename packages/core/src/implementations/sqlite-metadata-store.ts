@@ -59,6 +59,8 @@ const persist = (db: Database, dbPath: string) => {
 
 const make = Effect.gen(function* () {
   const { path: dbPath } = yield* DatabaseConfig;
+  let batching = false;
+  let dirty = false;
   const db = yield* Effect.acquireRelease(
     Effect.tryPromise({
       try: () => initDb(dbPath),
@@ -68,10 +70,15 @@ const make = Effect.gen(function* () {
           message: `Failed to initialize database: ${error}`,
         }),
     }),
-    (db) => Effect.sync(() => db.close())
+    // Flush changes left pending by a batch that never reached endBatch
+    // (failure or interruption), so metadata stays in sync with the keychain.
+    (db) =>
+      Effect.try(() => {
+        if (dirty) {
+          persist(db, dbPath);
+        }
+      }).pipe(Effect.ignore, Effect.ensuring(Effect.sync(() => db.close())))
   );
-  let batching = false;
-  let dirty = false;
   const maybePersist = () => {
     if (batching) {
       dirty = true;

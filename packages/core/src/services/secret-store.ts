@@ -1,6 +1,6 @@
 import { Context, Effect, Layer } from "effect";
 import { parse as parseSecretKey } from "../domain/secret-key.js";
-import { SecretNotFoundError } from "../errors.js";
+import { type MetadataStoreError, SecretNotFoundError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
 import {
@@ -152,6 +152,17 @@ export class SecretStore extends Context.Service<SecretStore>()(
         yield* metadata.endBatch();
       });
 
+      /** Run `effect` with metadata writes batched into a single persist.
+       *  The batch is always closed, even if `effect` fails or is interrupted. */
+      const withBatch = <A, E, R>(
+        effect: Effect.Effect<A, E, R>
+      ): Effect.Effect<A, E | MetadataStoreError, R> =>
+        Effect.acquireUseRelease(
+          metadata.beginBatch(),
+          () => effect,
+          () => metadata.endBatch()
+        );
+
       const listExpiring = Effect.fn("SecretStore.listExpiring")(function* (
         context: string,
         withinMs: number
@@ -199,6 +210,7 @@ export class SecretStore extends Context.Service<SecretStore>()(
         removeCommand,
         beginBatch,
         endBatch,
+        withBatch,
         listExpiring,
         listAllExpiring,
         trackEnvFileExport,
@@ -275,6 +287,9 @@ export class SecretStore extends Context.Service<SecretStore>()(
   static readonly beginBatch = () => this.use((store) => store.beginBatch());
 
   static readonly endBatch = () => this.use((store) => store.endBatch());
+
+  static readonly withBatch = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+    this.use((store) => store.withBatch(effect));
 
   static readonly listExpiring = (context: string, withinMs: number) =>
     this.use((store) => store.listExpiring(context, withinMs));

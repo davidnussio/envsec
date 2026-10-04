@@ -64,11 +64,12 @@ const handler = ({
         }
       }
 
-      yield* SecretStore.beginBatch();
-      yield* Effect.forEach(keys, (k) => SecretStore.remove(ctx, k.key), {
-        concurrency: 1,
-      });
-      yield* SecretStore.endBatch();
+      yield* SecretStore.withBatch(
+        Effect.forEach(keys, (k) => SecretStore.remove(ctx, k.key), {
+          concurrency: 1,
+          discard: true,
+        })
+      );
       yield* Console.log(
         `${icons.trash} Removed ${badge(keys.length, "secret")} from context ${bold(`"${ctx}"`)}`
       );

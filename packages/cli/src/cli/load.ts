@@ -65,41 +65,37 @@ export const loadCommand = Command.make(
       const existingSecrets = yield* SecretStore.list(ctx);
       const existingKeys = new Set(existingSecrets.map((item) => item.key));
 
-      if (batch) {
-        yield* SecretStore.beginBatch();
-      }
+      const importAll = Effect.gen(function* () {
+        for (const line of lines) {
+          const parsed = parseLine(line);
+          if (!parsed) {
+            continue;
+          }
 
-      for (const line of lines) {
-        const parsed = parseLine(line);
-        if (!parsed) {
-          continue;
+          const secretKey = parsed.key.toLowerCase().replaceAll("_", ".");
+
+          const exists = existingKeys.has(secretKey);
+
+          if (exists && !force) {
+            yield* Console.log(
+              `${icons.warning} Skipped ${bold(`"${secretKey}"`)}: already exists (use --force to overwrite)`
+            );
+            skipped++;
+            continue;
+          }
+
+          if (exists) {
+            overwritten++;
+          } else {
+            added++;
+          }
+
+          yield* SecretStore.set(ctx, secretKey, parsed.value);
+          existingKeys.add(secretKey);
         }
+      });
 
-        const secretKey = parsed.key.toLowerCase().replaceAll("_", ".");
-
-        const exists = existingKeys.has(secretKey);
-
-        if (exists && !force) {
-          yield* Console.log(
-            `${icons.warning} Skipped ${bold(`"${secretKey}"`)}: already exists (use --force to overwrite)`
-          );
-          skipped++;
-          continue;
-        }
-
-        if (exists) {
-          overwritten++;
-        } else {
-          added++;
-        }
-
-        yield* SecretStore.set(ctx, secretKey, parsed.value);
-        existingKeys.add(secretKey);
-      }
-
-      if (batch) {
-        yield* SecretStore.endBatch();
-      }
+      yield* batch ? SecretStore.withBatch(importAll) : importAll;
 
       yield* Console.log(
         `${icons.success} Done: ${bold(String(added))} added, ${bold(String(overwritten))} overwritten, ${bold(String(skipped))} skipped`

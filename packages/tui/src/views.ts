@@ -452,13 +452,16 @@ const confirmDeleteContext = (
       const secrets = yield* SecretStore.list(context).pipe(
         Effect.catch(() => Effect.succeed([]))
       );
-      yield* SecretStore.beginBatch().pipe(Effect.catch(() => Effect.void));
-      for (const s of secrets) {
-        yield* SecretStore.remove(context, s.key).pipe(
-          Effect.catch(() => Effect.void)
-        );
-      }
-      yield* SecretStore.endBatch().pipe(Effect.catch(() => Effect.void));
+      yield* SecretStore.withBatch(
+        Effect.forEach(
+          secrets,
+          (s) =>
+            SecretStore.remove(context, s.key).pipe(
+              Effect.catch(() => Effect.void)
+            ),
+          { discard: true }
+        )
+      ).pipe(Effect.catch(() => Effect.void));
       return true;
     }
     return false;
@@ -1075,34 +1078,53 @@ const importView = (
 
     const lines = content.split("\n");
     let added = 0;
+    let failed = 0;
 
-    yield* SecretStore.beginBatch().pipe(Effect.catch(() => Effect.void));
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed === "" || trimmed.startsWith("#")) {
-        continue;
+    const importAll = Effect.gen(function* () {
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed === "" || trimmed.startsWith("#")) {
+          continue;
+        }
+        const eqIndex = trimmed.indexOf("=");
+        if (eqIndex === -1) {
+          continue;
+        }
+        const key = trimmed.slice(0, eqIndex).trim();
+        const value = trimmed
+          .slice(eqIndex + 1)
+          .trim()
+          .replace(/^["']|["']$/g, "");
+        const secretKey = key.toLowerCase().replaceAll("_", ".");
+        const stored = yield* SecretStore.set(context, secretKey, value).pipe(
+          Effect.as(true),
+          Effect.catch(() => Effect.succeed(false))
+        );
+        if (stored) {
+          added++;
+        } else {
+          failed++;
+        }
       }
-      const eqIndex = trimmed.indexOf("=");
-      if (eqIndex === -1) {
-        continue;
-      }
-      const key = trimmed.slice(0, eqIndex).trim();
-      const value = trimmed
-        .slice(eqIndex + 1)
-        .trim()
-        .replace(/^["']|["']$/g, "");
-      const secretKey = key.toLowerCase().replaceAll("_", ".");
-      yield* SecretStore.set(context, secretKey, value).pipe(
-        Effect.catch(() => Effect.void)
-      );
-      added++;
-    }
+    });
 
-    yield* SecretStore.endBatch().pipe(Effect.catch(() => Effect.void));
+    const batchOk = yield* SecretStore.withBatch(importAll).pipe(
+      Effect.as(true),
+      Effect.catch(() => Effect.succeed(false))
+    );
 
     row++;
-    renderMessage(row, `Imported ${added} secrets from ${path}`, "success");
+    if (batchOk && failed === 0) {
+      renderMessage(row, `Imported ${added} secrets from ${path}`, "success");
+    } else if (batchOk) {
+      renderMessage(
+        row,
+        `Imported ${added} secrets from ${path}, ${failed} failed`,
+        "error"
+      );
+    } else {
+      renderMessage(row, "Failed to save secret metadata", "error");
+    }
     row += 2;
     writeLine(row, ` ${c.dim("Press any key to continue...")}`);
     yield* readKey;

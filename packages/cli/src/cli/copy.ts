@@ -142,15 +142,17 @@ export const copyCommand = Command.make(
         yield* checkConflicts(to, keys);
       }
 
-      yield* SecretStore.beginBatch();
       let copied = 0;
-      for (const key of keys) {
-        const value = yield* SecretStore.get(sourceCtx, key);
-        const meta = yield* SecretStore.getMetadata(sourceCtx, key);
-        yield* SecretStore.set(to, key, value, meta.expires_at);
-        copied++;
-      }
-      yield* SecretStore.endBatch();
+      yield* SecretStore.withBatch(
+        Effect.gen(function* () {
+          for (const key of keys) {
+            const value = yield* SecretStore.get(sourceCtx, key);
+            const meta = yield* SecretStore.getMetadata(sourceCtx, key);
+            yield* SecretStore.set(to, key, value, meta.expires_at);
+            copied++;
+          }
+        })
+      );
 
       if (jsonMode) {
         yield* Console.log(
