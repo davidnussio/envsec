@@ -19,33 +19,39 @@ const run = (args: string[], stdin?: string) =>
   Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
-  >((resume) => {
-    const child = execFile("secret-tool", args, (error, stdout, stderr) => {
-      if (error && "code" in error && error.code === "ENOENT") {
+  >((resume, signal) => {
+    // `signal` aborts on fiber interruption, which kills the child process.
+    const child = execFile(
+      "secret-tool",
+      args,
+      { signal },
+      (error, stdout, stderr) => {
+        if (error && "code" in error && error.code === "ENOENT") {
+          resume(
+            Effect.fail(
+              new KeychainError({
+                command: args[0] ?? "unknown",
+                stderr: "secret-tool not found. Install libsecret-tools.",
+                message:
+                  "secret-tool is not installed. Install it with your package manager (e.g. apt install libsecret-tools).",
+              })
+            )
+          );
+          return;
+        }
+        let exitCode = 0;
+        if (error) {
+          exitCode = typeof error.code === "number" ? error.code : 1;
+        }
         resume(
-          Effect.fail(
-            new KeychainError({
-              command: args[0] ?? "unknown",
-              stderr: "secret-tool not found. Install libsecret-tools.",
-              message:
-                "secret-tool is not installed. Install it with your package manager (e.g. apt install libsecret-tools).",
-            })
-          )
+          Effect.succeed({
+            exitCode,
+            stdout,
+            stderr,
+          })
         );
-        return;
       }
-      let exitCode = 0;
-      if (error) {
-        exitCode = typeof error.code === "number" ? error.code : 1;
-      }
-      resume(
-        Effect.succeed({
-          exitCode,
-          stdout,
-          stderr,
-        })
-      );
-    });
+    );
 
     // secret-tool store reads the password from stdin
     if (stdin !== undefined) {
@@ -97,8 +103,19 @@ const make = KeychainAccess.of({
       account,
     ]);
 
-    // secret-tool returns exit 0 with empty stdout when not found
-    if (result.exitCode !== 0 || result.stdout === "") {
+    // A missing item gives empty output and no diagnostics (exit 0 or 1,
+    // depending on the libsecret version). Anything on stderr with a
+    // non-zero exit (locked keyring, D-Bus unavailable, …) is a real error
+    // and must not be reported as "not found".
+    if (result.exitCode !== 0 && result.stderr.trim() !== "") {
+      return yield* new KeychainError({
+        command: "lookup",
+        stderr: result.stderr,
+        message: `Failed to read secret: ${service}/${account}`,
+      });
+    }
+
+    if (result.stdout === "") {
       return yield* new SecretNotFoundError({
         key: account,
         context: service,

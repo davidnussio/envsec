@@ -19,11 +19,12 @@ const runPowerShell = (script: string) =>
   Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
-  >((resume) => {
+  >((resume, signal) => {
+    // `signal` aborts on fiber interruption, which kills the child process.
     execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-Command", script],
-      { maxBuffer: 1 * 1024 * 1024 }, // 1MB buffer for large scripts
+      { maxBuffer: 1 * 1024 * 1024, signal }, // 1MB buffer for large scripts
       (error, stdout, stderr) => {
         if (error && "code" in error && error.code === "ENOENT") {
           resume(
@@ -61,6 +62,9 @@ const runPowerShell = (script: string) =>
  */
 const escapePS = (s: string): string =>
   s.replaceAll("\0", "").replaceAll("'", "''");
+
+/** Exit code used by the read script when the credential does not exist. */
+const NOT_FOUND_EXIT_CODE = 2;
 
 const targetName = (service: string, account: string) =>
   `envsec:${service}/${account}`;
@@ -181,7 +185,12 @@ const make = KeychainAccess.of({
       "  }",
       "  public static string Read(string target) {",
       "    IntPtr ptr;",
-      "    if (!CredRead(target, 1, 0, out ptr)) return null;",
+      "    if (!CredRead(target, 1, 0, out ptr)) {",
+      "      var err = Marshal.GetLastWin32Error();",
+      // ERROR_NOT_FOUND: any other failure is a real error, not "not found"
+      "      if (err == 1168) return null;",
+      "      throw new System.ComponentModel.Win32Exception(err);",
+      "    }",
       "    var c = (CREDENTIAL)Marshal.PtrToStructure(ptr, typeof(CREDENTIAL));",
       "    var pw = Marshal.PtrToStringUni(c.CredentialBlob, c.CredentialBlobSize / 2);",
       "    CredFree(ptr);",
@@ -190,17 +199,25 @@ const make = KeychainAccess.of({
       "}",
       `'@`,
       `$result = [CredManager]::Read('${target}')`,
-      "if ($result -eq $null) { exit 1 }",
+      `if ($result -eq $null) { exit ${NOT_FOUND_EXIT_CODE} }`,
       "Write-Output $result",
     ].join("\n");
 
     const result = yield* runPowerShell(script);
 
-    if (result.exitCode !== 0) {
+    if (result.exitCode === NOT_FOUND_EXIT_CODE) {
       return yield* new SecretNotFoundError({
         key: account,
         context: service,
         message: `Secret not found: ${service}/${account}`,
+      });
+    }
+
+    if (result.exitCode !== 0) {
+      return yield* new KeychainError({
+        command: "CredReadW",
+        stderr: result.stderr || result.stdout,
+        message: `Failed to read credential: ${service}/${account}`,
       });
     }
 

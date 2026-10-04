@@ -7,8 +7,9 @@ const run = (args: string[]) =>
   Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
     KeychainError
-  >((resume) => {
-    execFile("security", args, (error, stdout, stderr) => {
+  >((resume, signal) => {
+    // `signal` aborts on fiber interruption, which kills the child process.
+    execFile("security", args, { signal }, (error, stdout, stderr) => {
       if (error && typeof error.code === "string") {
         resume(
           Effect.fail(
