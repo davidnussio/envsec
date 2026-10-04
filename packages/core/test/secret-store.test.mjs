@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -9,6 +9,7 @@ import {
   KeychainAccess,
   MetadataStore,
   MetadataStoreError,
+  refreshCache,
   SecretNotFoundError,
   SecretStore,
   SqliteMetadataStoreLive,
@@ -158,3 +159,15 @@ test("a failed metadata write removes a newly created secret", async () => {
 
   assert.equal(entries.has("envsec.app.db/password"), false);
 });
+
+test("refreshCache never fails the caller when the cache cannot be written", () =>
+  withTempDb(async (databasePath) => {
+    // A regular file where the cache directory should be makes mkdir throw.
+    const blocker = `${databasePath}.blocker`;
+    writeFileSync(blocker, "");
+    await Effect.runPromise(
+      refreshCache(join(blocker, "cache", "completions.json")).pipe(
+        Effect.provide(storeLayer(databasePath))
+      )
+    );
+  }));

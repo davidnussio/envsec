@@ -11,10 +11,8 @@ const DIR_PERMISSIONS = 0o700;
  * Called after mutating operations (add, delete, load, cmd save, etc.)
  * and after slow-path completion queries.
  */
-export const refreshCache = (
-  cachePath: string
-): Effect.Effect<void, never, SecretStore> =>
-  Effect.gen(function* () {
+export const refreshCache = Effect.fn("refreshCache")(
+  function* (cachePath: string) {
     const contexts = yield* SecretStore.listContexts();
     const contextNames = contexts.map((c) => c.context);
 
@@ -34,7 +32,15 @@ export const refreshCache = (
       updatedAt: Date.now(),
     };
 
-    const dir = dirname(cachePath);
-    mkdirSync(dir, { recursive: true, mode: DIR_PERMISSIONS });
-    writeFileSync(cachePath, JSON.stringify(data), { mode: FILE_PERMISSIONS });
-  }).pipe(Effect.catch(() => Effect.void));
+    // Effect.try turns a throwing fs call into a typed failure; a bare throw
+    // inside the generator would be a defect that Effect.ignore cannot catch.
+    yield* Effect.try(() => {
+      mkdirSync(dirname(cachePath), { recursive: true, mode: DIR_PERMISSIONS });
+      writeFileSync(cachePath, JSON.stringify(data), {
+        mode: FILE_PERMISSIONS,
+      });
+    });
+  },
+  // The completion cache is best-effort: never fail the calling command.
+  (effect) => Effect.ignore(effect)
+);
