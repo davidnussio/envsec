@@ -14,7 +14,7 @@ import {
   type SecretMetadata,
   SecretStore,
 } from "@envsec/core";
-import { Effect } from "effect";
+import { Effect, Option } from "effect";
 import {
   renderEmpty,
   renderFooter,
@@ -716,25 +716,26 @@ const addSecretView = (
 
     write(cursor.hide);
 
-    let expiresAt: string | null = null;
-    if (expiresInput && expiresInput.trim() !== "") {
-      const duration = yield* parseDuration(expiresInput.trim()).pipe(
-        Effect.catch(() => Effect.succeed(null))
-      );
-      if (duration) {
-        expiresAt = expiresAtFromNow(duration);
-      }
-    }
-
-    yield* SecretStore.set(context, key.trim(), value, expiresAt).pipe(
-      Effect.catch((e) => {
-        renderMessage(row + 2, `Error: ${e.message}`, "error");
-        return Effect.void;
+    // An invalid duration is reported instead of silently storing the
+    // secret without an expiry.
+    const outcome = yield* Effect.gen(function* () {
+      const expiresAt =
+        expiresInput && expiresInput.trim() !== ""
+          ? expiresAtFromNow(yield* parseDuration(expiresInput.trim()))
+          : null;
+      yield* SecretStore.set(context, key.trim(), value, expiresAt);
+    }).pipe(
+      Effect.match({
+        onFailure: (e) => ({ ok: false, message: `Error: ${e.message}` }),
+        onSuccess: () => ({
+          ok: true,
+          message: `Secret "${key.trim()}" stored`,
+        }),
       })
     );
 
     row += 2;
-    renderMessage(row, `Secret "${key.trim()}" stored`, "success");
+    renderMessage(row, outcome.message, outcome.ok ? "success" : "error");
     row++;
     writeLine(row, ` ${c.dim("Press any key to continue...")}`);
     yield* readKey;
@@ -1170,39 +1171,51 @@ const exportView = (
     }
 
     const lines: string[] = [];
+    const unreadable: string[] = [];
     for (const item of secrets) {
       const value = yield* SecretStore.get(context, item.key).pipe(
-        Effect.catch(() => Effect.succeed(""))
+        Effect.option
       );
+      if (Option.isNone(value)) {
+        unreadable.push(item.key);
+        continue;
+      }
       const envKey = item.key.toUpperCase().replaceAll(".", "_");
-      const escaped = String(value)
+      const escaped = value.value
         .replaceAll("\\", "\\\\")
         .replaceAll('"', '\\"')
         .replaceAll("\n", "\\n");
       lines.push(`${envKey}="${escaped}"`);
     }
 
-    yield* Effect.try({
-      try: () => writeFileSync(path, `${lines.join("\n")}\n`, "utf-8"),
-      catch: () => new Error(`Failed to write: ${path}`),
-    }).pipe(
-      Effect.catch((e) => {
-        renderMessage(row + 1, String(e), "error");
-        return Effect.void;
-      })
-    );
-
-    const absolutePath = resolve(path);
-    yield* SecretStore.trackEnvFileExport(context, absolutePath).pipe(
-      Effect.catch(() => Effect.void)
-    );
+    // Never write a .env with silently empty values: abort if any secret
+    // could not be read, and only track exports that were actually written.
+    const outcome =
+      unreadable.length > 0
+        ? {
+            ok: false,
+            message: `Cannot read ${unreadable.length} secret(s): ${unreadable.join(", ")}. Nothing exported.`,
+          }
+        : yield* Effect.try({
+            try: () => writeFileSync(path, `${lines.join("\n")}\n`, "utf-8"),
+            catch: () => new Error(`Failed to write: ${path}`),
+          }).pipe(
+            Effect.tap(() =>
+              SecretStore.trackEnvFileExport(context, resolve(path)).pipe(
+                Effect.ignore
+              )
+            ),
+            Effect.match({
+              onFailure: (e) => ({ ok: false, message: e.message }),
+              onSuccess: () => ({
+                ok: true,
+                message: `Exported ${lines.length} secrets to ${path}`,
+              }),
+            })
+          );
 
     row++;
-    renderMessage(
-      row,
-      `Exported ${lines.length} secrets to ${path}`,
-      "success"
-    );
+    renderMessage(row, outcome.message, outcome.ok ? "success" : "error");
     row += 2;
     writeLine(row, ` ${c.dim("Press any key to continue...")}`);
     yield* readKey;
