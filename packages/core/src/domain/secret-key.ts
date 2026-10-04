@@ -1,4 +1,5 @@
 import { Effect } from "effect";
+
 import { InvalidKeyError } from "../errors.js";
 
 export interface ParsedKey {
@@ -11,11 +12,11 @@ export interface ParsedKey {
  * Prevents shell metacharacters, path separators, and other injection vectors
  * from reaching OS credential store CLIs.
  */
-const segmentPattern = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/;
+const segmentPattern = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/u;
 
 const maxKeyLength = 256;
 
-export const parse = Effect.fn("SecretKey.parse")(function* (
+export const parse = Effect.fn("SecretKey.parse")(function* parse(
   key: string,
   env: string
 ) {
@@ -66,5 +67,5 @@ export const parse = Effect.fn("SecretKey.parse")(function* (
       ? `envsec.${env}.${serviceParts.join(".")}`
       : `envsec.${env}`;
 
-  return { service, account } satisfies ParsedKey;
+  return { account, service } satisfies ParsedKey;
 });

@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import nodePath from "node:path";
+
 import { Context, Layer } from "effect";
 
 export interface DatabaseConfigShape {
@@ -11,7 +12,7 @@ export class DatabaseConfig extends Context.Service<
   DatabaseConfigShape
 >()("envsec/DatabaseConfig") {}
 
-const defaultDbPath = join(homedir(), ".envsec", "store.sqlite");
+const defaultDbPath = nodePath.join(homedir(), ".envsec", "store.sqlite");
 
 export const DatabaseConfigDefault = Layer.succeed(DatabaseConfig, {
   path: defaultDbPath,

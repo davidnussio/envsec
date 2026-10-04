@@ -3,17 +3,19 @@ import {
   DatabaseConfigDefault,
   DatabaseConfigFrom,
   expiresAtFromNow,
-  type MetadataStoreError,
   parseDuration,
   SecretStore,
-  type UnsupportedPlatformError,
+} from "@envsec/core";
+import type {
+  MetadataStoreError,
+  UnsupportedPlatformError,
 } from "@envsec/core";
 import { Effect, ManagedRuntime, Schema } from "effect";
+
 import type { EnvsecClientOptions } from "./types.js";
 
-function toEnvKey(key: string): string {
-  return key.toUpperCase().replaceAll(".", "_").replaceAll("-", "_");
-}
+const toEnvKey = (key: string): string =>
+  key.toUpperCase().replaceAll(".", "_").replaceAll("-", "_");
 
 type StoreError = UnsupportedPlatformError | MetadataStoreError;
 
@@ -90,10 +92,10 @@ export class EnvsecClient {
    * searches right-to-left (last context wins).
    */
   get(key: string): Promise<string | null> {
-    const contexts = this.contexts;
+    const { contexts } = this;
     return this.runtime.runPromise(
-      Effect.gen(function* () {
-        for (let i = contexts.length - 1; i >= 0; i--) {
+      Effect.gen(function* get() {
+        for (let i = contexts.length - 1; i >= 0; i -= 1) {
           const value = yield* SecretStore.get(contexts[i] as string, key).pipe(
             Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
           );
@@ -126,7 +128,7 @@ export class EnvsecClient {
     const context = this.primaryContext;
     const expires = opts?.expires;
     return this.runtime.runPromise(
-      Effect.gen(function* () {
+      Effect.gen(function* set() {
         const expiresAt =
           expires === undefined
             ? undefined
@@ -148,21 +150,24 @@ export class EnvsecClient {
    * secrets are merged left-to-right (later contexts override).
    */
   async loadAll(): Promise<Record<string, string>> {
-    const result: Record<string, string> = {};
-    for (const ctx of this.contexts) {
-      const entries = await this.runtime.runPromise(SecretStore.list(ctx));
-      for (const entry of entries) {
-        const value = await this.runtime.runPromise(
-          SecretStore.get(ctx, entry.key).pipe(
-            Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
-          )
-        );
-        if (value !== null) {
-          result[entry.key] = value;
+    const { contexts } = this;
+    return await this.runtime.runPromise(
+      Effect.gen(function* loadAll() {
+        const result: Record<string, string> = {};
+        for (const ctx of contexts) {
+          const entries = yield* SecretStore.list(ctx);
+          for (const entry of entries) {
+            const value = yield* SecretStore.get(ctx, entry.key).pipe(
+              Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
+            );
+            if (value !== null) {
+              result[entry.key] = value;
+            }
+          }
         }
-      }
-    }
-    return result;
+        return result;
+      })
+    );
   }
 
   async injectEnv(): Promise<void> {

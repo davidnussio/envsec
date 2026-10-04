@@ -23,9 +23,7 @@ pnpm add @envsec/core
 
 ## Architecture
 
-Built with [Effect 4](https://effect.website) using the layered service pattern.
-The workspace currently pins `effect@4.0.0-rc.112` while Effect 4 is in
-release-candidate status.
+Built with [Effect 4](https://effect.website) using the layered service pattern. The workspace currently pins `effect@4.0.0-rc.112` while Effect 4 is in release-candidate status.
 
 1. **Services** define interfaces as `Context.Service`
 2. **Implementations** provide concrete `Layer` instances
@@ -33,11 +31,11 @@ release-candidate status.
 
 ## Supported Platforms
 
-| OS      | Backend                    | Tool / API                        |
-|---------|----------------------------|-----------------------------------|
-| macOS   | Keychain                   | `security` CLI                    |
-| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)         |
-| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32)  |
+| OS      | Backend                    | Tool / API                       |
+| ------- | -------------------------- | -------------------------------- |
+| macOS   | Keychain                   | `security` CLI                   |
+| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
+| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
 
 ## License
 

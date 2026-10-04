@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import path from "node:path";
+
 import { Effect } from "effect";
+
 import { SecretStore } from "./secret-store.js";
 
 const FILE_PERMISSIONS = 0o600;
@@ -12,7 +14,7 @@ const DIR_PERMISSIONS = 0o700;
  * and after slow-path completion queries.
  */
 export const refreshCache = Effect.fn("refreshCache")(
-  function* (cachePath: string) {
+  function* refreshCache(cachePath: string) {
     const contexts = yield* SecretStore.listContexts();
     const contextNames = contexts.map((c) => c.context);
 
@@ -35,7 +37,10 @@ export const refreshCache = Effect.fn("refreshCache")(
     // Effect.try turns a throwing fs call into a typed failure; a bare throw
     // inside the generator would be a defect that Effect.ignore cannot catch.
     yield* Effect.try(() => {
-      mkdirSync(dirname(cachePath), { recursive: true, mode: DIR_PERMISSIONS });
+      mkdirSync(path.dirname(cachePath), {
+        mode: DIR_PERMISSIONS,
+        recursive: true,
+      });
       writeFileSync(cachePath, JSON.stringify(data), {
         mode: FILE_PERMISSIONS,
       });

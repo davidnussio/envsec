@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
+
 import { Effect, Layer } from "effect";
+
 import { KeychainError, SecretNotFoundError } from "../errors.js";
 import { KeychainAccess } from "../services/keychain-access.js";
 
@@ -24,17 +26,19 @@ const runPowerShell = (script: string) =>
     execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-Command", script],
-      { maxBuffer: 1 * 1024 * 1024, signal }, // 1MB buffer for large scripts
+      // 1MB buffer for large scripts
+      { maxBuffer: 1 * 1024 * 1024, signal },
+      // oxlint-disable-next-line promise/prefer-await-to-callbacks -- Effect.callback bridges execFile's callback API; the AbortSignal kills the child on interruption
       (error, stdout, stderr) => {
         if (error && "code" in error && error.code === "ENOENT") {
           resume(
             Effect.fail(
               new KeychainError({
-                command: "powershell",
-                stderr: "powershell.exe not found",
                 cause: error,
+                command: "powershell",
                 message:
                   "PowerShell is not available. Ensure you are running on Windows.",
+                stderr: "powershell.exe not found",
               })
             )
           );
@@ -47,8 +51,8 @@ const runPowerShell = (script: string) =>
         resume(
           Effect.succeed({
             exitCode,
-            stdout,
             stderr,
+            stdout,
           })
         );
       }
@@ -138,28 +142,7 @@ const credDeleteScript = (target: string) =>
   ].join("\n");
 
 const make = KeychainAccess.of({
-  set: Effect.fn("WindowsCredentialManagerAccess.set")(function* (
-    service: string,
-    account: string,
-    password: string
-  ) {
-    const target = escapePS(targetName(service, account));
-    const user = escapePS(account);
-    const pass = escapePS(password);
-
-    const script = credWriteScript(target, user, pass);
-    const result = yield* runPowerShell(script);
-
-    if (result.exitCode !== 0) {
-      return yield* new KeychainError({
-        command: "CredWriteW",
-        stderr: result.stderr || result.stdout,
-        message: `Failed to store credential: ${service}/${account}`,
-      });
-    }
-  }),
-
-  get: Effect.fn("WindowsCredentialManagerAccess.get")(function* (
+  get: Effect.fn("WindowsCredentialManagerAccess.get")(function* get(
     service: string,
     account: string
   ) {
@@ -213,8 +196,8 @@ const make = KeychainAccess.of({
 
     if (result.exitCode === NOT_FOUND_EXIT_CODE) {
       return yield* new SecretNotFoundError({
-        key: account,
         context: service,
+        key: account,
         message: `Secret not found: ${service}/${account}`,
       });
     }
@@ -222,15 +205,15 @@ const make = KeychainAccess.of({
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
         command: "CredReadW",
-        stderr: result.stderr || result.stdout,
         message: `Failed to read credential: ${service}/${account}`,
+        stderr: result.stderr || result.stdout,
       });
     }
 
     return result.stdout.trim();
   }),
 
-  remove: Effect.fn("WindowsCredentialManagerAccess.remove")(function* (
+  remove: Effect.fn("WindowsCredentialManagerAccess.remove")(function* remove(
     service: string,
     account: string
   ) {
@@ -242,8 +225,29 @@ const make = KeychainAccess.of({
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
         command: "CredDeleteW",
-        stderr: result.stderr || result.stdout,
         message: `Failed to remove credential: ${service}/${account}`,
+        stderr: result.stderr || result.stdout,
+      });
+    }
+  }),
+
+  set: Effect.fn("WindowsCredentialManagerAccess.set")(function* set(
+    service: string,
+    account: string,
+    password: string
+  ) {
+    const target = escapePS(targetName(service, account));
+    const user = escapePS(account);
+    const pass = escapePS(password);
+
+    const script = credWriteScript(target, user, pass);
+    const result = yield* runPowerShell(script);
+
+    if (result.exitCode !== 0) {
+      return yield* new KeychainError({
+        command: "CredWriteW",
+        message: `Failed to store credential: ${service}/${account}`,
+        stderr: result.stderr || result.stdout,
       });
     }
   }),

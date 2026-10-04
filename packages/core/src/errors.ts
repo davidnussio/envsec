@@ -1,7 +1,9 @@
+/* oxlint-disable max-classes-per-file, unicorn/throw-new-error -- one module for all domain errors; `Schema.TaggedError<Self>()(...)` is a class factory, not a throwable call */
 import { Runtime, Schema } from "effect";
 
 export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>()(
   "SecretNotFoundError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     key: Schema.String,
     context: Schema.String,
@@ -11,6 +13,7 @@ export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>
 
 export class KeychainError extends Schema.TaggedError<KeychainError>()(
   "KeychainError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     command: Schema.String,
     stderr: Schema.String,
@@ -22,6 +25,7 @@ export class KeychainError extends Schema.TaggedError<KeychainError>()(
 
 export class MetadataStoreError extends Schema.TaggedError<MetadataStoreError>()(
   "MetadataStoreError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     operation: Schema.String,
     message: Schema.String,
@@ -40,6 +44,7 @@ export class InvalidKeyError extends Schema.TaggedError<InvalidKeyError>()(
 
 export class CommandNotFoundError extends Schema.TaggedError<CommandNotFoundError>()(
   "CommandNotFoundError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     name: Schema.String,
     message: Schema.String,
@@ -77,6 +82,7 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
 
 export class MissingSecretsError extends Schema.TaggedError<MissingSecretsError>()(
   "MissingSecretsError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     keys: Schema.Array(Schema.String),
     context: Schema.String,
@@ -86,6 +92,7 @@ export class MissingSecretsError extends Schema.TaggedError<MissingSecretsError>
 
 export class UnsupportedPlatformError extends Schema.TaggedError<UnsupportedPlatformError>()(
   "UnsupportedPlatformError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     platform: Schema.String,
     message: Schema.String,
@@ -94,6 +101,7 @@ export class UnsupportedPlatformError extends Schema.TaggedError<UnsupportedPlat
 
 export class FileAccessError extends Schema.TaggedError<FileAccessError>()(
   "FileAccessError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     path: Schema.String,
     message: Schema.String,
@@ -104,6 +112,7 @@ export class FileAccessError extends Schema.TaggedError<FileAccessError>()(
 
 export class ExpiredSecretError extends Schema.TaggedError<ExpiredSecretError>()(
   "ExpiredSecretError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     key: Schema.String,
     context: Schema.String,
@@ -122,6 +131,7 @@ export class InvalidDurationError extends Schema.TaggedError<InvalidDurationErro
 
 export class GPGEncryptionError extends Schema.TaggedError<GPGEncryptionError>()(
   "GPGEncryptionError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     recipient: Schema.String,
     message: Schema.String,
@@ -132,6 +142,7 @@ export class GPGEncryptionError extends Schema.TaggedError<GPGEncryptionError>()
 
 export class ShellNotFoundError extends Schema.TaggedError<ShellNotFoundError>()(
   "ShellNotFoundError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     shell: Schema.String,
     message: Schema.String,

@@ -10,9 +10,9 @@ import type { LoadSecretsOptions, WithSecretsOptions } from "./types.js";
  * @example — inject at startup
  * await loadSecrets({ context: 'myapp.prod', inject: true })
  */
-export async function loadSecrets(
+export const loadSecrets = async (
   opts: LoadSecretsOptions
-): Promise<Record<string, string>> {
+): Promise<Record<string, string>> => {
   const client = await EnvsecClient.create(opts);
   try {
     const secrets = await client.loadAll();
@@ -23,7 +23,7 @@ export async function loadSecrets(
   } finally {
     await client.close();
   }
-}
+};
 
 /**
  * Run a callback with secrets. process.env is restored after the callback.
@@ -33,10 +33,10 @@ export async function loadSecrets(
  *   return fetch(secrets['api.url'])
  * })
  */
-export async function withSecrets<T>(
+export const withSecrets = async <T>(
   opts: WithSecretsOptions,
   fn: (secrets: Record<string, string>) => Promise<T>
-): Promise<T> {
+): Promise<T> => {
   const client = await EnvsecClient.create(opts);
   const snapshot = opts.inject ? { ...process.env } : null;
   try {
@@ -49,11 +49,11 @@ export async function withSecrets<T>(
     if (snapshot) {
       for (const key of Object.keys(process.env)) {
         if (!(key in snapshot)) {
-          delete process.env[key];
+          Reflect.deleteProperty(process.env, key);
         }
       }
       Object.assign(process.env, snapshot);
     }
     await client.close();
   }
-}
+};

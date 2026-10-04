@@ -1,4 +1,6 @@
-import { Context, type Effect } from "effect";
+import { Context } from "effect";
+import type { Effect } from "effect";
+
 import type {
   CommandNotFoundError,
   MetadataStoreError,
@@ -34,21 +36,21 @@ export class MetadataStore extends Context.Service<
     readonly search: (
       env: string,
       pattern: string
-    ) => Effect.Effect<Array<{ key: string }>, MetadataStoreError>;
+    ) => Effect.Effect<{ key: string }[], MetadataStoreError>;
     readonly list: (
       env: string
     ) => Effect.Effect<
-      Array<{ key: string; updated_at: string; expires_at: string | null }>,
+      { key: string; updated_at: string; expires_at: string | null }[],
       MetadataStoreError
     >;
     readonly searchContexts: (
       pattern: string
     ) => Effect.Effect<
-      Array<{ context: string; count: number }>,
+      { context: string; count: number }[],
       MetadataStoreError
     >;
     readonly listContexts: () => Effect.Effect<
-      Array<{ context: string; count: number }>,
+      { context: string; count: number }[],
       MetadataStoreError
     >;
     readonly saveCommand: (
@@ -82,7 +84,7 @@ export class MetadataStore extends Context.Service<
     readonly listAllExpiring: (
       withinMs: number
     ) => Effect.Effect<
-      Array<SecretMetadata & { env: string }>,
+      (SecretMetadata & { env: string })[],
       MetadataStoreError
     >;
     readonly trackEnvFileExport: (

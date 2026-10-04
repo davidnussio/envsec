@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 import test from "node:test";
+
 import { Effect, Layer } from "effect";
 import initSqlJs from "sql.js";
+
 import {
   DatabaseConfigFrom,
   KeychainAccess,
@@ -18,17 +20,13 @@ import {
 
 const memoryKeychain = (entries = new Map()) =>
   Layer.succeed(KeychainAccess, {
-    set: (service, account, password) =>
-      Effect.sync(() => {
-        entries.set(`${service}/${account}`, password);
-      }),
     get: (service, account) => {
       const value = entries.get(`${service}/${account}`);
       return value === undefined
         ? Effect.fail(
             new SecretNotFoundError({
-              key: account,
               context: service,
+              key: account,
               message: "not found",
             })
           )
@@ -37,6 +35,10 @@ const memoryKeychain = (entries = new Map()) =>
     remove: (service, account) =>
       Effect.sync(() => {
         entries.delete(`${service}/${account}`);
+      }),
+    set: (service, account, password) =>
+      Effect.sync(() => {
+        entries.set(`${service}/${account}`, password);
       }),
   });
 
@@ -53,11 +55,11 @@ const storeLayer = (databasePath, keychain = memoryKeychain()) =>
   );
 
 const withTempDb = async (run) => {
-  const directory = mkdtempSync(join(tmpdir(), "envsec-store-"));
+  const directory = mkdtempSync(path.join(tmpdir(), "envsec-store-"));
   try {
-    await run(join(directory, "store.sqlite"));
+    await run(path.join(directory, "store.sqlite"));
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    rmSync(directory, { force: true, recursive: true });
   }
 };
 
@@ -101,7 +103,7 @@ test("withBatch persists metadata on success", () =>
         Effect.provide(storeLayer(databasePath, keychain))
       )
     );
-    assert.deepEqual(keys.map((k) => k.key).sort(), ["a.key", "b.key"]);
+    assert.deepEqual(keys.map((k) => k.key).toSorted(), ["a.key", "b.key"]);
   }));
 
 test("a failed metadata write restores the previous secret value", async () => {
@@ -109,15 +111,15 @@ test("a failed metadata write restores the previous secret value", async () => {
   const failingMetadata = Layer.succeed(MetadataStore, {
     get: (env, key) =>
       Effect.succeed({
-        key,
         created_at: "",
-        updated_at: "",
-        expires_at: null,
         env,
+        expires_at: null,
+        key,
+        updated_at: "",
       }),
     upsert: () =>
       Effect.fail(
-        new MetadataStoreError({ operation: "upsert", message: "disk full" })
+        new MetadataStoreError({ message: "disk full", operation: "upsert" })
       ),
   });
   const layer = SecretStore.layerNoDeps.pipe(
@@ -140,11 +142,11 @@ test("a failed metadata write removes a newly created secret", async () => {
   const failingMetadata = Layer.succeed(MetadataStore, {
     get: (env, key) =>
       Effect.fail(
-        new SecretNotFoundError({ key, context: env, message: "not found" })
+        new SecretNotFoundError({ context: env, key, message: "not found" })
       ),
     upsert: () =>
       Effect.fail(
-        new MetadataStoreError({ operation: "upsert", message: "disk full" })
+        new MetadataStoreError({ message: "disk full", operation: "upsert" })
       ),
   });
   const layer = SecretStore.layerNoDeps.pipe(
@@ -167,7 +169,7 @@ test("refreshCache never fails the caller when the cache cannot be written", () 
     const blocker = `${databasePath}.blocker`;
     writeFileSync(blocker, "");
     await Effect.runPromise(
-      refreshCache(join(blocker, "cache", "completions.json")).pipe(
+      refreshCache(path.join(blocker, "cache", "completions.json")).pipe(
         Effect.provide(storeLayer(databasePath))
       )
     );

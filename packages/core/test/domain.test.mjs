@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 import test from "node:test";
+
 import { Duration, Effect, Schema } from "effect";
+
 import {
   ContextName,
   DatabaseConfigFrom,
@@ -45,8 +47,8 @@ test("parses combined durations", async () => {
 });
 
 test("uses the database path supplied to the SecretStore layer", async () => {
-  const directory = mkdtempSync(join(tmpdir(), "envsec-effect-4-"));
-  const databasePath = join(directory, "custom.sqlite");
+  const directory = mkdtempSync(path.join(tmpdir(), "envsec-effect-4-"));
+  const databasePath = path.join(directory, "custom.sqlite");
 
   try {
     const layer = SecretStore.layer(DatabaseConfigFrom(databasePath));
@@ -60,6 +62,6 @@ test("uses the database path supplied to the SecretStore layer", async () => {
 
     assert.equal(existsSync(databasePath), true);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    rmSync(directory, { force: true, recursive: true });
   }
 });

@@ -1,12 +1,12 @@
 import { Context, Effect, Layer, Option } from "effect";
+
 import { parse as parseSecretKey } from "../domain/secret-key.js";
-import { type MetadataStoreError, SecretNotFoundError } from "../errors.js";
+import { SecretNotFoundError } from "../errors.js";
+import type { MetadataStoreError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
-import {
-  type DatabaseConfig,
-  DatabaseConfigDefault,
-} from "./database-config.js";
+import { DatabaseConfigDefault } from "./database-config.js";
+import type { DatabaseConfig } from "./database-config.js";
 import { KeychainAccess } from "./keychain-access.js";
 import { MetadataStore } from "./metadata-store.js";
 
@@ -18,11 +18,13 @@ const B64_PREFIX = "envsec:b64:";
  *  This avoids platform-specific encoding issues (e.g. macOS security CLI
  *  returns hex for non-ASCII values, Windows cmdkey has escaping quirks). */
 const encodeValue = (value: string): string =>
-  `${B64_PREFIX}${Buffer.from(value, "utf8").toString("base64")}`;
+  `${B64_PREFIX}${Buffer.from(value, "utf-8").toString("base64")}`;
 
 const decodeValue = (raw: string): string => {
   if (raw.startsWith(B64_PREFIX)) {
-    return Buffer.from(raw.slice(B64_PREFIX.length), "base64").toString("utf8");
+    return Buffer.from(raw.slice(B64_PREFIX.length), "base64").toString(
+      "utf-8"
+    );
   }
   // Legacy: return plaintext values as-is for backward compatibility
   return raw;
@@ -31,11 +33,11 @@ const decodeValue = (raw: string): string => {
 export class SecretStore extends Context.Service<SecretStore>()(
   "envsec/SecretStore",
   {
-    make: Effect.gen(function* () {
+    make: Effect.gen(function* make() {
       const keychain = yield* KeychainAccess;
       const metadata = yield* MetadataStore;
 
-      const set = Effect.fn("SecretStore.set")(function* (
+      const set = Effect.fn("SecretStore.set")(function* set(
         context: string,
         key: string,
         value: string,
@@ -69,7 +71,7 @@ export class SecretStore extends Context.Service<SecretStore>()(
         );
       });
 
-      const get = Effect.fn("SecretStore.get")(function* (
+      const get = Effect.fn("SecretStore.get")(function* get(
         context: string,
         key: string
       ) {
@@ -81,8 +83,8 @@ export class SecretStore extends Context.Service<SecretStore>()(
           Effect.catchTag("SecretNotFoundError", () =>
             Effect.fail(
               new SecretNotFoundError({
-                key,
                 context,
+                key,
                 message: `Secret "${key}" has metadata in context "${context}" but is missing from the OS keychain. Run: envsec delete -c ${context} ${key}`,
               })
             )
@@ -90,14 +92,13 @@ export class SecretStore extends Context.Service<SecretStore>()(
         );
       });
 
-      const getMetadata = Effect.fn("SecretStore.getMetadata")(function* (
-        context: string,
-        key: string
-      ) {
-        return yield* metadata.get(context, key);
-      });
+      const getMetadata = Effect.fn("SecretStore.getMetadata")(
+        function* getMetadata(context: string, key: string) {
+          return yield* metadata.get(context, key);
+        }
+      );
 
-      const remove = Effect.fn("SecretStore.remove")(function* (
+      const remove = Effect.fn("SecretStore.remove")(function* remove(
         context: string,
         key: string
       ) {
@@ -108,63 +109,71 @@ export class SecretStore extends Context.Service<SecretStore>()(
         yield* metadata.remove(context, key);
       });
 
-      const search = Effect.fn("SecretStore.search")(function* (
+      const search = Effect.fn("SecretStore.search")(function* search(
         context: string,
         pattern: string
       ) {
         return yield* metadata.search(context, pattern);
       });
 
-      const list = Effect.fn("SecretStore.list")(function* (context: string) {
+      const list = Effect.fn("SecretStore.list")(function* list(
+        context: string
+      ) {
         return yield* metadata.list(context);
       });
 
-      const searchContexts = Effect.fn("SecretStore.searchContexts")(function* (
-        pattern: string
-      ) {
-        return yield* metadata.searchContexts(pattern);
-      });
+      const searchContexts = Effect.fn("SecretStore.searchContexts")(
+        function* searchContexts(pattern: string) {
+          return yield* metadata.searchContexts(pattern);
+        }
+      );
 
-      const listContexts = Effect.fn("SecretStore.listContexts")(function* () {
-        return yield* metadata.listContexts();
-      });
+      const listContexts = Effect.fn("SecretStore.listContexts")(
+        function* listContexts() {
+          return yield* metadata.listContexts();
+        }
+      );
 
-      const saveCommand = Effect.fn("SecretStore.saveCommand")(function* (
-        name: string,
-        command: string,
-        context: string
-      ) {
-        yield* metadata.saveCommand(name, command, context);
-      });
+      const saveCommand = Effect.fn("SecretStore.saveCommand")(
+        function* saveCommand(name: string, command: string, context: string) {
+          yield* metadata.saveCommand(name, command, context);
+        }
+      );
 
-      const getCommand = Effect.fn("SecretStore.getCommand")(function* (
-        name: string
-      ) {
-        return yield* metadata.getCommand(name);
-      });
+      const getCommand = Effect.fn("SecretStore.getCommand")(
+        function* getCommand(name: string) {
+          return yield* metadata.getCommand(name);
+        }
+      );
 
-      const searchCommands = Effect.fn("SecretStore.searchCommands")(function* (
-        pattern: string,
-        field: "name" | "command" | "all"
-      ) {
-        return yield* metadata.searchCommands(pattern, field);
-      });
+      const searchCommands = Effect.fn("SecretStore.searchCommands")(
+        function* searchCommands(
+          pattern: string,
+          field: "name" | "command" | "all"
+        ) {
+          return yield* metadata.searchCommands(pattern, field);
+        }
+      );
 
-      const listCommands = Effect.fn("SecretStore.listCommands")(function* () {
-        return yield* metadata.listCommands();
-      });
+      const listCommands = Effect.fn("SecretStore.listCommands")(
+        function* listCommands() {
+          return yield* metadata.listCommands();
+        }
+      );
 
-      const removeCommand = Effect.fn("SecretStore.removeCommand")(function* (
-        name: string
-      ) {
-        yield* metadata.removeCommand(name);
-      });
+      const removeCommand = Effect.fn("SecretStore.removeCommand")(
+        function* removeCommand(name: string) {
+          yield* metadata.removeCommand(name);
+        }
+      );
 
-      const beginBatch = Effect.fn("SecretStore.beginBatch")(function* () {
-        yield* metadata.beginBatch();
-      });
+      const beginBatch = Effect.fn("SecretStore.beginBatch")(
+        function* beginBatch() {
+          yield* metadata.beginBatch();
+        }
+      );
 
-      const endBatch = Effect.fn("SecretStore.endBatch")(function* () {
+      const endBatch = Effect.fn("SecretStore.endBatch")(function* endBatch() {
         yield* metadata.endBatch();
       });
 
@@ -179,59 +188,58 @@ export class SecretStore extends Context.Service<SecretStore>()(
           () => metadata.endBatch()
         );
 
-      const listExpiring = Effect.fn("SecretStore.listExpiring")(function* (
-        context: string,
-        withinMs: number
-      ) {
-        return yield* metadata.listExpiring(context, withinMs);
-      });
+      const listExpiring = Effect.fn("SecretStore.listExpiring")(
+        function* listExpiring(context: string, withinMs: number) {
+          return yield* metadata.listExpiring(context, withinMs);
+        }
+      );
 
       const listAllExpiring = Effect.fn("SecretStore.listAllExpiring")(
-        function* (withinMs: number) {
+        function* listAllExpiring(withinMs: number) {
           return yield* metadata.listAllExpiring(withinMs);
         }
       );
 
       const trackEnvFileExport = Effect.fn("SecretStore.trackEnvFileExport")(
-        function* (context: string, path: string) {
+        function* trackEnvFileExport(context: string, path: string) {
           yield* metadata.trackEnvFileExport(context, path);
         }
       );
 
       const listEnvFileExports = Effect.fn("SecretStore.listEnvFileExports")(
-        function* () {
+        function* listEnvFileExports() {
           return yield* metadata.listEnvFileExports();
         }
       );
 
       const removeEnvFileExport = Effect.fn("SecretStore.removeEnvFileExport")(
-        function* (path: string) {
+        function* removeEnvFileExport(path: string) {
           yield* metadata.removeEnvFileExport(path);
         }
       );
 
       return {
-        set,
-        get,
-        getMetadata,
-        remove,
-        search,
-        list,
-        searchContexts,
-        listContexts,
-        saveCommand,
-        getCommand,
-        searchCommands,
-        listCommands,
-        removeCommand,
         beginBatch,
         endBatch,
-        withBatch,
-        listExpiring,
+        get,
+        getCommand,
+        getMetadata,
+        list,
         listAllExpiring,
-        trackEnvFileExport,
+        listCommands,
+        listContexts,
         listEnvFileExports,
+        listExpiring,
+        remove,
+        removeCommand,
         removeEnvFileExport,
+        saveCommand,
+        search,
+        searchCommands,
+        searchContexts,
+        set,
+        trackEnvFileExport,
+        withBatch,
       };
     }),
   }

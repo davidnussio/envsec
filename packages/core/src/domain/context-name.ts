@@ -10,7 +10,7 @@ import { Schema } from "effect";
 
 const maxLength = 128;
 
-const contextPattern = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
+const contextPattern = /^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/u;
 
 const reservedNames = new Set([
   ".",
@@ -20,6 +20,7 @@ const reservedNames = new Set([
   "prototype",
 ]);
 
+// oxlint-disable-next-line no-redeclare -- schema value and its type intentionally share the public name
 export const ContextName = Schema.String.pipe(
   Schema.check(
     Schema.makeFilter(

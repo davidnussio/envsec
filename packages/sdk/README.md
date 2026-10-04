@@ -74,8 +74,8 @@ import { EnvsecClient } from "@envsec/sdk";
 const client = await EnvsecClient.create({ context: "myapp.dev" });
 
 // Read
-const apiKey = await client.get("api.key");       // string | null
-const dbUrl = await client.require("db.url");      // string (throws if missing)
+const apiKey = await client.get("api.key"); // string | null
+const dbUrl = await client.require("db.url"); // string (throws if missing)
 
 // Write
 await client.set("api.key", "sk-new-value");
@@ -85,8 +85,8 @@ await client.set("api.key", "sk-new-value", { expires: "30d" });
 await client.delete("api.key");
 
 // Bulk
-const all = await client.loadAll();                // Record<string, string>
-await client.injectEnv();                          // inject all into process.env
+const all = await client.loadAll(); // Record<string, string>
+await client.injectEnv(); // inject all into process.env
 
 // Always close when done
 await client.close();
@@ -112,18 +112,18 @@ Write operations (`set`, `delete`) target the last (primary) context.
 
 ### `EnvsecClientOptions`
 
-| Option    | Type                 | Description                                              |
-|-----------|----------------------|----------------------------------------------------------|
+| Option | Type | Description |
+| --- | --- | --- |
 | `context` | `string \| string[]` | Context(s) to operate on. Array enables multi-context merge. |
-| `dbPath`  | `string` (optional)  | Override default SQLite path (`~/.envsec/store.sqlite`). |
+| `dbPath` | `string` (optional) | Override default SQLite path (`~/.envsec/store.sqlite`). |
 
 ### `LoadSecretsOptions`
 
 Extends `EnvsecClientOptions` with:
 
-| Option   | Type      | Default | Description                                         |
-|----------|-----------|---------|-----------------------------------------------------|
-| `inject` | `boolean` | `false` | Inject secrets into `process.env` after loading.    |
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `inject` | `boolean` | `false` | Inject secrets into `process.env` after loading. |
 
 ### `WithSecretsOptions`
 
@@ -134,7 +134,7 @@ Same as `LoadSecretsOptions`.
 When injecting into `process.env`, keys are converted to `UPPER_SNAKE_CASE`:
 
 | Secret Key        | Environment Variable |
-|-------------------|----------------------|
+| ----------------- | -------------------- |
 | `api.token`       | `API_TOKEN`          |
 | `db.connection`   | `DB_CONNECTION`      |
 | `redis.cache-url` | `REDIS_CACHE_URL`    |

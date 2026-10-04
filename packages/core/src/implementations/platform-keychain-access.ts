@@ -1,5 +1,7 @@
 import { platform } from "node:os";
+
 import { Effect, Layer } from "effect";
+
 import { UnsupportedPlatformError } from "../errors.js";
 import { KeychainAccess } from "../services/keychain-access.js";
 import { LinuxSecretServiceAccessLive } from "./linux-secret-service-access.js";
@@ -18,21 +20,25 @@ export const PlatformKeychainAccessLive: Layer.Layer<
   UnsupportedPlatformError
 > = (() => {
   switch (platform()) {
-    case "darwin":
+    case "darwin": {
       return MacOsKeychainAccessLive;
-    case "linux":
+    }
+    case "linux": {
       return LinuxSecretServiceAccessLive;
-    case "win32":
+    }
+    case "win32": {
       return WindowsCredentialManagerAccessLive;
-    default:
+    }
+    default: {
       return Layer.effect(
         KeychainAccess,
         Effect.fail(
           new UnsupportedPlatformError({
-            platform: platform(),
             message: `Unsupported platform: ${platform()}. Supported: macOS, Linux, Windows.`,
+            platform: platform(),
           })
         )
       );
+    }
   }
 })();

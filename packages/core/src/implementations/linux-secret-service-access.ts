@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
+
 import { Effect, Layer } from "effect";
+
 import { KeychainError, SecretNotFoundError } from "../errors.js";
 import { KeychainAccess } from "../services/keychain-access.js";
 
@@ -25,16 +27,17 @@ const run = (args: string[], stdin?: string) =>
       "secret-tool",
       args,
       { signal },
+      // oxlint-disable-next-line promise/prefer-await-to-callbacks -- Effect.callback bridges execFile's callback API; the AbortSignal kills the child on interruption
       (error, stdout, stderr) => {
         if (error && "code" in error && error.code === "ENOENT") {
           resume(
             Effect.fail(
               new KeychainError({
-                command: args[0] ?? "unknown",
-                stderr: "secret-tool not found. Install libsecret-tools.",
                 cause: error,
+                command: args[0] ?? "unknown",
                 message:
                   "secret-tool is not installed. Install it with your package manager (e.g. apt install libsecret-tools).",
+                stderr: "secret-tool not found. Install libsecret-tools.",
               })
             )
           );
@@ -47,8 +50,8 @@ const run = (args: string[], stdin?: string) =>
         resume(
           Effect.succeed({
             exitCode,
-            stdout,
             stderr,
+            stdout,
           })
         );
       }
@@ -67,7 +70,65 @@ const run = (args: string[], stdin?: string) =>
   );
 
 const make = KeychainAccess.of({
-  set: Effect.fn("LinuxSecretServiceAccess.set")(function* (
+  get: Effect.fn("LinuxSecretServiceAccess.get")(function* get(
+    service: string,
+    account: string
+  ) {
+    // secret-tool lookup <attribute> <value> ...
+    const result = yield* run([
+      "lookup",
+      "service",
+      service,
+      "account",
+      account,
+    ]);
+
+    // A missing item gives empty output and no diagnostics (exit 0 or 1,
+    // depending on the libsecret version). Anything on stderr with a
+    // non-zero exit (locked keyring, D-Bus unavailable, …) is a real error
+    // and must not be reported as "not found".
+    if (result.exitCode !== 0 && result.stderr.trim() !== "") {
+      return yield* new KeychainError({
+        command: "lookup",
+        message: `Failed to read secret: ${service}/${account}`,
+        stderr: result.stderr,
+      });
+    }
+
+    if (result.stdout === "") {
+      return yield* new SecretNotFoundError({
+        context: service,
+        key: account,
+        message: `Secret not found: ${service}/${account}`,
+      });
+    }
+
+    return result.stdout.trimEnd();
+  }),
+
+  remove: Effect.fn("LinuxSecretServiceAccess.remove")(function* remove(
+    service: string,
+    account: string
+  ) {
+    // secret-tool clear <attribute> <value> ...
+    const result = yield* run([
+      "clear",
+      "service",
+      service,
+      "account",
+      account,
+    ]);
+
+    if (result.exitCode !== 0) {
+      return yield* new KeychainError({
+        command: "clear",
+        message: `Failed to remove secret: ${service}/${account}`,
+        stderr: result.stderr,
+      });
+    }
+  }),
+
+  set: Effect.fn("LinuxSecretServiceAccess.set")(function* set(
     service: string,
     account: string,
     password: string
@@ -90,66 +151,8 @@ const make = KeychainAccess.of({
     if (result.exitCode !== 0) {
       return yield* new KeychainError({
         command: "store",
-        stderr: result.stderr,
         message: `Failed to store secret: ${service}/${account}`,
-      });
-    }
-  }),
-
-  get: Effect.fn("LinuxSecretServiceAccess.get")(function* (
-    service: string,
-    account: string
-  ) {
-    // secret-tool lookup <attribute> <value> ...
-    const result = yield* run([
-      "lookup",
-      "service",
-      service,
-      "account",
-      account,
-    ]);
-
-    // A missing item gives empty output and no diagnostics (exit 0 or 1,
-    // depending on the libsecret version). Anything on stderr with a
-    // non-zero exit (locked keyring, D-Bus unavailable, …) is a real error
-    // and must not be reported as "not found".
-    if (result.exitCode !== 0 && result.stderr.trim() !== "") {
-      return yield* new KeychainError({
-        command: "lookup",
         stderr: result.stderr,
-        message: `Failed to read secret: ${service}/${account}`,
-      });
-    }
-
-    if (result.stdout === "") {
-      return yield* new SecretNotFoundError({
-        key: account,
-        context: service,
-        message: `Secret not found: ${service}/${account}`,
-      });
-    }
-
-    return result.stdout.trimEnd();
-  }),
-
-  remove: Effect.fn("LinuxSecretServiceAccess.remove")(function* (
-    service: string,
-    account: string
-  ) {
-    // secret-tool clear <attribute> <value> ...
-    const result = yield* run([
-      "clear",
-      "service",
-      service,
-      "account",
-      account,
-    ]);
-
-    if (result.exitCode !== 0) {
-      return yield* new KeychainError({
-        command: "clear",
-        stderr: result.stderr,
-        message: `Failed to remove secret: ${service}/${account}`,
       });
     }
   }),

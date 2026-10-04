@@ -3,15 +3,19 @@
   "version": "1.0.0-rc.2",
   "description": "Node.js / Bun SDK for envsec — load secrets from the OS credential store without .env files",
   "keywords": [
-    "secrets",
+    "bun",
+    "effect",
     "env",
     "keychain",
     "node",
-    "bun",
     "sdk",
-    "security",
-    "effect"
+    "secrets",
+    "security"
   ],
+  "homepage": "https://envsec.dev",
+  "bugs": {
+    "url": "https://github.com/davidnussio/envsec/issues"
+  },
   "license": "MIT",
   "author": "David Nussio",
   "repository": {
@@ -19,13 +23,9 @@
     "url": "git+https://github.com/davidnussio/envsec.git",
     "directory": "packages/sdk"
   },
-  "homepage": "https://envsec.dev",
-  "bugs": {
-    "url": "https://github.com/davidnussio/envsec/issues"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -35,9 +35,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
