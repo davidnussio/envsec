@@ -1,5 +1,5 @@
 import { ContextName } from "@envsec/core";
-import { Effect, Option, Schema } from "effect";
+import { Config, Effect, Option, Schema } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
 const decodeContext = Schema.decodeEffect(ContextName);
@@ -8,6 +8,9 @@ const context = Options.String("context").pipe(
   Options.withAlias("c"),
   Options.withDescription(
     "Context name (e.g. myapp.dev, stripe-api.prod, work.staging). Also reads ENVSEC_CONTEXT env var."
+  ),
+  Options.withFallbackConfig(
+    Config.String("ENVSEC_CONTEXT").pipe(Config.map((value) => value.trim()))
   ),
   Options.optional
 );
@@ -38,56 +41,38 @@ export const rootCommand = Command.make("envsec").pipe(
 );
 
 /**
- * Resolve context from --context flag or ENVSEC_CONTEXT env var.
+ * The --context value, falling back to the ENVSEC_CONTEXT env var
+ * (handled by Flag.withFallbackConfig). An empty value counts as unset.
  */
-const resolveRawContext = Effect.gen(function* () {
-  const { context } = yield* rootCommand;
-
-  if (Option.isSome(context)) {
-    return context.value;
-  }
-
-  const envContext = process.env.ENVSEC_CONTEXT;
-  if (envContext && envContext.trim() !== "") {
-    return envContext.trim();
-  }
-
-  return yield* Effect.fail(
-    new Error(
-      "Missing required option --context (-c) or ENVSEC_CONTEXT env var"
-    )
-  );
-});
+const rawContext = Effect.map(rootCommand, ({ context }) =>
+  Option.filter(context, (value) => value !== "")
+);
 
 /**
  * Extract and validate the required --context option.
- * Falls back to ENVSEC_CONTEXT env var if --context is not provided.
  * Fails with a user-friendly error if missing or invalid.
  */
 export const requireContext = Effect.gen(function* () {
-  const raw = yield* resolveRawContext;
-  return yield* decodeContext(raw);
+  const context = yield* rawContext;
+  if (Option.isNone(context)) {
+    return yield* Effect.fail(
+      new Error(
+        "Missing required option --context (-c) or ENVSEC_CONTEXT env var"
+      )
+    );
+  }
+  return yield* decodeContext(context.value);
 });
 
 /**
  * Validate an optional context value (for commands where --context is optional).
- * Falls back to ENVSEC_CONTEXT env var if --context is not provided.
  */
 export const optionalContext = Effect.gen(function* () {
-  const { context } = yield* rootCommand;
-
-  if (Option.isSome(context)) {
-    const validated = yield* decodeContext(context.value);
-    return Option.some(validated);
+  const context = yield* rawContext;
+  if (Option.isNone(context)) {
+    return Option.none<ContextName>();
   }
-
-  const envContext = process.env.ENVSEC_CONTEXT;
-  if (envContext && envContext.trim() !== "") {
-    const validated = yield* decodeContext(envContext.trim());
-    return Option.some(validated);
-  }
-
-  return Option.none<ContextName>();
+  return Option.some(yield* decodeContext(context.value));
 });
 
 /**
