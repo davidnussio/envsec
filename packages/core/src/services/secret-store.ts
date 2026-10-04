@@ -1,4 +1,4 @@
-import { Context, Effect, Layer } from "effect";
+import { Context, Effect, Layer, Option } from "effect";
 import { parse as parseSecretKey } from "../domain/secret-key.js";
 import { type MetadataStoreError, SecretNotFoundError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
@@ -42,16 +42,30 @@ export class SecretStore extends Context.Service<SecretStore>()(
         expiresAt?: string | null
       ) {
         const parsed = yield* parseSecretKey(key, context);
-        yield* keychain.set(parsed.service, parsed.account, encodeValue(value));
-        yield* metadata
-          .upsert(context, key, expiresAt)
-          .pipe(
-            Effect.catch((metadataError) =>
-              keychain
-                .remove(parsed.service, parsed.account)
-                .pipe(Effect.ignore, Effect.andThen(Effect.fail(metadataError)))
+        // When overwriting, keep the previous value so a failed metadata write
+        // can restore it instead of deleting the user's existing secret.
+        const exists = yield* metadata.get(context, key).pipe(
+          Effect.as(true),
+          Effect.catchTag("SecretNotFoundError", () => Effect.succeed(false))
+        );
+        const previous = exists
+          ? yield* keychain.get(parsed.service, parsed.account).pipe(
+              Effect.map(Option.some),
+              Effect.catchTag("SecretNotFoundError", () =>
+                Effect.succeed(Option.none<string>())
+              )
             )
-          );
+          : Option.none<string>();
+        yield* keychain.set(parsed.service, parsed.account, encodeValue(value));
+        yield* metadata.upsert(context, key, expiresAt).pipe(
+          Effect.catch((metadataError) =>
+            Option.match(previous, {
+              onNone: () => keychain.remove(parsed.service, parsed.account),
+              onSome: (raw) =>
+                keychain.set(parsed.service, parsed.account, raw),
+            }).pipe(Effect.ignore, Effect.andThen(Effect.fail(metadataError)))
+          )
+        );
       });
 
       const get = Effect.fn("SecretStore.get")(function* (

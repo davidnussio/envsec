@@ -7,6 +7,8 @@ import { Effect, Layer } from "effect";
 import {
   DatabaseConfigFrom,
   KeychainAccess,
+  MetadataStore,
+  MetadataStoreError,
   SecretNotFoundError,
   SecretStore,
   SqliteMetadataStoreLive,
@@ -99,3 +101,60 @@ test("withBatch persists metadata on success", () =>
     );
     assert.deepEqual(keys.map((k) => k.key).sort(), ["a.key", "b.key"]);
   }));
+
+test("a failed metadata write restores the previous secret value", async () => {
+  const entries = new Map([["envsec.app.db/password", "old-raw-value"]]);
+  const failingMetadata = Layer.succeed(MetadataStore, {
+    get: (env, key) =>
+      Effect.succeed({
+        key,
+        created_at: "",
+        updated_at: "",
+        expires_at: null,
+        env,
+      }),
+    upsert: () =>
+      Effect.fail(
+        new MetadataStoreError({ operation: "upsert", message: "disk full" })
+      ),
+  });
+  const layer = SecretStore.layerNoDeps.pipe(
+    Layer.provide(Layer.merge(memoryKeychain(entries), failingMetadata))
+  );
+
+  const error = await Effect.runPromise(
+    SecretStore.set("app", "db.password", "new").pipe(
+      Effect.provide(layer),
+      Effect.flip
+    )
+  );
+
+  assert.equal(error._tag, "MetadataStoreError");
+  assert.equal(entries.get("envsec.app.db/password"), "old-raw-value");
+});
+
+test("a failed metadata write removes a newly created secret", async () => {
+  const entries = new Map();
+  const failingMetadata = Layer.succeed(MetadataStore, {
+    get: (env, key) =>
+      Effect.fail(
+        new SecretNotFoundError({ key, context: env, message: "not found" })
+      ),
+    upsert: () =>
+      Effect.fail(
+        new MetadataStoreError({ operation: "upsert", message: "disk full" })
+      ),
+  });
+  const layer = SecretStore.layerNoDeps.pipe(
+    Layer.provide(Layer.merge(memoryKeychain(entries), failingMetadata))
+  );
+
+  await Effect.runPromise(
+    SecretStore.set("app", "db.password", "new").pipe(
+      Effect.provide(layer),
+      Effect.flip
+    )
+  );
+
+  assert.equal(entries.has("envsec.app.db/password"), false);
+});
