@@ -21,7 +21,7 @@ export const Hero = () => (
         variant="outline"
       >
         <Terminal className="mr-1.5 h-3 w-3" />
-        v1.0 beta — Now available
+        v1.0 — Now available
       </Badge>
 
       <h1 className="mb-6 text-5xl leading-tight font-bold tracking-tight md:text-7xl">
