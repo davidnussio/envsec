@@ -6,6 +6,7 @@ import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
+import { exitCodeForSignal } from "./execute-command.js";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { requireContext } from "./root.js";
 
@@ -150,13 +151,13 @@ export const shellCommand = Command.make(
           resume(Effect.void);
         });
 
-        child.on("close", (code) => {
+        child.on("close", (code, signal) => {
           if (!quiet) {
             process.stderr.write(
               `${icons.arrow} Exiting envsec shell ${dim("—")} secrets cleared.\n`
             );
           }
-          process.exitCode = code ?? 0;
+          process.exitCode = code ?? exitCodeForSignal(signal);
           resume(Effect.void);
         });
       });

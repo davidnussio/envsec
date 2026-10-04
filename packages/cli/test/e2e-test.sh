@@ -326,6 +326,22 @@ assert_contains "run: interpolation" "newpassword" "$out"
 ec=0
 out=$(run_all -c "$CTX" run "echo {nonexistent.key}") || ec=$?
 assert_exit "run: missing secret fails" "1" "$ec"
+
+# A command killed by a signal (e.g. Ctrl-C on `npm run dev`) must not crash
+# envsec: exit with 128 + signal number, quietly for SIGINT
+ec=0
+err=$(node "$CLI" -c "$CTX" run 'kill -INT $$' 2>&1 >/dev/null) || ec=$?
+assert_exit "run: child killed by SIGINT exits 130" "130" "$ec"
+assert_eq "run: child killed by SIGINT prints nothing" "" "$err"
+
+ec=0
+err=$(node "$CLI" -c "$CTX" run 'kill -TERM $$' 2>&1 >/dev/null) || ec=$?
+assert_exit "run: child killed by SIGTERM exits 143" "143" "$ec"
+assert_contains "run: child killed by SIGTERM is reported" "terminated by SIGTERM" "$err"
+
+ec=0
+run_all -c "$CTX" run 'exit 3' >/dev/null || ec=$?
+assert_exit "run: propagates the child exit code" "3" "$ec"
 assert_contains "run: missing message" "Missing" "$out"
 
 # --inject: all context secrets available as env vars

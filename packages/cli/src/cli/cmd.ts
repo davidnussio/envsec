@@ -1,16 +1,8 @@
-import { execSync } from "node:child_process";
-
-import {
-  bold,
-  CommandExecutionError,
-  ContextName,
-  dim,
-  icons,
-  SecretStore,
-} from "@envsec/core";
+import { bold, ContextName, dim, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
 
+import { executeCommand } from "./execute-command.js";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 import { explicitContext } from "./root.js";
@@ -68,26 +60,7 @@ const cmdRunCommand = Command.make(
         ? yield* fetchContextSecrets(ctx)
         : ({} as Record<string, string>);
 
-      yield* Effect.try({
-        catch: (e) => {
-          const status =
-            e instanceof Error && "status" in e
-              ? (e as { status: number }).status
-              : 1;
-          return new CommandExecutionError({
-            command: resolved.command,
-            exitCode: status,
-            message: `Command exited with code ${status}`,
-          });
-        },
-        try: () => {
-          execSync(resolved.command, {
-            env: { ...process.env, ...injectedEnv, ...resolved.env },
-            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-            stdio: "inherit",
-          });
-        },
-      });
+      yield* executeCommand(resolved, injectedEnv);
     })
 ).pipe(
   Command.withDescription(
