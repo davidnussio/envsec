@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { Effect, Layer } from "effect";
+import initSqlJs from "sql.js";
 import {
   DatabaseConfigFrom,
   KeychainAccess,
@@ -170,4 +171,27 @@ test("refreshCache never fails the caller when the cache cannot be written", () 
         Effect.provide(storeLayer(databasePath))
       )
     );
+  }));
+
+test("rejects malformed metadata rows with a MetadataStoreError", () =>
+  withTempDb(async (databasePath) => {
+    // Initialise the schema, then corrupt a row behind the store's back.
+    await Effect.runPromise(
+      SecretStore.set("rows.ctx", "a.key", "1").pipe(
+        Effect.provide(storeLayer(databasePath))
+      )
+    );
+    const SQL = await initSqlJs();
+    const db = new SQL.Database(readFileSync(databasePath));
+    db.run("UPDATE secrets SET expires_at = X'00'");
+    writeFileSync(databasePath, Buffer.from(db.export()));
+    db.close();
+
+    const error = await Effect.runPromise(
+      SecretStore.list("rows.ctx").pipe(
+        Effect.provide(storeLayer(databasePath)),
+        Effect.flip
+      )
+    );
+    assert.equal(error._tag, "MetadataStoreError");
   }));

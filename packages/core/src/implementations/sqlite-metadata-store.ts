@@ -6,8 +6,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { Effect, Layer } from "effect";
-import initSqlJs, { type Database } from "sql.js";
+import { Effect, Layer, Schema } from "effect";
+import initSqlJs, { type BindParams, type Database } from "sql.js";
 import {
   CommandNotFoundError,
   MetadataStoreError,
@@ -19,6 +19,46 @@ import {
   MetadataStore,
   type SecretMetadata,
 } from "../services/metadata-store.js";
+
+// ── Row schemas: rows read from SQLite are decoded, not cast ─────────
+
+const SecretMetadataRow = Schema.Struct({
+  key: Schema.String,
+  created_at: Schema.String,
+  updated_at: Schema.String,
+  expires_at: Schema.NullOr(Schema.String),
+});
+
+const ExpiringSecretRow = Schema.Struct({
+  env: Schema.String,
+  ...SecretMetadataRow.fields,
+});
+
+const SecretListRow = Schema.Struct({
+  key: Schema.String,
+  updated_at: Schema.String,
+  expires_at: Schema.NullOr(Schema.String),
+});
+
+const KeyRow = Schema.Struct({ key: Schema.String });
+
+const ContextCountRow = Schema.Struct({
+  env: Schema.String,
+  count: Schema.Number,
+});
+
+const CommandRow = Schema.Struct({
+  name: Schema.String,
+  command: Schema.String,
+  context: Schema.String,
+  created_at: Schema.String,
+});
+
+const EnvExportRow = Schema.Struct({
+  context: Schema.String,
+  path: Schema.String,
+  created_at: Schema.String,
+});
 
 const DIR_PERMISSIONS = 0o700;
 const FILE_PERMISSIONS = 0o600;
@@ -80,6 +120,33 @@ const make = Effect.gen(function* () {
         }
       }).pipe(Effect.ignore, Effect.ensuring(Effect.sync(() => db.close())))
   );
+  /** Run a query and decode every row. Throws (inside Effect.try) on SQL
+   *  or decode errors; the statement is always freed. */
+  const queryAll = <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+    sql: string,
+    params: BindParams = []
+  ): S["Type"][] => {
+    const decode = Schema.decodeUnknownSync(schema);
+    const stmt = db.prepare(sql);
+    try {
+      stmt.bind(params);
+      const rows: S["Type"][] = [];
+      while (stmt.step()) {
+        rows.push(decode(stmt.getAsObject()));
+      }
+      return rows;
+    } finally {
+      stmt.free();
+    }
+  };
+
+  const queryOne = <S extends Schema.ConstraintDecoder<unknown>>(
+    schema: S,
+    sql: string,
+    params: BindParams
+  ): S["Type"] | null => queryAll(schema, sql, params)[0] ?? null;
+
   const maybePersist = () => {
     if (batching) {
       dirty = true;
@@ -137,19 +204,12 @@ const make = Effect.gen(function* () {
       key: string
     ) {
       const row = yield* Effect.try({
-        try: () => {
-          const stmt = db.prepare(
-            "SELECT key, created_at, updated_at, expires_at FROM secrets WHERE env = ? AND key = ?"
-          );
-          stmt.bind([env, key]);
-          if (!stmt.step()) {
-            stmt.free();
-            return null;
-          }
-          const result = stmt.getAsObject() as unknown as SecretMetadata;
-          stmt.free();
-          return result;
-        },
+        try: (): SecretMetadata | null =>
+          queryOne(
+            SecretMetadataRow,
+            "SELECT key, created_at, updated_at, expires_at FROM secrets WHERE env = ? AND key = ?",
+            [env, key]
+          ),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -188,18 +248,12 @@ const make = Effect.gen(function* () {
       pattern: string
     ) {
       return yield* Effect.try({
-        try: () => {
-          const results: Array<{ key: string }> = [];
-          const stmt = db.prepare(
-            "SELECT key FROM secrets WHERE env = ? AND key GLOB ?"
-          );
-          stmt.bind([env, pattern]);
-          while (stmt.step()) {
-            results.push(stmt.getAsObject() as { key: string });
-          }
-          stmt.free();
-          return results;
-        },
+        try: () =>
+          queryAll(
+            KeyRow,
+            "SELECT key FROM secrets WHERE env = ? AND key GLOB ?",
+            [env, pattern]
+          ),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -210,28 +264,12 @@ const make = Effect.gen(function* () {
     }),
     list: Effect.fn("SqliteMetadataStore.list")(function* (env: string) {
       return yield* Effect.try({
-        try: () => {
-          const results: Array<{
-            key: string;
-            updated_at: string;
-            expires_at: string | null;
-          }> = [];
-          const stmt = db.prepare(
-            "SELECT key, updated_at, expires_at FROM secrets WHERE env = ? ORDER BY key"
-          );
-          stmt.bind([env]);
-          while (stmt.step()) {
-            results.push(
-              stmt.getAsObject() as {
-                key: string;
-                updated_at: string;
-                expires_at: string | null;
-              }
-            );
-          }
-          stmt.free();
-          return results;
-        },
+        try: () =>
+          queryAll(
+            SecretListRow,
+            "SELECT key, updated_at, expires_at FROM secrets WHERE env = ? ORDER BY key",
+            [env]
+          ),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -244,19 +282,12 @@ const make = Effect.gen(function* () {
       pattern: string
     ) {
       return yield* Effect.try({
-        try: () => {
-          const results: Array<{ context: string; count: number }> = [];
-          const stmt = db.prepare(
-            "SELECT env, COUNT(*) as count FROM secrets WHERE env GLOB ? GROUP BY env ORDER BY env"
-          );
-          stmt.bind([pattern]);
-          while (stmt.step()) {
-            const row = stmt.getAsObject() as { env: string; count: number };
-            results.push({ context: row.env, count: row.count });
-          }
-          stmt.free();
-          return results;
-        },
+        try: () =>
+          queryAll(
+            ContextCountRow,
+            "SELECT env, COUNT(*) as count FROM secrets WHERE env GLOB ? GROUP BY env ORDER BY env",
+            [pattern]
+          ).map((row) => ({ context: row.env, count: row.count })),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -267,18 +298,11 @@ const make = Effect.gen(function* () {
     }),
     listContexts: Effect.fn("SqliteMetadataStore.listContexts")(function* () {
       return yield* Effect.try({
-        try: () => {
-          const results: Array<{ context: string; count: number }> = [];
-          const stmt = db.prepare(
+        try: () =>
+          queryAll(
+            ContextCountRow,
             "SELECT env, COUNT(*) as count FROM secrets GROUP BY env ORDER BY env"
-          );
-          while (stmt.step()) {
-            const row = stmt.getAsObject() as { env: string; count: number };
-            results.push({ context: row.env, count: row.count });
-          }
-          stmt.free();
-          return results;
-        },
+          ).map((row) => ({ context: row.env, count: row.count })),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -312,19 +336,12 @@ const make = Effect.gen(function* () {
       name: string
     ) {
       const row = yield* Effect.try({
-        try: () => {
-          const stmt = db.prepare(
-            "SELECT name, command, context, created_at FROM commands WHERE name = ?"
-          );
-          stmt.bind([name]);
-          if (!stmt.step()) {
-            stmt.free();
-            return null;
-          }
-          const result = stmt.getAsObject() as unknown as CommandMetadata;
-          stmt.free();
-          return result;
-        },
+        try: (): CommandMetadata | null =>
+          queryOne(
+            CommandRow,
+            "SELECT name, command, context, created_at FROM commands WHERE name = ?",
+            [name]
+          ),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -345,8 +362,7 @@ const make = Effect.gen(function* () {
       field: "name" | "command" | "all"
     ) {
       return yield* Effect.try({
-        try: () => {
-          const results: CommandMetadata[] = [];
+        try: (): CommandMetadata[] => {
           let query: string;
           if (field === "name") {
             query =
@@ -358,13 +374,11 @@ const make = Effect.gen(function* () {
             query =
               "SELECT name, command, context, created_at FROM commands WHERE name GLOB ? OR command GLOB ? ORDER BY name";
           }
-          const stmt = db.prepare(query);
-          stmt.bind(field === "all" ? [pattern, pattern] : [pattern]);
-          while (stmt.step()) {
-            results.push(stmt.getAsObject() as unknown as CommandMetadata);
-          }
-          stmt.free();
-          return results;
+          return queryAll(
+            CommandRow,
+            query,
+            field === "all" ? [pattern, pattern] : [pattern]
+          );
         },
         catch: (error) =>
           new MetadataStoreError({
@@ -376,17 +390,11 @@ const make = Effect.gen(function* () {
     }),
     listCommands: Effect.fn("SqliteMetadataStore.listCommands")(function* () {
       return yield* Effect.try({
-        try: () => {
-          const results: CommandMetadata[] = [];
-          const stmt = db.prepare(
+        try: (): CommandMetadata[] =>
+          queryAll(
+            CommandRow,
             "SELECT name, command, context, created_at FROM commands ORDER BY name"
-          );
-          while (stmt.step()) {
-            results.push(stmt.getAsObject() as unknown as CommandMetadata);
-          }
-          stmt.free();
-          return results;
-        },
+          ),
         catch: (error) =>
           new MetadataStoreError({
             cause: error,
@@ -437,16 +445,11 @@ const make = Effect.gen(function* () {
             .replace("T", " ")
             .replace("Z", "")
             .slice(0, 19);
-          const results: SecretMetadata[] = [];
-          const stmt = db.prepare(
-            "SELECT key, created_at, updated_at, expires_at FROM secrets WHERE env = ? AND expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at"
+          return queryAll(
+            SecretMetadataRow,
+            "SELECT key, created_at, updated_at, expires_at FROM secrets WHERE env = ? AND expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at",
+            [env, cutoff]
           );
-          stmt.bind([env, cutoff]);
-          while (stmt.step()) {
-            results.push(stmt.getAsObject() as unknown as SecretMetadata);
-          }
-          stmt.free();
-          return results;
         },
         catch: (error) =>
           new MetadataStoreError({
@@ -465,20 +468,11 @@ const make = Effect.gen(function* () {
               .replace("T", " ")
               .replace("Z", "")
               .slice(0, 19);
-            const results: Array<SecretMetadata & { env: string }> = [];
-            const stmt = db.prepare(
-              "SELECT env, key, created_at, updated_at, expires_at FROM secrets WHERE expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at"
+            return queryAll(
+              ExpiringSecretRow,
+              "SELECT env, key, created_at, updated_at, expires_at FROM secrets WHERE expires_at IS NOT NULL AND expires_at <= ? ORDER BY expires_at",
+              [cutoff]
             );
-            stmt.bind([cutoff]);
-            while (stmt.step()) {
-              results.push(
-                stmt.getAsObject() as unknown as SecretMetadata & {
-                  env: string;
-                }
-              );
-            }
-            stmt.free();
-            return results;
           },
           catch: (error) =>
             new MetadataStoreError({
@@ -511,27 +505,11 @@ const make = Effect.gen(function* () {
     listEnvFileExports: Effect.fn("SqliteMetadataStore.listEnvFileExports")(
       function* () {
         return yield* Effect.try({
-          try: () => {
-            const results: Array<{
-              context: string;
-              path: string;
-              created_at: string;
-            }> = [];
-            const stmt = db.prepare(
+          try: () =>
+            queryAll(
+              EnvExportRow,
               "SELECT context, path, created_at FROM env_exports ORDER BY created_at DESC"
-            );
-            while (stmt.step()) {
-              results.push(
-                stmt.getAsObject() as unknown as {
-                  context: string;
-                  path: string;
-                  created_at: string;
-                }
-              );
-            }
-            stmt.free();
-            return results;
-          },
+            ),
           catch: (error) =>
             new MetadataStoreError({
               cause: error,
