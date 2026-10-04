@@ -49,6 +49,7 @@ const gpgEncrypt = (
       ),
     catch: (e) =>
       new GPGEncryptionError({
+        cause: e,
         recipient,
         message: `GPG encryption failed: ${e instanceof Error ? e.message : String(e)}`,
       }),
@@ -126,6 +127,7 @@ export const shareCommand = Command.make(
           try: () => writeFileSync(output.value, encrypted, "utf-8"),
           catch: (error) =>
             new FileAccessError({
+              cause: error,
               path: output.value,
               message: `Failed to write share file: ${error}`,
             }),

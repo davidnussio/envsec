@@ -32,6 +32,7 @@ const run = (args: string[], stdin?: string) =>
               new KeychainError({
                 command: args[0] ?? "unknown",
                 stderr: "secret-tool not found. Install libsecret-tools.",
+                cause: error,
                 message:
                   "secret-tool is not installed. Install it with your package manager (e.g. apt install libsecret-tools).",
               })

@@ -79,6 +79,7 @@ export const envFileCommand = Command.make(
         try: () => writeFileSync(output, `${lines.join("\n")}\n`, "utf-8"),
         catch: (error) =>
           new FileAccessError({
+            cause: error,
             path: output,
             message: `Failed to write env file: ${error}`,
           }),

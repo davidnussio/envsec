@@ -66,6 +66,7 @@ const make = Effect.gen(function* () {
       try: () => initDb(dbPath),
       catch: (error) =>
         new MetadataStoreError({
+          cause: error,
           operation: "init",
           message: `Failed to initialize database: ${error}`,
         }),
@@ -103,6 +104,7 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new MetadataStoreError({
+              cause: error,
               operation: "endBatch",
               message: `Failed to persist batched changes: ${error}`,
             }),
@@ -124,6 +126,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "upsert",
             message: `Failed to upsert metadata for ${env}/${key}: ${error}`,
           }),
@@ -149,6 +152,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "get",
             message: `Failed to get metadata for ${env}/${key}: ${error}`,
           }),
@@ -173,6 +177,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "remove",
             message: `Failed to remove metadata for ${env}/${key}: ${error}`,
           }),
@@ -197,6 +202,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "search",
             message: `Failed to search metadata for ${env}/${pattern}: ${error}`,
           }),
@@ -228,6 +234,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "list",
             message: `Failed to list metadata for ${env}: ${error}`,
           }),
@@ -252,6 +259,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "searchContexts",
             message: `Failed to search contexts for ${pattern}: ${error}`,
           }),
@@ -273,6 +281,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "listContexts",
             message: `Failed to list contexts: ${error}`,
           }),
@@ -293,6 +302,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "saveCommand",
             message: `Failed to save command "${name}": ${error}`,
           }),
@@ -317,6 +327,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "getCommand",
             message: `Failed to get command "${name}": ${error}`,
           }),
@@ -357,6 +368,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "searchCommands",
             message: `Failed to search commands for "${pattern}": ${error}`,
           }),
@@ -377,6 +389,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "listCommands",
             message: `Failed to list commands: ${error}`,
           }),
@@ -392,6 +405,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "removeCommand",
             message: `Failed to remove command "${name}": ${error}`,
           }),
@@ -406,6 +420,7 @@ const make = Effect.gen(function* () {
         try: () => maybePersist(),
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "removeCommand",
             message: `Failed to persist after removing command "${name}": ${error}`,
           }),
@@ -435,6 +450,7 @@ const make = Effect.gen(function* () {
         },
         catch: (error) =>
           new MetadataStoreError({
+            cause: error,
             operation: "listExpiring",
             message: `Failed to list expiring secrets for ${env}: ${error}`,
           }),
@@ -466,6 +482,7 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new MetadataStoreError({
+              cause: error,
               operation: "listAllExpiring",
               message: `Failed to list all expiring secrets: ${error}`,
             }),
@@ -484,6 +501,7 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new MetadataStoreError({
+              cause: error,
               operation: "trackEnvFileExport",
               message: `Failed to track env file export: ${error}`,
             }),
@@ -516,6 +534,7 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new MetadataStoreError({
+              cause: error,
               operation: "listEnvFileExports",
               message: `Failed to list env file exports: ${error}`,
             }),
@@ -531,6 +550,7 @@ const make = Effect.gen(function* () {
           },
           catch: (error) =>
             new MetadataStoreError({
+              cause: error,
               operation: "removeEnvFileExport",
               message: `Failed to remove env file export: ${error}`,
             }),

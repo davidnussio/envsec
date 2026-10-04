@@ -32,6 +32,7 @@ const runPowerShell = (script: string) =>
               new KeychainError({
                 command: "powershell",
                 stderr: "powershell.exe not found",
+                cause: error,
                 message:
                   "PowerShell is not available. Ensure you are running on Windows.",
               })

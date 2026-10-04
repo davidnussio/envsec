@@ -15,6 +15,8 @@ export class KeychainError extends Schema.TaggedError<KeychainError>()(
     command: Schema.String,
     stderr: Schema.String,
     message: Schema.String,
+    /** The underlying error, kept for debugging (stack, code, …). */
+    cause: Schema.optional(Schema.Defect()),
   }
 ) {}
 
@@ -23,6 +25,8 @@ export class MetadataStoreError extends Schema.TaggedError<MetadataStoreError>()
   {
     operation: Schema.String,
     message: Schema.String,
+    /** The underlying error, kept for debugging (stack, code, …). */
+    cause: Schema.optional(Schema.Defect()),
   }
 ) {}
 
@@ -93,6 +97,8 @@ export class FileAccessError extends Schema.TaggedError<FileAccessError>()(
   {
     path: Schema.String,
     message: Schema.String,
+    /** The underlying error, kept for debugging (stack, code, …). */
+    cause: Schema.optional(Schema.Defect()),
   }
 ) {}
 
@@ -119,6 +125,8 @@ export class GPGEncryptionError extends Schema.TaggedError<GPGEncryptionError>()
   {
     recipient: Schema.String,
     message: Schema.String,
+    /** The underlying error, kept for debugging (stack, code, …). */
+    cause: Schema.optional(Schema.Defect()),
   }
 ) {}
 

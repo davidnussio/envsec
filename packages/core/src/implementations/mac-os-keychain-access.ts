@@ -17,6 +17,7 @@ const run = (args: string[]) =>
               command: args[0] ?? "unknown",
               stderr: String(error),
               message: "Failed to run security command",
+              cause: error,
             })
           )
         );
