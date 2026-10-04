@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    name: Lint, typecheck & unit tests
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-and-build
+
+      - name: Lint & format (Ultracite with Oxlint and Oxfmt)
+        run: pnpm run check
+
+      - name: Typecheck & unit tests
+        run: pnpm turbo run lint test:unit
