@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
-import { homedir, platform, release } from "node:os";
-import { dirname, join } from "node:path";
+import { platform, release } from "node:os";
+import { dirname } from "node:path";
 import {
   badge,
   bold,
@@ -16,6 +16,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command } from "effect/cli";
+import { resolveDbPath } from "../db-path.js";
 import { isJsonOutput } from "./root.js";
 
 const require = createRequire(import.meta.url);
@@ -384,18 +385,6 @@ const formatCheck = (r: CheckResult): string => {
 };
 
 // ── Command ─────────────────────────────────────────────────────────
-
-const resolveDbPath = (): string => {
-  const dbIndex = process.argv.indexOf("--db");
-  if (dbIndex !== -1 && dbIndex + 1 < process.argv.length) {
-    return process.argv[dbIndex + 1] as string;
-  }
-  const envDb = process.env.ENVSEC_DB;
-  if (envDb && envDb.trim() !== "") {
-    return envDb.trim();
-  }
-  return join(homedir(), ".envsec", "store.sqlite");
-};
 
 export const doctorCommand = Command.make("doctor", {}, () =>
   Effect.gen(function* () {

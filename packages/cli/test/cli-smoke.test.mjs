@@ -139,3 +139,17 @@ test("fails instead of hanging when a prompt gets no input", () => {
     assert.match(result.stderr, STDIN_CLOSED_PATTERN);
   });
 });
+
+test("honours --db=<path> as well as --db <path>", () => {
+  withDatabase((databasePath) => {
+    const result = runCli(
+      "list",
+      "--context",
+      "smoke.context",
+      `--db=${databasePath}`
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(existsSync(databasePath), true);
+  });
+});
