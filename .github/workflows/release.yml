@@ -30,6 +30,22 @@ jobs:
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
+      # Fail before publishing anything, so a release is never half-published.
+      # npm's `time` field also lists versions that were published and later
+      # unpublished: npm never allows reusing those numbers either.
+      - name: Check that no version is already taken on npm
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          for pkg in @envsec/core @envsec/sdk @envsec/tui envsec; do
+            if npm view "$pkg" time --json 2>/dev/null | node -e '
+              const t = JSON.parse(require("fs").readFileSync(0, "utf8") || "{}");
+              process.exit(Object.hasOwn(t, process.argv[1]) ? 0 : 1);
+            ' "$VERSION"; then
+              echo "::error::$pkg@$VERSION is already taken on npm (published now or in the past)"
+              exit 1
+            fi
+          done
+
       - name: Bump versions in package.json files
         run: |
           VERSION="${{ steps.version.outputs.version }}"

@@ -6,6 +6,7 @@ settings:
 
 overrides:
   '@effect/platform-node': 4.0.0
+  '@effect/platform-node-shared': 4.0.0
   effect: 4.0.0
 
 importers:
@@ -91,6 +92,9 @@ importers:
       '@effect/platform-node':
         specifier: 4.0.0
         version: 4.0.0(effect@4.0.0)(redis@6.2.1)
+      '@effect/platform-node-shared':
+        specifier: 4.0.0
+        version: 4.0.0(effect@4.0.0)
       '@envsec/core':
         specifier: workspace:*
         version: link:../core

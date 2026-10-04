@@ -1,5 +1,11 @@
 # @envsec/core
 
+## 1.0.2
+
+### Patch Changes
+
+- No code changes. Version aligned with `envsec` 1.0.2, the first stable CLI release (`envsec@1.0.0` / `1.0.1` cannot be published on npm).
+
 ## 1.0.0
 
 ### Patch Changes

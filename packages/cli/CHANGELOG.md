@@ -1,5 +1,16 @@
 # envsec
 
+## 1.0.2
+
+First stable release of the CLI. `envsec@1.0.0` and `1.0.1` cannot be published: those version numbers were used by an earlier, unrelated package with the same name, and npm never allows reusing them. All `@envsec/*` packages move to 1.0.2 as well so that versions stay aligned.
+
+### Patch Changes
+
+- Fix the install-time crash reported in #11 (`ERR_MODULE_NOT_FOUND: effect/dist/ByteSize.js`): `@effect/platform-node` depends on `@effect/platform-node-shared` through a `^` range, so npm could install a newer one requiring a newer `effect` than the exactly pinned one. `@effect/platform-node-shared` is now pinned to the same version as `effect` (4.0.0), so the CLI always installs a single, consistent Effect.
+- Updated dependencies
+  - @envsec/core@1.0.2
+  - @envsec/tui@1.0.2
+
 ## 1.0.0
 
 ### Minor Changes

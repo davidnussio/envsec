@@ -1,6 +1,6 @@
 {
   "name": "envsec",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Secure environment secrets management using native OS credential stores",
   "keywords": [
     "cli",
@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0",
+    "@effect/platform-node-shared": "4.0.0",
     "@envsec/core": "workspace:*",
     "@envsec/tui": "workspace:*",
     "effect": "4.0.0",
