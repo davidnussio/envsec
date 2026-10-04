@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 import {
   type EnvFileExport,
   expiresAtFromNow,
+  FileAccessError,
   formatTimeDistance,
   icons,
   parseDuration,
@@ -1002,10 +1003,15 @@ const importView = Effect.fn("tui.importView")(function* (context: string) {
 
   const content = yield* Effect.try({
     try: () => readFileSync(path, "utf-8"),
-    catch: () => new Error(`Cannot read file: ${path}`),
+    catch: (cause) =>
+      new FileAccessError({
+        path,
+        message: `Cannot read file: ${path}`,
+        cause,
+      }),
   }).pipe(
     Effect.catch((e) => {
-      renderMessage(row + 1, String(e), "error");
+      renderMessage(row + 1, e.message, "error");
       return Effect.succeed(null);
     })
   );
@@ -1133,7 +1139,12 @@ const exportView = Effect.fn("tui.exportView")(function* (context: string) {
         }
       : yield* Effect.try({
           try: () => writeFileSync(path, `${lines.join("\n")}\n`, "utf-8"),
-          catch: () => new Error(`Failed to write: ${path}`),
+          catch: (cause) =>
+            new FileAccessError({
+              path,
+              message: `Failed to write: ${path}`,
+              cause,
+            }),
         }).pipe(
           Effect.tap(() =>
             SecretStore.trackEnvFileExport(context, resolve(path)).pipe(
