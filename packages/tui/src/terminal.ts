@@ -7,24 +7,24 @@ import { Effect } from "effect";
 
 // ── ANSI escape sequences ───────────────────────────────────────────
 
-export const ESC = "\x1b";
+export const ESC = "\u001B";
 export const CSI = `${ESC}[`;
 
 export const cursor = {
   hide: `${CSI}?25l`,
-  show: `${CSI}?25h`,
+  moveDown: (n = 1) => `${CSI}${n}B`,
   moveTo: (row: number, col: number) => `${CSI}${row};${col}H`,
   moveUp: (n = 1) => `${CSI}${n}A`,
-  moveDown: (n = 1) => `${CSI}${n}B`,
-  saveCursor: `${ESC}7`,
   restoreCursor: `${ESC}8`,
+  saveCursor: `${ESC}7`,
+  show: `${CSI}?25h`,
 };
 
 export const screen = {
-  clear: `${CSI}2J`,
-  clearLine: `${CSI}2K`,
-  clearDown: `${CSI}J`,
   altBuffer: `${CSI}?1049h`,
+  clear: `${CSI}2J`,
+  clearDown: `${CSI}J`,
+  clearLine: `${CSI}2K`,
   mainBuffer: `${CSI}?1049l`,
 };
 
@@ -41,36 +41,36 @@ const useColor = (() => {
 })();
 
 const ansi = (code: string) => (text: string) =>
-  useColor ? `\x1b[${code}m${text}\x1b[0m` : text;
+  useColor ? `\u001B[${code}m${text}\u001B[0m` : text;
 
 export const c = {
-  bold: ansi("1"),
-  dim: ansi("2"),
-  italic: ansi("3"),
-  underline: ansi("4"),
-  inverse: ansi("7"),
-  green: ansi("32"),
-  red: ansi("31"),
-  yellow: ansi("33"),
-  blue: ansi("34"),
-  cyan: ansi("36"),
-  magenta: ansi("35"),
-  white: ansi("37"),
-  gray: ansi("90"),
   bgBlue: ansi("44"),
-  bgGreen: ansi("42"),
-  bgYellow: ansi("43"),
-  bgRed: ansi("41"),
   bgCyan: ansi("46"),
+  bgGreen: ansi("42"),
+  bgRed: ansi("41"),
   bgWhite: ansi("47;30"),
+  bgYellow: ansi("43"),
+  blue: ansi("34"),
+  bold: ansi("1"),
+  cyan: ansi("36"),
+  dim: ansi("2"),
+  gray: ansi("90"),
+  green: ansi("32"),
+  inverse: ansi("7"),
+  italic: ansi("3"),
+  magenta: ansi("35"),
+  red: ansi("31"),
+  underline: ansi("4"),
+  white: ansi("37"),
+  yellow: ansi("33"),
 };
 
 // ── Terminal size ───────────────────────────────────────────────────
 
 // Some pseudo-terminals report a size of 0: fall back to the defaults.
 export const getSize = (): { rows: number; cols: number } => ({
-  rows: process.stdout.rows || 24,
   cols: process.stdout.columns || 80,
+  rows: process.stdout.rows || 24,
 });
 
 // ── Write helpers ───────────────────────────────────────────────────
@@ -93,29 +93,29 @@ export interface KeyPress {
 }
 
 const CTRL_KEYS: Record<string, { ctrl: boolean; name: string }> = {
-  "\x03": { name: "c", ctrl: true },
-  "\x04": { name: "d", ctrl: true },
-  "\x1a": { name: "z", ctrl: true },
+  "\u0003": { ctrl: true, name: "c" },
+  "\u0004": { ctrl: true, name: "d" },
+  "\u001A": { ctrl: true, name: "z" },
 };
 
 const SPECIAL_KEYS: Record<string, string> = {
-  "\r": "return",
-  "\n": "return",
-  "\x1b": "escape",
-  "\x7f": "backspace",
   "\b": "backspace",
   "\t": "tab",
+  "\n": "return",
+  "\r": "return",
+  "\u001B": "escape",
+  "\u001B[1~": "home",
+  "\u001B[4~": "end",
+  "\u001B[5~": "pageup",
+  "\u001B[6~": "pagedown",
+  "\u001B[A": "up",
+  "\u001B[B": "down",
+  "\u001B[C": "right",
+  "\u001B[D": "left",
+  "\u001B[F": "end",
+  "\u001B[H": "home",
   " ": "space",
-  "\x1b[A": "up",
-  "\x1b[B": "down",
-  "\x1b[C": "right",
-  "\x1b[D": "left",
-  "\x1b[5~": "pageup",
-  "\x1b[6~": "pagedown",
-  "\x1b[H": "home",
-  "\x1b[1~": "home",
-  "\x1b[F": "end",
-  "\x1b[4~": "end",
+  "\u007F": "backspace",
 };
 
 const parseKey = (data: Buffer): KeyPress => {
@@ -141,7 +141,7 @@ const parseKey = (data: Buffer): KeyPress => {
 
 export const readKey: Effect.Effect<KeyPress> = Effect.callback<KeyPress>(
   (resume) => {
-    const stdin = process.stdin;
+    const { stdin } = process;
     // stdin closed: nothing more can be read, end the TUI session.
     if (stdin.readableEnded) {
       resume(Effect.interrupt);
@@ -153,30 +153,32 @@ export const readKey: Effect.Effect<KeyPress> = Effect.callback<KeyPress>(
     }
     stdin.resume();
 
-    const cleanup = () => {
-      stdin.removeListener("data", onData);
-      stdin.removeListener("end", onEnd);
-      if (stdin.isTTY) {
-        stdin.setRawMode(wasRaw);
-      }
-      stdin.pause();
+    // The listeners and their cleanup reference each other, so they live
+    // on one object: each handler detaches both listeners before resuming.
+    const listeners = {
+      cleanup: () => {
+        stdin.removeListener("data", listeners.onData);
+        stdin.removeListener("end", listeners.onEnd);
+        if (stdin.isTTY) {
+          stdin.setRawMode(wasRaw);
+        }
+        stdin.pause();
+      },
+      onData: (data: Buffer) => {
+        listeners.cleanup();
+        resume(Effect.succeed(parseKey(data)));
+      },
+      onEnd: () => {
+        listeners.cleanup();
+        resume(Effect.interrupt);
+      },
     };
 
-    function onData(data: Buffer) {
-      cleanup();
-      resume(Effect.succeed(parseKey(data)));
-    }
-
-    function onEnd() {
-      cleanup();
-      resume(Effect.interrupt);
-    }
-
-    stdin.on("data", onData);
-    stdin.on("end", onEnd);
+    stdin.on("data", listeners.onData);
+    stdin.on("end", listeners.onEnd);
 
     // Runs if the fiber is interrupted while waiting (SIGINT/SIGTERM).
-    return Effect.sync(cleanup);
+    return Effect.sync(listeners.cleanup);
   }
 );
 
@@ -188,7 +190,7 @@ export const readLine = (
 ): Effect.Effect<string | null> =>
   Effect.callback<string | null>((resume) => {
     write(prompt);
-    const stdin = process.stdin;
+    const { stdin } = process;
     if (stdin.readableEnded) {
       resume(Effect.interrupt);
       return;
@@ -202,29 +204,14 @@ export const readLine = (
 
     let buf = "";
 
-    const cleanup = () => {
-      stdin.removeListener("data", onData);
-      stdin.removeListener("end", onEnd);
-      if (stdin.isTTY) {
-        stdin.setRawMode(wasRaw);
-      }
-      stdin.pause();
-    };
-
-    function onEnd() {
-      cleanup();
-      resume(Effect.interrupt);
-    }
-
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: char-by-char input handling
     const handleChar = (ch: string): "cancel" | "continue" | "done" => {
       if (ch === "\r" || ch === "\n") {
         return "done";
       }
-      if (ch === "\x03") {
+      if (ch === "\u0003") {
         return "cancel";
       }
-      if (ch === "\x7f" || ch === "\b") {
+      if (ch === "\u007F" || ch === "\b") {
         if (buf.length > 0) {
           buf = buf.slice(0, -1);
           write("\b \b");
@@ -238,38 +225,54 @@ export const readLine = (
       return "continue";
     };
 
-    function onData(chunk: string) {
-      // Bare escape key (not part of an ANSI sequence like \x1b[A)
-      if (chunk === "\x1b") {
-        cleanup();
-        write("\n");
-        resume(Effect.succeed(null));
-        return;
-      }
-      for (const ch of chunk) {
-        // Skip escape bytes that are part of ANSI sequences
-        if (ch === "\x1b") {
-          continue;
+    // The listeners and their cleanup reference each other, so they live
+    // on one object: each handler detaches both listeners before resuming.
+    const listeners = {
+      cleanup: () => {
+        stdin.removeListener("data", listeners.onData);
+        stdin.removeListener("end", listeners.onEnd);
+        if (stdin.isTTY) {
+          stdin.setRawMode(wasRaw);
         }
-        const result = handleChar(ch);
-        if (result === "done") {
-          cleanup();
-          write("\n");
-          resume(Effect.succeed(buf));
-          return;
-        }
-        if (result === "cancel") {
-          cleanup();
+        stdin.pause();
+      },
+      onData: (chunk: string) => {
+        // Bare escape key (not part of an ANSI sequence like \u001B[A)
+        if (chunk === "\u001B") {
+          listeners.cleanup();
           write("\n");
           resume(Effect.succeed(null));
           return;
         }
-      }
-    }
+        for (const ch of chunk) {
+          // Skip escape bytes that are part of ANSI sequences
+          if (ch === "\u001B") {
+            continue;
+          }
+          const result = handleChar(ch);
+          if (result === "done") {
+            listeners.cleanup();
+            write("\n");
+            resume(Effect.succeed(buf));
+            return;
+          }
+          if (result === "cancel") {
+            listeners.cleanup();
+            write("\n");
+            resume(Effect.succeed(null));
+            return;
+          }
+        }
+      },
+      onEnd: () => {
+        listeners.cleanup();
+        resume(Effect.interrupt);
+      },
+    };
 
-    stdin.on("data", onData);
-    stdin.on("end", onEnd);
+    stdin.on("data", listeners.onData);
+    stdin.on("end", listeners.onEnd);
 
     // Runs if the fiber is interrupted while waiting (SIGINT/SIGTERM).
-    return Effect.sync(cleanup);
+    return Effect.sync(listeners.cleanup);
   });

@@ -1,9 +1,10 @@
 /**
- * @envsec/tui — Interactive terminal UI for envsec secrets management.
+ * Interactive terminal UI for envsec secrets management (`@envsec/tui` package).
  */
 
 import type { SecretStore } from "@envsec/core";
 import { Effect } from "effect";
+
 import { enterTUI, exitTUI } from "./components.js";
 import { mainMenuView } from "./views.js";
 
