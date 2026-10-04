@@ -76,4 +76,4 @@ export const listCommand = Command.make("list", {}, () =>
     }
     yield* listSecrets(context.value, jsonMode);
   })
-);
+).pipe(Command.withDescription("List secrets in a context, or all contexts"));

@@ -81,7 +81,7 @@ const cmdRunCommand = Command.make(
         },
       });
     })
-);
+).pipe(Command.withDescription("Run a saved command"));
 
 // --- cmd search <pattern> ---
 
@@ -131,7 +131,7 @@ const cmdSearchCommandDef = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Search saved commands"));
 
 // --- cmd list ---
 
@@ -150,7 +150,7 @@ const cmdListCommand = Command.make("list", {}, () =>
       );
     }
   })
-);
+).pipe(Command.withDescription("List saved commands"));
 
 // --- cmd delete <name> ---
 
@@ -166,11 +166,12 @@ const cmdDeleteCommand = Command.make(
       yield* SecretStore.removeCommand(name);
       yield* Console.log(`${icons.trash} Command ${bold(`"${name}"`)} removed`);
     })
-);
+).pipe(Command.withDescription("Delete a saved command"));
 
 // --- cmd (parent) ---
 
 export const cmdCommand = Command.make("cmd", {}).pipe(
+  Command.withDescription("Manage saved commands"),
   Command.withSubcommands([
     cmdRunCommand,
     cmdSearchCommandDef,

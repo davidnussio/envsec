@@ -98,4 +98,6 @@ export const runCommand = Command.make(
 
       yield* executeCommand(resolved, injectedEnv);
     })
+).pipe(
+  Command.withDescription("Run a command with secrets interpolated or injected")
 );

@@ -91,4 +91,6 @@ export const envFileCommand = Command.make(
         `${icons.file} Written ${badge(lines.length, "secret")} to ${bold(output)}`
       );
     })
+).pipe(
+  Command.withDescription("Write the secrets of a context to a .env file")
 );

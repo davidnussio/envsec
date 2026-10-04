@@ -137,4 +137,8 @@ export const shareCommand = Command.make(
         yield* Console.log(encrypted);
       }
     })
+).pipe(
+  Command.withDescription(
+    "Encrypt the secrets of a context for someone with GPG"
+  )
 );

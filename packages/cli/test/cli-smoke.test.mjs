@@ -14,6 +14,8 @@ const STDIN_CLOSED_PATTERN = /stdin is closed/;
 const NO_SECRETS_PATTERN = /No secrets found/;
 const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/;
 const VERSION_PATTERN = /envsec v\d/;
+const DESCRIBED_SUBCOMMAND_PATTERN = /^\s+\S.*\s{2,}\S/;
+const DELETE_ALIAS_PATTERN = /delete, del/;
 
 const runCli = (...args) =>
   spawnSync(process.execPath, [CLI_PATH, ...args], {
@@ -151,5 +153,21 @@ test("honours --db=<path> as well as --db <path>", () => {
 
     assert.equal(result.status, 0);
     assert.equal(existsSync(databasePath), true);
+  });
+});
+
+test("describes every subcommand in the help output", () => {
+  withDatabase((databasePath) => {
+    const help = runCli("--db", databasePath, "--help");
+    const subcommandLines = help.stdout
+      .split("\n")
+      .slice(help.stdout.split("\n").indexOf("SUBCOMMANDS") + 1)
+      .filter((line) => line.trim() !== "");
+
+    assert.ok(subcommandLines.length > 0);
+    for (const line of subcommandLines) {
+      assert.match(line, DESCRIBED_SUBCOMMAND_PATTERN);
+    }
+    assert.match(help.stdout, DELETE_ALIAS_PATTERN);
   });
 });

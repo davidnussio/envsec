@@ -464,4 +464,4 @@ export const doctorCommand = Command.make("doctor", {}, () =>
     }
     yield* Console.log("");
   })
-);
+).pipe(Command.withDescription("Diagnose your envsec setup"));

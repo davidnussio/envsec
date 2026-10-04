@@ -64,4 +64,4 @@ export const renameCommand = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Rename a secret within a context"));

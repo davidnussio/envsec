@@ -101,4 +101,4 @@ export const loadCommand = Command.make(
         `${icons.success} Done: ${bold(String(added))} added, ${bold(String(overwritten))} overwritten, ${bold(String(skipped))} skipped`
       );
     })
-);
+).pipe(Command.withDescription("Import secrets from a .env file"));

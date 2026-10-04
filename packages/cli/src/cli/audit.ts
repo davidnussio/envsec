@@ -219,4 +219,4 @@ export const auditCommand = Command.make(
       yield* auditAllContexts(secrets, windowStr, now);
       yield* auditEnvFileExports(envExports, false);
     })
-);
+).pipe(Command.withDescription("Report expired and soon-to-expire secrets"));

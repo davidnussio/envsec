@@ -50,4 +50,6 @@ export const searchCommand = Command.make(
         yield* Console.log(`${icons.key} ${item.key}`);
       }
     })
+).pipe(
+  Command.withDescription("Search secrets or contexts with a glob pattern")
 );

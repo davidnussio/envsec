@@ -153,4 +153,6 @@ export const shellCommand = Command.make(
         });
       });
     })
+).pipe(
+  Command.withDescription("Start a shell with the secrets in its environment")
 );

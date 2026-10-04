@@ -9,4 +9,4 @@ export const tuiCommand = Command.make("tui", {}, () =>
     const ctx = Option.isSome(context) ? context.value : null;
     yield* runTUI(ctx);
   })
-);
+).pipe(Command.withDescription("Open the interactive terminal UI"));

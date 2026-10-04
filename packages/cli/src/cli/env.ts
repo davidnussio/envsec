@@ -118,4 +118,6 @@ export const envCommand = Command.make(
         );
       }
     })
+).pipe(
+  Command.withDescription("Print shell export statements for the secrets")
 );

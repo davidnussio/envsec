@@ -155,4 +155,4 @@ export const copyCommand = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Copy secrets to another context"));

@@ -13,7 +13,7 @@ import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";
 import { handleComplete } from "./cli/complete.js";
 import { copyCommand } from "./cli/copy.js";
-import { delCommand, deleteCommand } from "./cli/delete.js";
+import { deleteCommand } from "./cli/delete.js";
 import { doctorCommand } from "./cli/doctor.js";
 import { envCommand } from "./cli/env.js";
 import { envFileCommand } from "./cli/env-file.js";
@@ -40,7 +40,6 @@ const command = rootCommand.pipe(
     addCommand,
     getCommand,
     deleteCommand,
-    delCommand,
     renameCommand,
     listCommand,
     searchCommand,

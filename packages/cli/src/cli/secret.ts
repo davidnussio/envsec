@@ -179,4 +179,4 @@ export const secretCommand = Command.make(
       }
       yield* Console.log(`  ${icons.key} ${value}`);
     })
-);
+).pipe(Command.withDescription("Generate a random secret and store it"));

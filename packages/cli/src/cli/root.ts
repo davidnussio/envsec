@@ -31,6 +31,9 @@ const db = Options.String("db").pipe(
 );
 
 export const rootCommand = Command.make("envsec").pipe(
+  Command.withDescription(
+    "Secure environment secrets management using native OS credential stores"
+  ),
   Command.withSharedFlags({ context, debug, json, db })
 );
 

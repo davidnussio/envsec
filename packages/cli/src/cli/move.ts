@@ -156,4 +156,4 @@ export const moveCommand = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Move secrets to another context"));

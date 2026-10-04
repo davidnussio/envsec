@@ -86,6 +86,11 @@ const handler = ({
     );
   });
 
-export const deleteCommand = Command.make("delete", { key, yes, all }, handler);
-
-export const delCommand = Command.make("del", { key, yes, all }, handler);
+export const deleteCommand = Command.make(
+  "delete",
+  { key, yes, all },
+  handler
+).pipe(
+  Command.withDescription("Delete a secret, or every secret with --all"),
+  Command.withAlias("del")
+);

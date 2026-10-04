@@ -59,4 +59,4 @@ export const addCommand = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Store a secret in a context"));

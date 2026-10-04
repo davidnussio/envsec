@@ -92,4 +92,4 @@ export const getCommand = Command.make(
         }
       }
     })
-);
+).pipe(Command.withDescription("Print the value of a secret"));
