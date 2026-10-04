@@ -1,6 +1,11 @@
 {
   "name": "envsec-monorepo",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "type": "module",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -9,17 +14,19 @@
     "test": "turbo run test",
     "test:unit": "turbo run test:unit",
     "clean": "turbo run clean",
-    "check": "turbo run check",
-    "fix": "turbo run fix",
+    "check": "ultracite check --disable-nested-config",
+    "fix": "ultracite fix --disable-nested-config",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
     "turbo": "^2.9.1",
     "typescript": "^5.9.3",
-    "ultracite": "7.4.2"
+    "ultracite": "7.12.0"
   },
   "engines": {
     "node": ">=22"
@@ -30,9 +37,5 @@
       "@effect/platform-node": "4.0.0",
       "effect": "4.0.0"
     }
-  },
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ]
+  }
 }

@@ -2,64 +2,60 @@
   "name": "envsec",
   "version": "1.0.0-rc.2",
   "description": "Secure environment secrets management using native OS credential stores",
-  "type": "module",
+  "keywords": [
+    "cli",
+    "credential-manager",
+    "cross-platform",
+    "effect",
+    "environment-variables",
+    "keychain",
+    "libsecret",
+    "linux",
+    "macos",
+    "secrets",
+    "windows"
+  ],
+  "homepage": "https://envsec.dev",
+  "bugs": {
+    "url": "https://github.com/davidnussio/envsec/issues"
+  },
+  "license": "MIT",
+  "author": "David Nussio",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/davidnussio/envsec.git",
+    "directory": "packages/cli"
+  },
   "bin": {
     "envsec": "./dist/main.js"
   },
   "files": [
     "dist"
   ],
-  "engines": {
-    "node": ">=22.0.0"
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "check": "ultracite check",
-    "fix": "ultracite fix",
     "test": "bash test/e2e-test.sh",
     "test:unit": "pnpm run build && node --test test/*.test.mjs",
     "clean": "rm -rf dist"
   },
-  "keywords": [
-    "secrets",
-    "environment-variables",
-    "keychain",
-    "credential-manager",
-    "libsecret",
-    "cross-platform",
-    "macos",
-    "linux",
-    "windows",
-    "effect",
-    "cli"
-  ],
-  "author": "David Nussio",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/davidnussio/envsec.git",
-    "directory": "packages/cli"
-  },
-  "homepage": "https://envsec.dev",
-  "bugs": {
-    "url": "https://github.com/davidnussio/envsec/issues"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
   "dependencies": {
+    "@effect/platform-node": "4.0.0",
     "@envsec/core": "workspace:*",
     "@envsec/tui": "workspace:*",
-    "@effect/platform-node": "4.0.0",
     "effect": "4.0.0",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.9",
     "@types/node": "^25.5.0",
     "@types/sql.js": "^1.4.11",
-    "typescript": "^5.9.3",
-    "ultracite": "7.3.2"
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
   }
 }

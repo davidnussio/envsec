@@ -2,12 +2,12 @@ packages:
   - "packages/*"
   - "apps/*"
 allowBuilds:
-  '@parcel/watcher': true
+  "@parcel/watcher": true
   msgpackr-extract: false
   msw: false
   sharp: true
   unrs-resolver: false
 minimumReleaseAgeExclude:
-  - '@effect/platform-node@4.0.0'
-  - '@effect/platform-node-shared@4.0.0'
-  - 'effect@4.0.0'
+  - "@effect/platform-node@4.0.0"
+  - "@effect/platform-node-shared@4.0.0"
+  - "effect@4.0.0"

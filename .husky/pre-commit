@@ -11,7 +11,8 @@ if [ -z "$STAGED_FILES" ]; then
 fi
 
 # Run formatter
-bun x ultracite fix
+# --disable-nested-config: skip the oxlint config of the vendored repos/effect
+bun x ultracite fix --disable-nested-config
 FORMAT_EXIT_CODE=$?
 
 # Re-stage files that were already staged
