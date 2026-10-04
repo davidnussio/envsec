@@ -129,7 +129,6 @@ _envsec() {
                             case $line[1] in
                                 run)
                                     _arguments \\
-                                        '(-o --override-context)'{-o,--override-context}'[Override context]:context:_envsec_contexts' \\
                                         '(-q --quiet)'{-q,--quiet}'[Suppress output]' \\
                                         '(-i --inject)'{-i,--inject}'[Inject all secrets as env vars]' \\
                                         '1:name:_envsec_commands'

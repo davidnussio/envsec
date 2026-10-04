@@ -436,16 +436,18 @@ envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manife
       <P>List all saved commands.</P>
       <TerminalBlock code="envsec cmd list" />
       <H3>cmd run</H3>
-      <P>Run a saved command (uses the context it was saved with).</P>
+      <P>
+        Run a saved command. It runs in the context it was saved with, unless
+        you pass <Mono>--context</Mono> / <Mono>-c</Mono> explicitly (envsec
+        then warns, showing both contexts). <Mono>ENVSEC_CONTEXT</Mono> is
+        ignored here, so a saved command never silently runs against another
+        context.
+      </P>
       <OptionsList
         options={[
           {
             description: "Name of the saved command to execute",
             name: "<name>",
-          },
-          {
-            description: "Override the saved context at execution time",
-            name: "--override-context, -o",
           },
           {
             description:
@@ -469,8 +471,8 @@ envsec cmd run deploy -q
 envsec cmd run deploy --inject
 envsec cmd run deploy -i
 
-# Override context at execution time
-envsec cmd run deploy --override-context myapp.prod`}
+# Run in a different context than the one it was saved with
+envsec -c myapp.prod cmd run deploy`}
       />
       <H3>cmd search</H3>
       <P>Search saved commands by name or command string.</P>

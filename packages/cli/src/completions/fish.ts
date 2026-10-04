@@ -198,7 +198,6 @@ complete -c envsec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -
 
 # cmd run / cmd delete — complete with saved command names
 complete -c envsec -n '__envsec_cmd_using_sub run' -x -a '(__envsec_commands)' -d 'Saved command'
-complete -c envsec -n '__envsec_cmd_using_sub run' -l override-context -s o -x -a '(__envsec_contexts)' -d 'Override context'
 complete -c envsec -n '__envsec_cmd_using_sub run' -l quiet -s q -d 'Suppress output'
 complete -c envsec -n '__envsec_cmd_using_sub run' -l inject -s i -d 'Inject all secrets as env vars'
 complete -c envsec -n '__envsec_cmd_using_sub delete' -x -a '(__envsec_commands)' -d 'Saved command'
@@ -285,7 +284,6 @@ complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a 
 complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a list -d 'List saved commands'
 complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a delete -d 'Delete a saved command'
 complete -c esec -n '__envsec_cmd_using_sub run' -x -a '(__envsec_commands)' -d 'Saved command'
-complete -c esec -n '__envsec_cmd_using_sub run' -l override-context -s o -x -a '(__envsec_contexts)' -d 'Override context'
 complete -c esec -n '__envsec_cmd_using_sub run' -l quiet -s q -d 'Suppress output'
 complete -c esec -n '__envsec_cmd_using_sub run' -l inject -s i -d 'Inject all secrets as env vars'
 complete -c esec -n '__envsec_cmd_using_sub delete' -x -a '(__envsec_commands)' -d 'Saved command'

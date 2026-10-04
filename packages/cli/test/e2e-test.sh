@@ -27,7 +27,7 @@ cleanup_secrets() {
   for key in db.password api.token special.chars special.emoji special.utf8 stale.secret; do
     node "$CLI" -c "$CTX" delete -y "$key" >/dev/null 2>&1 || true
   done
-  for key in redis.host redis.port redis.password smtp.user smtp.pass; do
+  for key in redis.host redis.port redis.password smtp.user smtp.pass db.password; do
     node "$CLI" -c "$CTX2" delete -y "$key" >/dev/null 2>&1 || true
   done
   node "$CLI" -c "test.e2e-all" delete --all -y >/dev/null 2>&1 || true
@@ -365,6 +365,27 @@ assert_not_contains "cmd run -q: no resolved msg" "Resolved" "$out"
 out=$(run_ok cmd run --quiet test-echo)
 assert_contains "cmd run --quiet: executed" "newpassword" "$out"
 assert_not_contains "cmd run --quiet: no resolved msg" "Resolved" "$out"
+
+# cmd run: an explicit -c overrides the saved context; ENVSEC_CONTEXT does not
+run_ok -c "$CTX2" add db.password -v "second-db" >/dev/null
+
+out=$(run_ok -c "$CTX2" cmd run test-echo)
+assert_contains "cmd run -c: uses the explicit context" "second-db" "$out"
+
+err=$(node "$CLI" -c "$CTX2" cmd run test-echo 2>&1 >/dev/null)
+assert_contains "cmd run -c: warns about the context change" "(saved: \"$CTX\")" "$err"
+
+err=$(node "$CLI" -c "$CTX2" cmd run -q test-echo 2>&1 >/dev/null)
+assert_not_contains "cmd run -c -q: no warning" "saved:" "$err"
+
+out=$(ENVSEC_CONTEXT="$CTX2" run_ok cmd run test-echo)
+assert_contains "cmd run: ENVSEC_CONTEXT does not override the saved context" "newpassword" "$out"
+
+ec=0
+run_all cmd run --override-context "$CTX2" test-echo >/dev/null || ec=$?
+assert_exit "cmd run: --override-context was removed" "1" "$ec"
+
+node "$CLI" -c "$CTX2" delete -y db.password >/dev/null 2>&1 || true
 
 # cmd run --inject: all context secrets as env vars
 out=$(run_ok -c "$CTX" run -s -n test-multi "echo {db.password} \$API_TOKEN")

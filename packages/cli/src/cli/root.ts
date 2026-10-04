@@ -1,5 +1,5 @@
 import { ContextName } from "@envsec/core";
-import { Config, Effect, Option, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
 const decodeContext = Schema.decodeEffect(ContextName);
@@ -8,9 +8,6 @@ const contextFlag = Options.String("context").pipe(
   Options.withAlias("c"),
   Options.withDescription(
     "Context name (e.g. myapp.dev, stripe-api.prod, work.staging). Also reads ENVSEC_CONTEXT env var."
-  ),
-  Options.withFallbackConfig(
-    Config.String("ENVSEC_CONTEXT").pipe(Config.map((value) => value.trim()))
   ),
   Options.optional
 );
@@ -46,15 +43,41 @@ export const rootCommand = Command.make("envsec").pipe(
   })
 );
 
+const nonEmpty = (value: string) => value !== "";
+
 /**
- * The --context value, falling back to the ENVSEC_CONTEXT env var
- * (handled by Flag.withFallbackConfig). An empty value counts as unset.
+ * The context passed explicitly with --context / -c, ignoring the
+ * ENVSEC_CONTEXT env var. An empty value counts as unset.
+ *
+ * The env var is applied separately (not via Flag.withFallbackConfig) so
+ * commands like `cmd run` can tell an explicit choice from an ambient one.
  */
-const rawContext = rootCommand.pipe(
-  Effect.map(({ context }) =>
-    context.pipe(Option.filter((value) => value !== ""))
+const flagContext = rootCommand.pipe(
+  Effect.map(({ context }) => context.pipe(Option.filter(nonEmpty)))
+);
+
+/** The --context value, falling back to the ENVSEC_CONTEXT env var. */
+const rawContext = flagContext.pipe(
+  Effect.map(
+    Option.orElse(() =>
+      Option.fromNullishOr(process.env.ENVSEC_CONTEXT?.trim()).pipe(
+        Option.filter(nonEmpty)
+      )
+    )
   )
 );
+
+/**
+ * Validate the context given explicitly on the command line, if any.
+ * ENVSEC_CONTEXT is deliberately not considered.
+ */
+export const explicitContext = Effect.gen(function* explicitContext() {
+  const context = yield* flagContext;
+  if (Option.isNone(context)) {
+    return Option.none<ContextName>();
+  }
+  return Option.some(yield* decodeContext(context.value));
+});
 
 /**
  * Extract and validate the required --context option.

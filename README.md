@@ -352,10 +352,9 @@ envsec cmd list
 
 #### cmd run
 
-Run a saved command (uses the context it was saved with).
+Run a saved command. It runs in the context it was saved with, unless you pass `--context` / `-c` explicitly; envsec then prints a warning showing both contexts (silenced by `--quiet`). `ENVSEC_CONTEXT` is ignored here, so a command saved for one context never silently runs against another (for example inside `envsec shell`).
 
 - `<name>` — Name of the saved command to execute
-- `--override-context`, `-o` — Override the saved context at execution time
 - `--quiet`, `-q` — Suppress informational output (print only command output)
 - `--inject`, `-i` — Inject all context secrets as environment variables
 
@@ -366,9 +365,8 @@ envsec cmd run deploy
 envsec cmd run deploy --quiet
 envsec cmd run deploy -q
 
-# Override the context at execution time
-envsec cmd run deploy --override-context myapp.prod
-envsec cmd run deploy -o myapp.prod
+# Run in a different context than the one it was saved with
+envsec -c myapp.prod cmd run deploy
 
 # Inject all context secrets as env vars when running a saved command
 envsec cmd run deploy --inject
@@ -668,7 +666,6 @@ What gets completed dynamically:
 - `--context` / `-c` — lists all your contexts
 - Secret key arguments (`get`, `add`, `delete`) — lists keys for the current context
 - `cmd run` / `cmd delete` — lists saved command names
-- `--override-context` / `-o` — lists contexts for `cmd run`
 - Subcommands, flags, and static choices (shells, etc.) are also completed
 
 ## Comparison

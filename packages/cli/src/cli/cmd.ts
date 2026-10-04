@@ -13,17 +13,12 @@ import { Argument as Args, Command, Flag as Options } from "effect/cli";
 
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
+import { explicitContext } from "./root.js";
 
 // --- cmd run <name> ---
 
 const cmdRunName = Args.String("name").pipe(
   Args.withDescription("Name of the saved command to execute")
-);
-
-const cmdRunContextOverride = Options.String("override-context").pipe(
-  Options.withAlias("o"),
-  Options.withDescription("Override the saved context"),
-  Options.optional
 );
 
 const cmdRunQuiet = Options.Boolean("quiet").pipe(
@@ -47,15 +42,25 @@ const cmdRunCommand = Command.make(
   // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     name: cmdRunName,
-    context: cmdRunContextOverride,
     quiet: cmdRunQuiet,
     inject: cmdRunInject,
   },
-  ({ name, context, quiet, inject }) =>
+  ({ name, quiet, inject }) =>
     Effect.gen(function* cmdRunHandler() {
       const saved = yield* SecretStore.getCommand(name);
-      const rawCtx = Option.isSome(context) ? context.value : saved.context;
-      const ctx = yield* Schema.decodeEffect(ContextName)(rawCtx);
+      // An explicit --context wins over the saved one. ENVSEC_CONTEXT does
+      // not: inside `envsec shell` it is always set, and a command saved for
+      // one context must not silently run against another.
+      const override = yield* explicitContext;
+      const ctx = Option.isSome(override)
+        ? override.value
+        : yield* Schema.decodeEffect(ContextName)(saved.context);
+
+      if (!quiet && ctx !== saved.context) {
+        yield* Console.error(
+          `${icons.warning} Running ${bold(`"${name}"`)} in context ${bold(`"${ctx}"`)} (saved: ${dim(`"${saved.context}"`)})`
+        );
+      }
 
       const resolved = yield* resolveCommand(saved.command, ctx, { quiet });
 
@@ -84,7 +89,12 @@ const cmdRunCommand = Command.make(
         },
       });
     })
-).pipe(Command.withDescription("Run a saved command"));
+).pipe(
+  Command.withDescription(
+    "Run a saved command in the context it was saved with, or in the one given explicitly with -c. ENVSEC_CONTEXT is ignored."
+  ),
+  Command.withShortDescription("Run a saved command")
+);
 
 // --- cmd search <pattern> ---
 
