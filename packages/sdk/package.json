@@ -41,7 +41,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
-    "test:unit": "tsc --noEmit -p tsconfig.test.json",
+    "test:unit": "tsc --noEmit -p tsconfig.test.json && pnpm run build && node --test test/*.test.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {

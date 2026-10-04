@@ -1,11 +1,14 @@
 import {
+  ContextName,
   DatabaseConfigDefault,
   DatabaseConfigFrom,
+  expiresAtFromNow,
   type MetadataStoreError,
+  parseDuration,
   SecretStore,
   type UnsupportedPlatformError,
 } from "@envsec/core";
-import { Effect, ManagedRuntime } from "effect";
+import { Effect, ManagedRuntime, Schema } from "effect";
 import type { EnvsecClientOptions } from "./types.js";
 
 function toEnvKey(key: string): string {
@@ -13,6 +16,23 @@ function toEnvKey(key: string): string {
 }
 
 type StoreError = UnsupportedPlatformError | MetadataStoreError;
+
+const isValidContextName = Schema.is(ContextName);
+
+const validateContexts = (context: string | string[]): string[] => {
+  const contexts = Array.isArray(context) ? context : [context];
+  if (contexts.length === 0) {
+    throw new Error("[envsec] At least one context is required");
+  }
+  for (const ctx of contexts) {
+    if (!isValidContextName(ctx)) {
+      throw new Error(
+        `[envsec] Invalid context name "${ctx}": use only alphanumeric characters, dots, hyphens, and underscores`
+      );
+    }
+  }
+  return contexts;
+};
 
 /**
  * EnvsecClient — programmatic access to envsec secrets via Effect.
@@ -45,16 +65,24 @@ export class EnvsecClient {
     return this.contexts.at(-1) as string;
   }
 
-  static create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
+  /**
+   * Create a client. Rejects immediately on an invalid context name, an
+   * unsupported platform or an unreadable database, instead of failing
+   * later on the first read or write.
+   */
+  static async create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
+    const contexts = validateContexts(opts.context);
     const dbLayer = opts.dbPath
       ? DatabaseConfigFrom(opts.dbPath)
       : DatabaseConfigDefault;
-    const storeLayer = SecretStore.layer(dbLayer);
-    const runtime = ManagedRuntime.make(storeLayer);
-    const contexts = Array.isArray(opts.context)
-      ? opts.context
-      : [opts.context];
-    return Promise.resolve(new EnvsecClient(runtime, contexts));
+    const runtime = ManagedRuntime.make(SecretStore.layer(dbLayer));
+    try {
+      await runtime.context();
+    } catch (error) {
+      await runtime.dispose();
+      throw error;
+    }
+    return new EnvsecClient(runtime, contexts);
   }
 
   /**
@@ -90,10 +118,21 @@ export class EnvsecClient {
     return value;
   }
 
-  /** Write operations target the primary (last) context. */
+  /**
+   * Write operations target the primary (last) context.
+   * `expires` is a duration such as "30m", "2h", "7d", "4w", "3mo" or "1y".
+   */
   set(key: string, value: string, opts?: { expires?: string }): Promise<void> {
+    const context = this.primaryContext;
+    const expires = opts?.expires;
     return this.runtime.runPromise(
-      SecretStore.set(this.primaryContext, key, value, opts?.expires)
+      Effect.gen(function* () {
+        const expiresAt =
+          expires === undefined
+            ? undefined
+            : expiresAtFromNow(yield* parseDuration(expires));
+        yield* SecretStore.set(context, key, value, expiresAt);
+      })
     );
   }
 
