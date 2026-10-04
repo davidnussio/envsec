@@ -257,95 +257,92 @@ const checkDatabase = (dbPath: string): CheckResult => {
   }
 };
 
-const checkDatabaseIntegrity = (
+const checkDatabaseIntegrity = Effect.fn("checkDatabaseIntegrity")(function* (
   dbPath: string
-): Effect.Effect<CheckResult, never, SecretStore> =>
-  Effect.gen(function* () {
-    if (!existsSync(dbPath)) {
-      return pass("Database integrity", "Skipped (no database file yet)");
-    }
-    // If we can list contexts, the DB schema is valid and readable
-    const contexts = yield* SecretStore.listContexts().pipe(
-      Effect.catch(() => Effect.succeed(null))
-    );
-    if (contexts === null) {
-      return fail(
-        "Database integrity",
-        "Failed to query database",
-        "Database may be corrupted"
-      );
-    }
-    return pass(
+) {
+  if (!existsSync(dbPath)) {
+    return pass("Database integrity", "Skipped (no database file yet)");
+  }
+  // If we can list contexts, the DB schema is valid and readable
+  const contexts = yield* SecretStore.listContexts().pipe(
+    Effect.catch(() => Effect.succeed(null))
+  );
+  if (contexts === null) {
+    return fail(
       "Database integrity",
-      "Schema OK",
-      `${contexts.length} context(s) found`
+      "Failed to query database",
+      "Database may be corrupted"
     );
-  });
+  }
+  return pass(
+    "Database integrity",
+    "Schema OK",
+    `${contexts.length} context(s) found`
+  );
+});
 
-const checkOrphanedSecrets = (
+const checkOrphanedSecrets = Effect.fn("checkOrphanedSecrets")(function* (
   dbPath: string
-): Effect.Effect<CheckResult, never, SecretStore> =>
-  Effect.gen(function* () {
-    if (!existsSync(dbPath)) {
-      return pass("Orphaned secrets", "Skipped (no database file yet)");
-    }
-    const contexts = yield* SecretStore.listContexts().pipe(
+) {
+  if (!existsSync(dbPath)) {
+    return pass("Orphaned secrets", "Skipped (no database file yet)");
+  }
+  const contexts = yield* SecretStore.listContexts().pipe(
+    Effect.catch(() =>
+      Effect.succeed([] as Array<{ context: string; count: number }>)
+    )
+  );
+  let orphanCount = 0;
+  for (const ctx of contexts) {
+    const secrets = yield* SecretStore.list(ctx.context).pipe(
       Effect.catch(() =>
-        Effect.succeed([] as Array<{ context: string; count: number }>)
+        Effect.succeed(
+          [] as Array<{
+            key: string;
+            updated_at: string;
+            expires_at: string | null;
+          }>
+        )
       )
     );
-    let orphanCount = 0;
-    for (const ctx of contexts) {
-      const secrets = yield* SecretStore.list(ctx.context).pipe(
-        Effect.catch(() =>
-          Effect.succeed(
-            [] as Array<{
-              key: string;
-              updated_at: string;
-              expires_at: string | null;
-            }>
-          )
-        )
+    for (const s of secrets) {
+      const result = yield* SecretStore.get(ctx.context, s.key).pipe(
+        Effect.map(() => true),
+        Effect.catch(() => Effect.succeed(false))
       );
-      for (const s of secrets) {
-        const result = yield* SecretStore.get(ctx.context, s.key).pipe(
-          Effect.map(() => true),
-          Effect.catch(() => Effect.succeed(false))
-        );
-        if (!result) {
-          orphanCount++;
-        }
+      if (!result) {
+        orphanCount++;
       }
     }
-    if (orphanCount > 0) {
-      return fail(
-        "Orphaned secrets",
-        `${orphanCount} secret(s) in metadata but missing from keychain`,
-        "Run envsec list and envsec delete to clean up"
-      );
-    }
-    return pass("Orphaned secrets", "None found");
-  });
-
-const checkExpiredSecrets = (
-  dbPath: string
-): Effect.Effect<CheckResult, never, SecretStore> =>
-  Effect.gen(function* () {
-    if (!existsSync(dbPath)) {
-      return pass("Expired secrets", "Skipped (no database file yet)");
-    }
-    const expired = yield* SecretStore.listAllExpiring(0).pipe(
-      Effect.catch(() => Effect.succeed([]))
+  }
+  if (orphanCount > 0) {
+    return fail(
+      "Orphaned secrets",
+      `${orphanCount} secret(s) in metadata but missing from keychain`,
+      "Run envsec list and envsec delete to clean up"
     );
-    if (expired.length > 0) {
-      return fail(
-        "Expired secrets",
-        `${expired.length} expired secret(s)`,
-        "Run envsec audit --within 0d for details"
-      );
-    }
-    return pass("Expired secrets", "None");
-  });
+  }
+  return pass("Orphaned secrets", "None found");
+});
+
+const checkExpiredSecrets = Effect.fn("checkExpiredSecrets")(function* (
+  dbPath: string
+) {
+  if (!existsSync(dbPath)) {
+    return pass("Expired secrets", "Skipped (no database file yet)");
+  }
+  const expired = yield* SecretStore.listAllExpiring(0).pipe(
+    Effect.catch(() => Effect.succeed([]))
+  );
+  if (expired.length > 0) {
+    return fail(
+      "Expired secrets",
+      `${expired.length} expired secret(s)`,
+      "Run envsec audit --within 0d for details"
+    );
+  }
+  return pass("Expired secrets", "None");
+});
 
 const checkEnvConfig = (): CheckResult => {
   const envDb = process.env.ENVSEC_DB;

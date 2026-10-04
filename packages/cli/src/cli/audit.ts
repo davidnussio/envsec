@@ -50,113 +50,111 @@ const countExpired = (
   return { expired, expiring: secrets.length - expired };
 };
 
-const auditForContext = (
+const auditForContext = Effect.fn("auditForContext")(function* (
   ctx: string,
   secrets: SecretMetadata[],
   windowStr: string,
   now: number
-) =>
-  Effect.gen(function* () {
-    if (secrets.length === 0) {
-      yield* Console.log(
-        `${icons.check} No secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}`
-      );
-      return;
-    }
+) {
+  if (secrets.length === 0) {
     yield* Console.log(
-      `${icons.search} Secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}:\n`
+      `${icons.check} No secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}`
     );
-    for (const s of secrets) {
-      yield* Console.log(formatLine(s.key, s.expires_at, now));
-    }
-    const { expired, expiring } = countExpired(secrets, now);
-    yield* Console.log(
-      `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon ${dim(`(${secrets.length} total)`)}`
-    );
-  });
+    return;
+  }
+  yield* Console.log(
+    `${icons.search} Secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}:\n`
+  );
+  for (const s of secrets) {
+    yield* Console.log(formatLine(s.key, s.expires_at, now));
+  }
+  const { expired, expiring } = countExpired(secrets, now);
+  yield* Console.log(
+    `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon ${dim(`(${secrets.length} total)`)}`
+  );
+});
 
-const auditAllContexts = (
+const auditAllContexts = Effect.fn("auditAllContexts")(function* (
   secrets: Array<SecretMetadata & { env: string }>,
   windowStr: string,
   now: number
-) =>
-  Effect.gen(function* () {
-    if (secrets.length === 0) {
-      yield* Console.log(
-        `${icons.check} No secrets expiring within ${bold(windowStr)} across all contexts`
-      );
-      return;
-    }
+) {
+  if (secrets.length === 0) {
     yield* Console.log(
-      `${icons.search} Secrets expiring within ${bold(windowStr)} across all contexts:\n`
+      `${icons.check} No secrets expiring within ${bold(windowStr)} across all contexts`
     );
-    for (const s of secrets) {
-      yield* Console.log(formatLine(s.key, s.expires_at, now, s.env));
+    return;
+  }
+  yield* Console.log(
+    `${icons.search} Secrets expiring within ${bold(windowStr)} across all contexts:\n`
+  );
+  for (const s of secrets) {
+    yield* Console.log(formatLine(s.key, s.expires_at, now, s.env));
+  }
+  const { expired, expiring } = countExpired(secrets, now);
+  const contextCount = new Set(secrets.map((s) => s.env)).size;
+  yield* Console.log(
+    `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon across ${badge(contextCount, "context")} ${dim(`(${secrets.length} total)`)}`
+  );
+});
+
+const pruneStaleEnvExports = Effect.fn("pruneStaleEnvExports")(function* (
+  exports: EnvFileExport[]
+) {
+  const alive: EnvFileExport[] = [];
+  const stale: EnvFileExport[] = [];
+
+  for (const e of exports) {
+    if (existsSync(e.path)) {
+      alive.push(e);
+    } else {
+      stale.push(e);
     }
-    const { expired, expiring } = countExpired(secrets, now);
-    const contextCount = new Set(secrets.map((s) => s.env)).size;
+  }
+
+  for (const e of stale) {
+    yield* SecretStore.removeEnvFileExport(e.path);
+  }
+
+  if (stale.length > 0) {
     yield* Console.log(
-      `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon across ${badge(contextCount, "context")} ${dim(`(${secrets.length} total)`)}`
+      `\n${icons.broom} Removed ${badge(stale.length, "stale env file record")} ${dim("(files no longer on disk)")}`
     );
-  });
+  }
 
-const pruneStaleEnvExports = (exports: EnvFileExport[]) =>
-  Effect.gen(function* () {
-    const alive: EnvFileExport[] = [];
-    const stale: EnvFileExport[] = [];
+  return alive;
+});
 
-    for (const e of exports) {
-      if (existsSync(e.path)) {
-        alive.push(e);
-      } else {
-        stale.push(e);
-      }
-    }
-
-    for (const e of stale) {
-      yield* SecretStore.removeEnvFileExport(e.path);
-    }
-
-    if (stale.length > 0) {
-      yield* Console.log(
-        `\n${icons.broom} Removed ${badge(stale.length, "stale env file record")} ${dim("(files no longer on disk)")}`
-      );
-    }
-
-    return alive;
-  });
-
-const auditEnvFileExports = (
+const auditEnvFileExports = Effect.fn("auditEnvFileExports")(function* (
   exports: EnvFileExport[],
   jsonMode: boolean,
   contextFilter?: string
-) =>
-  Effect.gen(function* () {
-    const filtered = contextFilter
-      ? exports.filter((e) => e.context === contextFilter)
-      : exports;
+) {
+  const filtered = contextFilter
+    ? exports.filter((e) => e.context === contextFilter)
+    : exports;
 
-    if (jsonMode) {
-      return filtered;
-    }
-
-    if (filtered.length === 0) {
-      return filtered;
-    }
-
-    yield* Console.log(`\n${icons.file} Generated .env files:\n`);
-    for (const e of filtered) {
-      const date = e.created_at.replace("T", " ").slice(0, 19);
-      yield* Console.log(indent(`${icons.file} ${e.path}`));
-      yield* Console.log(
-        indent(`${dim(`context: ${e.context}  generated: ${date}`)}`, 2)
-      );
-    }
-    yield* Console.log(
-      `\n${icons.chart} ${badge(filtered.length, "env file")} generated`
-    );
+  if (jsonMode) {
     return filtered;
-  });
+  }
+
+  if (filtered.length === 0) {
+    return filtered;
+  }
+
+  yield* Console.log(`\n${icons.file} Generated .env files:\n`);
+  for (const e of filtered) {
+    const date = e.created_at.replace("T", " ").slice(0, 19);
+    yield* Console.log(indent(`${icons.file} ${e.path}`));
+    yield* Console.log(
+      indent(`${dim(`context: ${e.context}  generated: ${date}`)}`, 2)
+    );
+  }
+  yield* Console.log(
+    `\n${icons.chart} ${badge(filtered.length, "env file")} generated`
+  );
+  return filtered;
+});
 
 export const auditCommand = Command.make(
   "audit",

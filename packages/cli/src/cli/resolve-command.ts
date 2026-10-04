@@ -1,10 +1,7 @@
 import {
   badge,
-  type InvalidKeyError,
   icons,
   indent,
-  type KeychainError,
-  type MetadataStoreError,
   MissingSecretsError,
   type SecretNotFoundError,
   SecretStore,
@@ -21,65 +18,60 @@ export interface ResolvedCommand {
 const toEnvVarName = (key: string, index: number): string =>
   `ENVSEC_${index}_${key.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
 
-export const resolveCommand = (
+export const resolveCommand = Effect.fn("resolveCommand")(function* (
   cmd: string,
   ctx: string,
   options?: { quiet?: boolean }
-): Effect.Effect<
-  ResolvedCommand,
-  KeychainError | MetadataStoreError | InvalidKeyError | MissingSecretsError,
-  SecretStore
-> =>
-  Effect.gen(function* () {
-    const placeholders = [...cmd.matchAll(placeholderPattern)];
+) {
+  const placeholders = [...cmd.matchAll(placeholderPattern)];
 
-    if (placeholders.length === 0) {
-      return { command: cmd, env: {} };
+  if (placeholders.length === 0) {
+    return { command: cmd, env: {} };
+  }
+
+  const missing: string[] = [];
+  let resolved = cmd;
+  const env: Record<string, string> = {};
+
+  for (const [index, match] of placeholders.entries()) {
+    const key = match[1];
+    if (key === undefined) {
+      continue;
     }
 
-    const missing: string[] = [];
-    let resolved = cmd;
-    const env: Record<string, string> = {};
+    const result = yield* SecretStore.get(ctx, key).pipe(
+      Effect.map((value) => ({ found: true as const, value: String(value) })),
+      Effect.catchTag("SecretNotFoundError", (e: SecretNotFoundError) =>
+        Effect.succeed({ found: false as const, key: e.key })
+      )
+    );
 
-    for (const [index, match] of placeholders.entries()) {
-      const key = match[1];
-      if (key === undefined) {
-        continue;
-      }
+    if (result.found) {
+      const envVar = toEnvVarName(key, index);
+      env[envVar] = result.value;
+      const shellRef =
+        process.platform === "win32" ? `%${envVar}%` : `$${envVar}`;
+      resolved = resolved.replaceAll(`{${key}}`, shellRef);
+    } else {
+      missing.push(result.key);
+    }
+  }
 
-      const result = yield* SecretStore.get(ctx, key).pipe(
-        Effect.map((value) => ({ found: true as const, value: String(value) })),
-        Effect.catchTag("SecretNotFoundError", (e: SecretNotFoundError) =>
-          Effect.succeed({ found: false as const, key: e.key })
-        )
+  if (missing.length > 0) {
+    const keyList = missing.map((k) => indent(`- ${k}`)).join("\n");
+    const message = `Missing secrets in context "${ctx}":\n${keyList}\n\nAdd them with: envsec -c ${ctx} add <key>`;
+    yield* Console.error(`${icons.error} ${message}`);
+    return yield* new MissingSecretsError({
+      keys: missing,
+      context: ctx,
+      message,
+    });
+  }
+
+  yield* options?.quiet
+    ? Effect.void
+    : Console.log(
+        `${icons.lock} Resolved ${badge(placeholders.length, "secret")}`
       );
-
-      if (result.found) {
-        const envVar = toEnvVarName(key, index);
-        env[envVar] = result.value;
-        const shellRef =
-          process.platform === "win32" ? `%${envVar}%` : `$${envVar}`;
-        resolved = resolved.replaceAll(`{${key}}`, shellRef);
-      } else {
-        missing.push(result.key);
-      }
-    }
-
-    if (missing.length > 0) {
-      const keyList = missing.map((k) => indent(`- ${k}`)).join("\n");
-      const message = `Missing secrets in context "${ctx}":\n${keyList}\n\nAdd them with: envsec -c ${ctx} add <key>`;
-      yield* Console.error(`${icons.error} ${message}`);
-      return yield* new MissingSecretsError({
-        keys: missing,
-        context: ctx,
-        message,
-      });
-    }
-
-    yield* options?.quiet
-      ? Effect.void
-      : Console.log(
-          `${icons.lock} Resolved ${badge(placeholders.length, "secret")}`
-        );
-    return { command: resolved, env };
-  });
+  return { command: resolved, env };
+});
