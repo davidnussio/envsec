@@ -1,6 +1,6 @@
 {
   "name": "@envsec/sdk",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0",
   "description": "Node.js / Bun SDK for envsec — load secrets from the OS credential store without .env files",
   "keywords": [
     "bun",

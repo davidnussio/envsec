@@ -42,14 +42,6 @@ _envsec_completions() {
         return 0
     fi
 
-    # Complete --override-context / -o values with dynamic contexts
-    if [[ "$prev" == "-o" || "$prev" == "--override-context" ]]; then
-        local contexts
-        contexts="$(${bin} __complete contexts 2>/dev/null)"
-        COMPREPLY=( $(compgen -W "$contexts" -- "$cur") )
-        return 0
-    fi
-
     # Complete --to / -t values with dynamic contexts (move/copy)
     if [[ "$prev" == "-t" || "$prev" == "--to" ]]; then
         local contexts

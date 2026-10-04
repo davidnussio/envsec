@@ -68,15 +68,23 @@ export class AbortedError extends Schema.TaggedError<AbortedError>()(
 
 export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>()(
   "CommandExecutionError",
+  // oxlint-disable-next-line sort-keys -- field order is the error's own-property and encoded order
   {
     command: Schema.String,
     exitCode: Schema.Number,
     message: Schema.String,
+    /** Set when the command was killed by a signal (e.g. "SIGINT"). */
+    signal: Schema.optional(Schema.String),
   }
 ) {
   /** Propagate the child process exit code as the CLI's own exit code. */
   override get [Runtime.errorExitCode](): number {
     return this.exitCode;
+  }
+
+  /** Ctrl-C is the user stopping the command on purpose: exit quietly. */
+  override get [Runtime.errorReported](): boolean {
+    return this.signal !== "SIGINT";
   }
 }
 

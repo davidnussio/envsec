@@ -1,29 +1,16 @@
-import { execSync } from "node:child_process";
-
-import {
-  bold,
-  CommandExecutionError,
-  ContextName,
-  dim,
-  icons,
-  SecretStore,
-} from "@envsec/core";
+import { bold, ContextName, dim, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
 
+import { executeCommand } from "./execute-command.js";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
+import { explicitContext } from "./root.js";
 
 // --- cmd run <name> ---
 
 const cmdRunName = Args.String("name").pipe(
   Args.withDescription("Name of the saved command to execute")
-);
-
-const cmdRunContextOverride = Options.String("override-context").pipe(
-  Options.withAlias("o"),
-  Options.withDescription("Override the saved context"),
-  Options.optional
 );
 
 const cmdRunQuiet = Options.Boolean("quiet").pipe(
@@ -47,15 +34,25 @@ const cmdRunCommand = Command.make(
   // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     name: cmdRunName,
-    context: cmdRunContextOverride,
     quiet: cmdRunQuiet,
     inject: cmdRunInject,
   },
-  ({ name, context, quiet, inject }) =>
+  ({ name, quiet, inject }) =>
     Effect.gen(function* cmdRunHandler() {
       const saved = yield* SecretStore.getCommand(name);
-      const rawCtx = Option.isSome(context) ? context.value : saved.context;
-      const ctx = yield* Schema.decodeEffect(ContextName)(rawCtx);
+      // An explicit --context wins over the saved one. ENVSEC_CONTEXT does
+      // not: inside `envsec shell` it is always set, and a command saved for
+      // one context must not silently run against another.
+      const override = yield* explicitContext;
+      const ctx = Option.isSome(override)
+        ? override.value
+        : yield* Schema.decodeEffect(ContextName)(saved.context);
+
+      if (!quiet && ctx !== saved.context) {
+        yield* Console.error(
+          `${icons.warning} Running ${bold(`"${name}"`)} in context ${bold(`"${ctx}"`)} (saved: ${dim(`"${saved.context}"`)})`
+        );
+      }
 
       const resolved = yield* resolveCommand(saved.command, ctx, { quiet });
 
@@ -63,28 +60,14 @@ const cmdRunCommand = Command.make(
         ? yield* fetchContextSecrets(ctx)
         : ({} as Record<string, string>);
 
-      yield* Effect.try({
-        catch: (e) => {
-          const status =
-            e instanceof Error && "status" in e
-              ? (e as { status: number }).status
-              : 1;
-          return new CommandExecutionError({
-            command: resolved.command,
-            exitCode: status,
-            message: `Command exited with code ${status}`,
-          });
-        },
-        try: () => {
-          execSync(resolved.command, {
-            env: { ...process.env, ...injectedEnv, ...resolved.env },
-            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-            stdio: "inherit",
-          });
-        },
-      });
+      yield* executeCommand(resolved, injectedEnv);
     })
-).pipe(Command.withDescription("Run a saved command"));
+).pipe(
+  Command.withDescription(
+    "Run a saved command in the context it was saved with, or in the one given explicitly with -c. ENVSEC_CONTEXT is ignored."
+  ),
+  Command.withShortDescription("Run a saved command")
+);
 
 // --- cmd search <pattern> ---
 

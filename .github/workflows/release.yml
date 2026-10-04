@@ -2,7 +2,8 @@ name: Release & Publish
 
 on:
   release:
-    types: [created]
+    # "published" (not "created"): saving a draft release must not publish
+    types: [published]
 
 jobs:
   publish:
@@ -18,11 +19,13 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # Determine npm dist-tag
-          if [[ "$VERSION" == *"-beta"* ]]; then
-            echo "tag=beta" >> "$GITHUB_OUTPUT"
-          elif [[ "$VERSION" == *"-alpha"* ]]; then
+          # Determine npm dist-tag: only stable versions become "latest"
+          if [[ "$VERSION" == *"-alpha"* ]]; then
             echo "tag=alpha" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-beta"* ]]; then
+            echo "tag=beta" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == *"-"* ]]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
           else
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
@@ -71,17 +74,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Alias pre-release to latest (beta phase)
-        if: steps.version.outputs.tag != 'latest'
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          npm dist-tag add "@envsec/core@${VERSION}" latest
-          npm dist-tag add "@envsec/sdk@${VERSION}" latest
-          npm dist-tag add "@envsec/tui@${VERSION}" latest
-          npm dist-tag add "envsec@${VERSION}" latest
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Commit version bump
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -93,6 +85,8 @@ jobs:
 
   update-homebrew:
     needs: publish
+    # Homebrew tracks stable releases only
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     steps:
       - name: Wait for npm registry propagation
