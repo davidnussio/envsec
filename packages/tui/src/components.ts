@@ -16,7 +16,10 @@ export const renderHeader = (
   const ctx = context ? c.cyan(`[${context}]`) : c.dim("[no context]");
   const line = `${c.bold(c.green(`${icons.lock} envsec`))} ${c.dim("›")} ${c.bold(title)}  ${ctx}`;
   writeLine(startRow, ` ${line}`);
-  writeLine(startRow + 1, ` ${c.dim("─".repeat(Math.min(cols - 2, 60)))}`);
+  writeLine(
+    startRow + 1,
+    ` ${c.dim("─".repeat(Math.max(0, Math.min(cols - 2, 60))))}`
+  );
   return startRow + 2;
 };
 
@@ -102,7 +105,10 @@ export const renderTable = (
     headerLine += `${c.bold(c.dim(text))} `;
   }
   writeLine(startRow, headerLine);
-  writeLine(startRow + 1, ` ${c.dim("─".repeat(Math.min(cols - 2, 70)))}`);
+  writeLine(
+    startRow + 1,
+    ` ${c.dim("─".repeat(Math.max(0, Math.min(cols - 2, 70))))}`
+  );
 
   const offset = calcOffset(selected, visible);
 

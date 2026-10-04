@@ -67,9 +67,10 @@ export const c = {
 
 // ── Terminal size ───────────────────────────────────────────────────
 
+// Some pseudo-terminals report a size of 0: fall back to the defaults.
 export const getSize = (): { rows: number; cols: number } => ({
-  rows: process.stdout.rows ?? 24,
-  cols: process.stdout.columns ?? 80,
+  rows: process.stdout.rows || 24,
+  cols: process.stdout.columns || 80,
 });
 
 // ── Write helpers ───────────────────────────────────────────────────
@@ -140,22 +141,42 @@ const parseKey = (data: Buffer): KeyPress => {
 
 export const readKey: Effect.Effect<KeyPress> = Effect.callback<KeyPress>(
   (resume) => {
-    const wasRaw = process.stdin.isRaw;
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
+    const stdin = process.stdin;
+    // stdin closed: nothing more can be read, end the TUI session.
+    if (stdin.readableEnded) {
+      resume(Effect.interrupt);
+      return;
     }
-    process.stdin.resume();
+    const wasRaw = stdin.isRaw;
+    if (stdin.isTTY) {
+      stdin.setRawMode(true);
+    }
+    stdin.resume();
 
-    const onData = (data: Buffer) => {
-      process.stdin.removeListener("data", onData);
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(wasRaw);
+    const cleanup = () => {
+      stdin.removeListener("data", onData);
+      stdin.removeListener("end", onEnd);
+      if (stdin.isTTY) {
+        stdin.setRawMode(wasRaw);
       }
-      process.stdin.pause();
-      resume(Effect.succeed(parseKey(data)));
+      stdin.pause();
     };
 
-    process.stdin.on("data", onData);
+    function onData(data: Buffer) {
+      cleanup();
+      resume(Effect.succeed(parseKey(data)));
+    }
+
+    function onEnd() {
+      cleanup();
+      resume(Effect.interrupt);
+    }
+
+    stdin.on("data", onData);
+    stdin.on("end", onEnd);
+
+    // Runs if the fiber is interrupted while waiting (SIGINT/SIGTERM).
+    return Effect.sync(cleanup);
   }
 );
 
@@ -167,22 +188,33 @@ export const readLine = (
 ): Effect.Effect<string | null> =>
   Effect.callback<string | null>((resume) => {
     write(prompt);
-    const wasRaw = process.stdin.isRaw;
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
+    const stdin = process.stdin;
+    if (stdin.readableEnded) {
+      resume(Effect.interrupt);
+      return;
     }
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
+    const wasRaw = stdin.isRaw;
+    if (stdin.isTTY) {
+      stdin.setRawMode(true);
+    }
+    stdin.resume();
+    stdin.setEncoding("utf-8");
 
     let buf = "";
 
     const cleanup = () => {
-      process.stdin.removeListener("data", onData);
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(wasRaw);
+      stdin.removeListener("data", onData);
+      stdin.removeListener("end", onEnd);
+      if (stdin.isTTY) {
+        stdin.setRawMode(wasRaw);
       }
-      process.stdin.pause();
+      stdin.pause();
     };
+
+    function onEnd() {
+      cleanup();
+      resume(Effect.interrupt);
+    }
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: char-by-char input handling
     const handleChar = (ch: string): "cancel" | "continue" | "done" => {
@@ -206,7 +238,7 @@ export const readLine = (
       return "continue";
     };
 
-    const onData = (chunk: string) => {
+    function onData(chunk: string) {
       // Bare escape key (not part of an ANSI sequence like \x1b[A)
       if (chunk === "\x1b") {
         cleanup();
@@ -233,7 +265,11 @@ export const readLine = (
           return;
         }
       }
-    };
+    }
 
-    process.stdin.on("data", onData);
+    stdin.on("data", onData);
+    stdin.on("end", onEnd);
+
+    // Runs if the fiber is interrupted while waiting (SIGINT/SIGTERM).
+    return Effect.sync(cleanup);
   });
