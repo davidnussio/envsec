@@ -52,7 +52,12 @@ const runPowerShell = (script: string) =>
         );
       }
     );
-  });
+  }).pipe(
+    // Never log the script: it contains the secret value.
+    Effect.tap((result) =>
+      Effect.logDebug(`powershell exited with ${result.exitCode}`)
+    )
+  );
 
 /**
  * Escape a string for use inside PowerShell single-quoted strings.

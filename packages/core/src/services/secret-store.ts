@@ -41,6 +41,7 @@ export class SecretStore extends Context.Service<SecretStore>()(
         value: string,
         expiresAt?: string | null
       ) {
+        yield* Effect.logDebug(`Storing secret ${context}/${key}`);
         const parsed = yield* parseSecretKey(key, context);
         // When overwriting, keep the previous value so a failed metadata write
         // can restore it instead of deleting the user's existing secret.
@@ -72,6 +73,7 @@ export class SecretStore extends Context.Service<SecretStore>()(
         context: string,
         key: string
       ) {
+        yield* Effect.logDebug(`Reading secret ${context}/${key}`);
         yield* metadata.get(context, key);
         const parsed = yield* parseSecretKey(key, context);
         return yield* keychain.get(parsed.service, parsed.account).pipe(

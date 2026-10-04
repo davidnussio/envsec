@@ -58,7 +58,12 @@ const run = (args: string[], stdin?: string) =>
       child.stdin?.write(stdin);
       child.stdin?.end();
     }
-  });
+  }).pipe(
+    // Never log the stdin: it contains the secret value.
+    Effect.tap((result) =>
+      Effect.logDebug(`secret-tool ${args[0]} exited with ${result.exitCode}`)
+    )
+  );
 
 const make = KeychainAccess.of({
   set: Effect.fn("LinuxSecretServiceAccess.set")(function* (

@@ -34,7 +34,12 @@ const run = (args: string[]) =>
         })
       );
     });
-  });
+  }).pipe(
+    // Never log the arguments: they contain the secret value.
+    Effect.tap((result) =>
+      Effect.logDebug(`security ${args[0]} exited with ${result.exitCode}`)
+    )
+  );
 
 const make = KeychainAccess.of({
   set: Effect.fn("MacOsKeychainAccess.set")(function* (

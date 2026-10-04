@@ -6,7 +6,7 @@ import {
   refreshCache,
   SecretStore,
 } from "@envsec/core";
-import { Console, Effect, type Layer } from "effect";
+import { Console, Effect, Layer, References } from "effect";
 import { Command } from "effect/cli";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
@@ -56,7 +56,11 @@ const command = rootCommand.pipe(
     tuiCommand,
     auditCommand,
     doctorCommand,
-  ])
+  ]),
+  // --debug is a shortcut for --log-level debug.
+  Command.provide(({ debug }) =>
+    debug ? Layer.succeed(References.MinimumLogLevel, "Debug") : Layer.empty
+  )
 );
 
 const cli = Command.runWith(command, {
@@ -135,6 +139,8 @@ export const runCliWithLayer = (
   program.pipe(
     Effect.provide(secretStoreLayer),
     Effect.provide(NodeServices.layer),
+    // Logs are diagnostics: keep them off stdout, which carries data.
+    Effect.provideService(References.LogToStderr, true),
     reportErrors,
     NodeRuntime.runMain
   );
