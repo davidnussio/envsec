@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 const CLI_PATH = fileURLToPath(new URL("../dist/main.js", import.meta.url));
 const MISSING_CONTEXT_PATTERN = /Missing required option --context/;
 const MISSING_FILE_PATTERN = /Cannot read file/;
+const INVALID_CONTEXT_PATTERN = /Context name "bad name!!" is invalid/;
 const NO_SECRETS_PATTERN = /No secrets found/;
 const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/;
 const VERSION_PATTERN = /envsec v\d/;
@@ -87,5 +88,30 @@ test("keeps omitted boolean flags optional", () => {
 
     assert.equal(result.status, 1);
     assert.match(`${result.stdout}${result.stderr}`, MISSING_FILE_PATTERN);
+  });
+});
+
+test("prints handler errors to stderr and keeps stdout clean", () => {
+  withDatabase((databasePath) => {
+    const result = runCli("--db", databasePath, "-c", "bad name!!", "list");
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, INVALID_CONTEXT_PATTERN);
+  });
+});
+
+test("exits with the exit code of the command it runs", () => {
+  withDatabase((databasePath) => {
+    const result = runCli(
+      "--db",
+      databasePath,
+      "-c",
+      "smoke.context",
+      "run",
+      "exit 3"
+    );
+
+    assert.equal(result.status, 3);
   });
 });

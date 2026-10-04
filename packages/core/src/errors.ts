@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Runtime, Schema } from "effect";
 
 export class SecretNotFoundError extends Schema.TaggedError<SecretNotFoundError>()(
   "SecretNotFoundError",
@@ -64,7 +64,12 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
     exitCode: Schema.Number,
     message: Schema.String,
   }
-) {}
+) {
+  /** Propagate the child process exit code as the CLI's own exit code. */
+  override get [Runtime.errorExitCode](): number {
+    return this.exitCode;
+  }
+}
 
 export class MissingSecretsError extends Schema.TaggedError<MissingSecretsError>()(
   "MissingSecretsError",

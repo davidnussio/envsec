@@ -30,6 +30,7 @@ import { shareCommand } from "./cli/share.js";
 import { shellCommand } from "./cli/shell.js";
 import { tuiCommand } from "./cli/tui.js";
 import { generateCompletions, type ShellType } from "./completions/index.js";
+import { reportErrors } from "./report-errors.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json") as { version: string };
@@ -120,6 +121,7 @@ export const runCliWithLayer = (
   if (complete) {
     handleComplete(complete.type, complete.arg, cachePath).pipe(
       Effect.provide(secretStoreLayer),
+      reportErrors,
       NodeRuntime.runMain
     );
     return;
@@ -134,6 +136,7 @@ export const runCliWithLayer = (
   program.pipe(
     Effect.provide(secretStoreLayer),
     Effect.provide(NodeServices.layer),
+    reportErrors,
     NodeRuntime.runMain
   );
 };
