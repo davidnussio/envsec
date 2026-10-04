@@ -7,7 +7,11 @@ import { Console, Effect } from "effect";
  * Queries SecretStore directly and rebuilds the cache.
  */
 export const handleComplete = Effect.fn("handleComplete")(
-  function* (type: string, arg: string | undefined, cachePath: string) {
+  function* handleComplete(
+    type: string,
+    arg: string | undefined,
+    cachePath: string
+  ) {
     switch (type) {
       case "contexts": {
         const contexts = yield* SecretStore.listContexts();
@@ -33,13 +37,14 @@ export const handleComplete = Effect.fn("handleComplete")(
         }
         break;
       }
-      default:
+      default: {
         break;
+      }
     }
 
     // Rebuild cache after slow path query
     yield* refreshCache(cachePath);
   },
   // Completion output must never contain errors: fail silently.
-  (effect) => Effect.catch(effect, () => Effect.void)
+  (effect) => Effect.ignore(effect)
 );

@@ -1,17 +1,12 @@
-import {
-  badge,
-  bold,
-  icons,
-  type SecretNotFoundError,
-  SecretStore,
-} from "@envsec/core";
+import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
+
 import { requireContext } from "./root.js";
 
 type Shell = "bash" | "zsh" | "fish" | "powershell";
 
-const shell = Options.Literals("shell", [
+const shellOption = Options.Literals("shell", [
   "bash",
   "zsh",
   "fish",
@@ -22,7 +17,7 @@ const shell = Options.Literals("shell", [
   Options.withDefault("bash" as Shell)
 );
 
-const unset = Options.Boolean("unset").pipe(
+const unsetOption = Options.Boolean("unset").pipe(
   Options.withAlias("u"),
   Options.withDescription("Output unset/remove commands instead of export"),
   Options.withDefault(false)
@@ -50,20 +45,23 @@ const formatExport = (key: string, value: string, sh: Shell): string => {
 
 const formatUnset = (key: string, sh: Shell): string => {
   switch (sh) {
-    case "fish":
+    case "fish": {
       return `set -e ${key}`;
-    case "powershell":
+    }
+    case "powershell": {
       return `Remove-Item Env:\\${key}`;
-    default:
+    }
+    default: {
       return `unset ${key}`;
+    }
   }
 };
 
 export const envCommand = Command.make(
   "env",
-  { shell, unset },
+  { shell: shellOption, unset: unsetOption },
   ({ shell, unset }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* envHandler() {
       const ctx = yield* requireContext;
       const secrets = yield* SecretStore.list(ctx);
 
@@ -87,14 +85,14 @@ export const envCommand = Command.make(
         (item) =>
           SecretStore.get(ctx, item.key).pipe(
             Effect.map((value) => ({
-              key: item.key,
               found: true as const,
+              key: item.key,
               value: String(value),
             })),
-            Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
+            Effect.catchTag("SecretNotFoundError", () =>
               Effect.succeed({
-                key: item.key,
                 found: false as const,
+                key: item.key,
                 value: "",
               })
             )

@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 
-export const DEFAULT_DB_PATH = join(homedir(), ".envsec", "store.sqlite");
+export const DEFAULT_DB_PATH = path.join(homedir(), ".envsec", "store.sqlite");
 
 const DB_FLAG = "--db";
 const DB_FLAG_PREFIX = `${DB_FLAG}=`;
@@ -16,7 +16,7 @@ export const resolveCustomDbPath = (
   argv: readonly string[] = process.argv,
   env: NodeJS.ProcessEnv = process.env
 ): string | undefined => {
-  for (let i = 0; i < argv.length; i++) {
+  for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] as string;
     if (arg === DB_FLAG && i + 1 < argv.length) {
       return argv[i + 1];
@@ -26,7 +26,7 @@ export const resolveCustomDbPath = (
     }
   }
   const envDb = env.ENVSEC_DB?.trim();
-  return envDb ? envDb : undefined;
+  return envDb || undefined;
 };
 
 export const resolveDbPath = (): string =>

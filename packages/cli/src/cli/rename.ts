@@ -1,12 +1,13 @@
 import { bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { isJsonOutput, requireContext } from "./root.js";
 
-const oldKey = Args.String("old-key");
-const newKey = Args.String("new-key");
+const oldKeyArg = Args.String("old-key");
+const newKeyArg = Args.String("new-key");
 
-const force = Options.Boolean("force").pipe(
+const forceOption = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite target if it already exists"),
   Options.withDefault(false)
@@ -14,9 +15,10 @@ const force = Options.Boolean("force").pipe(
 
 export const renameCommand = Command.make(
   "rename",
-  { oldKey, newKey, force },
+  // oxlint-disable-next-line sort-keys -- key order sets the positional argument order
+  { oldKey: oldKeyArg, newKey: newKeyArg, force: forceOption },
   ({ oldKey, newKey, force }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* renameHandler() {
       const ctx = yield* requireContext;
       const jsonMode = yield* isJsonOutput;
 
@@ -49,19 +51,15 @@ export const renameCommand = Command.make(
         )
       );
 
-      if (jsonMode) {
-        yield* Console.log(
-          JSON.stringify({
-            action: "rename",
-            context: ctx,
-            from: oldKey,
-            to: newKey,
-          })
-        );
-      } else {
-        yield* Console.log(
-          `${icons.success} Renamed ${bold(`"${oldKey}"`)} ${icons.arrow} ${bold(`"${newKey}"`)} in context ${bold(`"${ctx}"`)}`
-        );
-      }
+      yield* Console.log(
+        jsonMode
+          ? JSON.stringify({
+              action: "rename",
+              context: ctx,
+              from: oldKey,
+              to: newKey,
+            })
+          : `${icons.success} Renamed ${bold(`"${oldKey}"`)} ${icons.arrow} ${bold(`"${newKey}"`)} in context ${bold(`"${ctx}"`)}`
+      );
     })
 ).pipe(Command.withDescription("Rename a secret within a context"));

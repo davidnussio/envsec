@@ -1,22 +1,24 @@
 import { readFileSync } from "node:fs";
+
 import { bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
+
 import { requireContext } from "./root.js";
 
-const input = Options.String("input").pipe(
+const inputOption = Options.String("input").pipe(
   Options.withAlias("i"),
   Options.withDescription("Input .env file path (default: .env)"),
   Options.withDefault(".env")
 );
 
-const force = Options.Boolean("force").pipe(
+const forceOption = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite existing secrets without prompting"),
   Options.withDefault(false)
 );
 
-const batch = Options.Boolean("batch").pipe(
+const batchOption = Options.Boolean("batch").pipe(
   Options.withAlias("b"),
   Options.withDescription(
     "Batch mode: defer database persistence until all secrets are imported"
@@ -37,24 +39,25 @@ const parseLine = (line: string): { key: string; value: string } | null => {
   const value = trimmed
     .slice(eqIndex + 1)
     .trim()
-    .replace(/^["']|["']$/g, "");
+    .replaceAll(/^["']|["']$/gu, "");
   return { key, value };
 };
 
 export const loadCommand = Command.make(
   "load",
-  { input, force, batch },
+  // oxlint-disable-next-line sort-keys -- key order sets the flag order in --help
+  { input: inputOption, force: forceOption, batch: batchOption },
   ({ input, force, batch }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* loadHandler() {
       const ctx = yield* requireContext;
 
       const content = yield* Effect.try({
-        try: () => readFileSync(input, "utf-8"),
         catch: () =>
           new FileAccessError({
-            path: input,
             message: `Cannot read file: ${input}`,
+            path: input,
           }),
+        try: () => readFileSync(input, "utf-8"),
       });
 
       const lines = content.split("\n");
@@ -65,7 +68,7 @@ export const loadCommand = Command.make(
       const existingSecrets = yield* SecretStore.list(ctx);
       const existingKeys = new Set(existingSecrets.map((item) => item.key));
 
-      const importAll = Effect.gen(function* () {
+      const importAll = Effect.gen(function* importAll() {
         for (const line of lines) {
           const parsed = parseLine(line);
           if (!parsed) {
@@ -80,14 +83,14 @@ export const loadCommand = Command.make(
             yield* Console.log(
               `${icons.warning} Skipped ${bold(`"${secretKey}"`)}: already exists (use --force to overwrite)`
             );
-            skipped++;
+            skipped += 1;
             continue;
           }
 
           if (exists) {
-            overwritten++;
+            overwritten += 1;
           } else {
-            added++;
+            added += 1;
           }
 
           yield* SecretStore.set(ctx, secretKey, parsed.value);

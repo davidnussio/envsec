@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+
 import {
   bold,
   dim,
@@ -12,9 +13,10 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { optionalContext } from "./root.js";
 
-const key = Args.String("key").pipe(Args.optional);
+const keyArg = Args.String("key").pipe(Args.optional);
 
 const lengthOption = Options.Int("length").pipe(
   Options.withAlias("l"),
@@ -59,11 +61,11 @@ const allCharsOption = Options.Boolean("all-chars").pipe(
 );
 
 const CHARSETS = {
+  all: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?/~`\"'",
   alphanumeric:
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
   special:
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*",
-  all: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?/~`\"'",
 } as const;
 
 /**
@@ -119,8 +121,9 @@ const resolveCharsetLabel = (special: boolean, allChars: boolean): string => {
 
 export const secretCommand = Command.make(
   "secret",
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
-    key,
+    key: keyArg,
     length: lengthOption,
     prefix: prefixOption,
     expires: expiresOption,
@@ -129,7 +132,7 @@ export const secretCommand = Command.make(
     allChars: allCharsOption,
   },
   ({ key, length, prefix, expires, alphanumeric, special, allChars }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* secretHandler() {
       if (length < 1 || length > 4096) {
         return yield* new EmptyValueError({
           field: "length",

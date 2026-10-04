@@ -6,13 +6,17 @@ export type ShellType = "bash" | "fish" | "zsh";
 
 export const generateCompletions = (shell: ShellType, bin: string): string => {
   switch (shell) {
-    case "bash":
+    case "bash": {
       return bashCompletions(bin);
-    case "zsh":
+    }
+    case "zsh": {
       return zshCompletions(bin);
-    case "fish":
+    }
+    case "fish": {
       return fishCompletions(bin);
-    default:
+    }
+    default: {
       return "";
+    }
   }
 };

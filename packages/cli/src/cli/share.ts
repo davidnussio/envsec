@@ -1,25 +1,26 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+
 import {
   badge,
   bold,
   FileAccessError,
   GPGEncryptionError,
   icons,
-  type SecretNotFoundError,
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag as Options } from "effect/cli";
+
 import { isJsonOutput, requireContext } from "./root.js";
 
-const encryptTo = Options.String("encrypt-to").pipe(
+const encryptToOption = Options.String("encrypt-to").pipe(
   Options.withDescription(
     "GPG recipient key (email, key ID, or fingerprint) to encrypt for"
   )
 );
 
-const output = Options.String("output").pipe(
+const outputOption = Options.String("output").pipe(
   Options.withAlias("o"),
   Options.withDescription(
     "Output file path (default: stdout). Use - for stdout explicitly"
@@ -32,6 +33,12 @@ const gpgEncrypt = (
   recipient: string
 ): Effect.Effect<string, GPGEncryptionError> =>
   Effect.try({
+    catch: (e) =>
+      new GPGEncryptionError({
+        cause: e,
+        message: `GPG encryption failed: ${e instanceof Error ? e.message : String(e)}`,
+        recipient,
+      }),
     try: () =>
       execFileSync(
         "gpg",
@@ -45,21 +52,15 @@ const gpgEncrypt = (
           "--recipient",
           recipient,
         ],
-        { input: plaintext, encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+        { encoding: "utf-8", input: plaintext, stdio: ["pipe", "pipe", "pipe"] }
       ),
-    catch: (e) =>
-      new GPGEncryptionError({
-        cause: e,
-        recipient,
-        message: `GPG encryption failed: ${e instanceof Error ? e.message : String(e)}`,
-      }),
   });
 
 export const shareCommand = Command.make(
   "share",
-  { encryptTo, output },
+  { encryptTo: encryptToOption, output: outputOption },
   ({ encryptTo, output }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* shareHandler() {
       const ctx = yield* requireContext;
       const jsonOutput = yield* isJsonOutput;
       const secrets = yield* SecretStore.list(ctx);
@@ -76,14 +77,14 @@ export const shareCommand = Command.make(
         (item) =>
           SecretStore.get(ctx, item.key).pipe(
             Effect.map((value) => ({
-              key: item.key,
               found: true as const,
+              key: item.key,
               value: String(value),
             })),
-            Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
+            Effect.catchTag("SecretNotFoundError", () =>
               Effect.succeed({
-                key: item.key,
                 found: false as const,
+                key: item.key,
                 value: "",
               })
             )
@@ -92,7 +93,7 @@ export const shareCommand = Command.make(
       );
 
       const skipped: string[] = [];
-      const entries: Array<{ key: string; value: string }> = [];
+      const entries: { key: string; value: string }[] = [];
       for (const result of results) {
         if (!result.found) {
           skipped.push(result.key);
@@ -124,13 +125,13 @@ export const shareCommand = Command.make(
 
       if (Option.isSome(output) && output.value !== "-") {
         yield* Effect.try({
-          try: () => writeFileSync(output.value, encrypted, "utf-8"),
           catch: (error) =>
             new FileAccessError({
               cause: error,
-              path: output.value,
               message: `Failed to write share file: ${error}`,
+              path: output.value,
             }),
+          try: () => writeFileSync(output.value, encrypted, "utf-8"),
         });
         yield* Console.error(
           `${icons.shield} Encrypted ${badge(entries.length, "secret")} from ${bold(`"${ctx}"`)} for ${bold(encryptTo)} ${icons.arrow} ${bold(output.value)}`

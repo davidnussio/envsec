@@ -10,10 +10,11 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { readSecret } from "./prompt.js";
 import { requireContext } from "./root.js";
 
-const key = Args.String("key");
+const keyArg = Args.String("key");
 const valueOption = Options.String("value").pipe(
   Options.withAlias("v"),
   Options.withDescription("Value to store (omit for interactive prompt)"),
@@ -27,9 +28,10 @@ const expiresOption = Options.String("expires").pipe(
 
 export const addCommand = Command.make(
   "add",
-  { key, value: valueOption, expires: expiresOption },
+  // oxlint-disable-next-line sort-keys -- key order sets the flag order in --help
+  { key: keyArg, value: valueOption, expires: expiresOption },
   ({ key, value, expires }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* addHandler() {
       const ctx = yield* requireContext;
 
       const secret = Option.isSome(value)

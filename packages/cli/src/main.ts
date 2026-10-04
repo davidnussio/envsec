@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import path from "node:path";
+
 import { resolveCustomDbPath, resolveDbPath } from "./db-path.js";
 
 const dbPath = resolveDbPath();
-const cachePath = join(dirname(dbPath), "completions.cache");
+const cachePath = path.join(path.dirname(dbPath), "completions.cache");
 
 /** Cache TTL — 60 minutes as safety net. */
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -20,8 +21,7 @@ const tryFastComplete = (): boolean => {
     return false;
   }
 
-  const type = args[1] ?? "";
-  const arg = args[2];
+  const [, type = "", arg] = args;
 
   try {
     if (!existsSync(cachePath)) {
@@ -65,8 +65,9 @@ const tryFastComplete = (): boolean => {
         }
         return true;
       }
-      default:
+      default: {
         return true;
+      }
     }
   } catch {
     return false;

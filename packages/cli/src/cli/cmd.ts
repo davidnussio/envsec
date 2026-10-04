@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+
 import {
   bold,
   CommandExecutionError,
@@ -9,6 +10,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 
@@ -42,6 +44,7 @@ const cmdRunInject = Options.Boolean("inject").pipe(
 
 const cmdRunCommand = Command.make(
   "run",
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     name: cmdRunName,
     context: cmdRunContextOverride,
@@ -49,7 +52,7 @@ const cmdRunCommand = Command.make(
     inject: cmdRunInject,
   },
   ({ name, context, quiet, inject }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdRunHandler() {
       const saved = yield* SecretStore.getCommand(name);
       const rawCtx = Option.isSome(context) ? context.value : saved.context;
       const ctx = yield* Schema.decodeEffect(ContextName)(rawCtx);
@@ -61,13 +64,6 @@ const cmdRunCommand = Command.make(
         : ({} as Record<string, string>);
 
       yield* Effect.try({
-        try: () => {
-          execSync(resolved.command, {
-            stdio: "inherit",
-            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-            env: { ...process.env, ...injectedEnv, ...resolved.env },
-          });
-        },
         catch: (e) => {
           const status =
             e instanceof Error && "status" in e
@@ -77,6 +73,13 @@ const cmdRunCommand = Command.make(
             command: resolved.command,
             exitCode: status,
             message: `Command exited with code ${status}`,
+          });
+        },
+        try: () => {
+          execSync(resolved.command, {
+            env: { ...process.env, ...injectedEnv, ...resolved.env },
+            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+            stdio: "inherit",
           });
         },
       });
@@ -103,13 +106,14 @@ const cmdSearchCommand = Options.Boolean("command").pipe(
 
 const cmdSearchCommandDef = Command.make(
   "search",
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     pattern: cmdSearchPattern,
     nameOnly: cmdSearchName,
     commandOnly: cmdSearchCommand,
   },
   ({ pattern, nameOnly, commandOnly }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdSearchHandler() {
       let field: "name" | "command" | "all";
       if (nameOnly) {
         field = "name";
@@ -136,7 +140,7 @@ const cmdSearchCommandDef = Command.make(
 // --- cmd list ---
 
 const cmdListCommand = Command.make("list", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* cmdListHandler() {
     const results = yield* SecretStore.listCommands();
 
     if (results.length === 0) {
@@ -162,7 +166,7 @@ const cmdDeleteCommand = Command.make(
   "delete",
   { name: cmdDeleteName },
   ({ name }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdDeleteHandler() {
       yield* SecretStore.removeCommand(name);
       yield* Console.log(`${icons.trash} Command ${bold(`"${name}"`)} removed`);
     })

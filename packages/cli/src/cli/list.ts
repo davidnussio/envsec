@@ -8,6 +8,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Command } from "effect/cli";
+
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (
@@ -27,7 +28,9 @@ const formatSecretLine = (
   return `${icons.key} ${item.key}  ${updated}  ${expiry}`;
 };
 
-const listContexts = Effect.fn("listContexts")(function* (jsonMode: boolean) {
+const listContexts = Effect.fn("listContexts")(function* listContexts(
+  jsonMode: boolean
+) {
   const contexts = yield* SecretStore.listContexts();
   if (jsonMode) {
     yield* Console.log(JSON.stringify(contexts));
@@ -44,7 +47,7 @@ const listContexts = Effect.fn("listContexts")(function* (jsonMode: boolean) {
   }
 });
 
-const listSecrets = Effect.fn("listSecrets")(function* (
+const listSecrets = Effect.fn("listSecrets")(function* listSecrets(
   ctx: string,
   jsonMode: boolean
 ) {
@@ -67,7 +70,7 @@ const listSecrets = Effect.fn("listSecrets")(function* (
 });
 
 export const listCommand = Command.make("list", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* listHandler() {
     const context = yield* optionalContext;
     const jsonMode = yield* isJsonOutput;
 

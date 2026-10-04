@@ -2,7 +2,9 @@ import { execFile } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { platform, release } from "node:os";
-import { dirname } from "node:path";
+import path from "node:path";
+import { promisify } from "node:util";
+
 import {
   badge,
   bold,
@@ -16,6 +18,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command } from "effect/cli";
+
 import { resolveDbPath } from "../db-path.js";
 import { isJsonOutput } from "./root.js";
 
@@ -30,41 +33,51 @@ interface CheckResult {
 }
 
 const pass = (name: string, message: string, detail?: string): CheckResult => ({
+  detail,
+  message,
   name,
   ok: true,
-  message,
-  detail,
 });
 
 const fail = (name: string, message: string, detail?: string): CheckResult => ({
+  detail,
+  message,
   name,
   ok: false,
-  message,
-  detail,
 });
 
-/** Run a shell command and return stdout/stderr/exitCode. */
-const exec = (
+const execFileAsync = promisify(execFile);
+
+/** Run a shell command and return stdout/stderr/exitCode. Never rejects. */
+const exec = async (
   cmd: string,
   args: string[]
 ): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
-}> =>
-  new Promise((resolve) => {
-    execFile(cmd, args, (error, stdout, stderr) => {
-      if (error && "code" in error && error.code === "ENOENT") {
-        resolve({ exitCode: -1, stdout: "", stderr: "not found" });
-        return;
-      }
-      let exitCode = 0;
-      if (error) {
-        exitCode = typeof error.code === "number" ? error.code : 1;
-      }
-      resolve({ exitCode, stdout, stderr });
-    });
-  });
+}> => {
+  try {
+    const { stdout, stderr } = await execFileAsync(cmd, args);
+    return { exitCode: 0, stderr, stdout };
+  } catch (error) {
+    // The rejection carries the same error the callback API would receive,
+    // plus the captured stdout/stderr.
+    const failure = error as {
+      code?: unknown;
+      stderr?: string;
+      stdout?: string;
+    };
+    if (failure.code === "ENOENT") {
+      return { exitCode: -1, stderr: "not found", stdout: "" };
+    }
+    return {
+      exitCode: typeof failure.code === "number" ? failure.code : 1,
+      stderr: failure.stderr ?? "",
+      stdout: failure.stdout ?? "",
+    };
+  }
+};
 
 // ── Individual checks ───────────────────────────────────────────────
 
@@ -80,7 +93,7 @@ const checkPlatform = (): CheckResult => {
 
 const checkNodeVersion = (): CheckResult => {
   const ver = process.version;
-  const major = Number.parseInt(ver.slice(1).split(".")[0] ?? "0", 10);
+  const major = Math.trunc(Number(ver.slice(1).split(".")[0] ?? "0"));
   if (major >= 22) {
     return pass("Node.js", ver);
   }
@@ -139,8 +152,9 @@ const checkCredentialStore = async (): Promise<CheckResult> => {
         r.stderr.trim()
       );
     }
-    default:
+    default: {
       return fail("Credential store", `Unsupported platform: ${os}`);
+    }
   }
 };
 
@@ -217,13 +231,13 @@ const checkKeychainReadWrite = async (): Promise<CheckResult> => {
     }
 
     return fail("Keychain read/write", `Unsupported platform: ${os}`);
-  } catch (e) {
-    return fail("Keychain read/write", `Unexpected error: ${e}`);
+  } catch (error) {
+    return fail("Keychain read/write", `Unexpected error: ${error}`);
   }
 };
 
 const checkDatabase = (dbPath: string): CheckResult => {
-  const dir = dirname(dbPath);
+  const dir = path.dirname(dbPath);
 
   if (!existsSync(dir)) {
     return fail(
@@ -249,100 +263,100 @@ const checkDatabase = (dbPath: string): CheckResult => {
 
   try {
     const stat = statSync(dbPath);
-    // biome-ignore lint/suspicious/noBitwiseOperators: extracting Unix permission bits
+    // oxlint-disable-next-line no-bitwise -- extracting Unix permission bits
     const mode = `0o${(stat.mode & 0o777).toString(8)}`;
     return pass("Database", dbPath, `Permissions: ${mode}`);
-  } catch (e) {
-    return fail("Database", `Cannot stat ${dbPath}: ${e}`);
+  } catch (error) {
+    return fail("Database", `Cannot stat ${dbPath}: ${error}`);
   }
 };
 
-const checkDatabaseIntegrity = Effect.fn("checkDatabaseIntegrity")(function* (
-  dbPath: string
-) {
-  if (!existsSync(dbPath)) {
-    return pass("Database integrity", "Skipped (no database file yet)");
-  }
-  // If we can list contexts, the DB schema is valid and readable
-  const contexts = yield* SecretStore.listContexts().pipe(
-    Effect.catch(() => Effect.succeed(null))
-  );
-  if (contexts === null) {
-    return fail(
+const checkDatabaseIntegrity = Effect.fn("checkDatabaseIntegrity")(
+  function* checkDatabaseIntegrity(dbPath: string) {
+    if (!existsSync(dbPath)) {
+      return pass("Database integrity", "Skipped (no database file yet)");
+    }
+    // If we can list contexts, the DB schema is valid and readable
+    const contexts = yield* SecretStore.listContexts().pipe(
+      Effect.catch(() => Effect.succeed(null))
+    );
+    if (contexts === null) {
+      return fail(
+        "Database integrity",
+        "Failed to query database",
+        "Database may be corrupted"
+      );
+    }
+    return pass(
       "Database integrity",
-      "Failed to query database",
-      "Database may be corrupted"
+      "Schema OK",
+      `${contexts.length} context(s) found`
     );
   }
-  return pass(
-    "Database integrity",
-    "Schema OK",
-    `${contexts.length} context(s) found`
-  );
-});
+);
 
-const checkOrphanedSecrets = Effect.fn("checkOrphanedSecrets")(function* (
-  dbPath: string
-) {
-  if (!existsSync(dbPath)) {
-    return pass("Orphaned secrets", "Skipped (no database file yet)");
-  }
-  const contexts = yield* SecretStore.listContexts().pipe(
-    Effect.catch(() =>
-      Effect.succeed([] as Array<{ context: string; count: number }>)
-    )
-  );
-  let orphanCount = 0;
-  for (const ctx of contexts) {
-    const secrets = yield* SecretStore.list(ctx.context).pipe(
+const checkOrphanedSecrets = Effect.fn("checkOrphanedSecrets")(
+  function* checkOrphanedSecrets(dbPath: string) {
+    if (!existsSync(dbPath)) {
+      return pass("Orphaned secrets", "Skipped (no database file yet)");
+    }
+    const contexts = yield* SecretStore.listContexts().pipe(
       Effect.catch(() =>
-        Effect.succeed(
-          [] as Array<{
-            key: string;
-            updated_at: string;
-            expires_at: string | null;
-          }>
-        )
+        Effect.succeed([] as { context: string; count: number }[])
       )
     );
-    for (const s of secrets) {
-      const result = yield* SecretStore.get(ctx.context, s.key).pipe(
-        Effect.map(() => true),
-        Effect.catch(() => Effect.succeed(false))
+    let orphanCount = 0;
+    for (const ctx of contexts) {
+      const secrets = yield* SecretStore.list(ctx.context).pipe(
+        Effect.catch(() =>
+          Effect.succeed(
+            [] as {
+              key: string;
+              updated_at: string;
+              expires_at: string | null;
+            }[]
+          )
+        )
       );
-      if (!result) {
-        orphanCount++;
+      for (const s of secrets) {
+        const result = yield* SecretStore.get(ctx.context, s.key).pipe(
+          Effect.map(() => true),
+          Effect.catch(() => Effect.succeed(false))
+        );
+        if (!result) {
+          orphanCount += 1;
+        }
       }
     }
+    if (orphanCount > 0) {
+      return fail(
+        "Orphaned secrets",
+        `${orphanCount} secret(s) in metadata but missing from keychain`,
+        "Run envsec list and envsec delete to clean up"
+      );
+    }
+    return pass("Orphaned secrets", "None found");
   }
-  if (orphanCount > 0) {
-    return fail(
-      "Orphaned secrets",
-      `${orphanCount} secret(s) in metadata but missing from keychain`,
-      "Run envsec list and envsec delete to clean up"
-    );
-  }
-  return pass("Orphaned secrets", "None found");
-});
+);
 
-const checkExpiredSecrets = Effect.fn("checkExpiredSecrets")(function* (
-  dbPath: string
-) {
-  if (!existsSync(dbPath)) {
-    return pass("Expired secrets", "Skipped (no database file yet)");
-  }
-  const expired = yield* SecretStore.listAllExpiring(0).pipe(
-    Effect.catch(() => Effect.succeed([]))
-  );
-  if (expired.length > 0) {
-    return fail(
-      "Expired secrets",
-      `${expired.length} expired secret(s)`,
-      "Run envsec audit --within 0d for details"
+const checkExpiredSecrets = Effect.fn("checkExpiredSecrets")(
+  function* checkExpiredSecrets(dbPath: string) {
+    if (!existsSync(dbPath)) {
+      return pass("Expired secrets", "Skipped (no database file yet)");
+    }
+    const expired = yield* SecretStore.listAllExpiring(0).pipe(
+      Effect.catch(() => Effect.succeed([]))
     );
+    if (expired.length > 0) {
+      return fail(
+        "Expired secrets",
+        `${expired.length} expired secret(s)`,
+        "Run envsec audit --within 0d for details"
+      );
+    }
+    return pass("Expired secrets", "None");
   }
-  return pass("Expired secrets", "None");
-});
+);
 
 const checkEnvConfig = (): CheckResult => {
   const envDb = process.env.ENVSEC_DB;
@@ -351,10 +365,10 @@ const checkEnvConfig = (): CheckResult => {
 
   if (envDb) {
     parts.push(`ENVSEC_DB=${envDb}`);
-    if (!existsSync(dirname(envDb))) {
+    if (!existsSync(path.dirname(envDb))) {
       return fail(
         "Environment",
-        `ENVSEC_DB directory does not exist: ${dirname(envDb)}`
+        `ENVSEC_DB directory does not exist: ${path.dirname(envDb)}`
       );
     }
   }
@@ -384,7 +398,7 @@ const formatCheck = (r: CheckResult): string => {
 // ── Command ─────────────────────────────────────────────────────────
 
 export const doctorCommand = Command.make("doctor", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* doctorHandler() {
     const jsonMode = yield* isJsonOutput;
     const dbPath = resolveDbPath();
 
@@ -399,33 +413,28 @@ export const doctorCommand = Command.make("doctor", {}, () =>
 
     // Async checks (credential store)
     const credStore = yield* Effect.tryPromise({
-      try: () => checkCredentialStore(),
       catch: (e) => fail("Credential store", `Check failed: ${e}`),
-    }).pipe(Effect.catch((result) => Effect.succeed(result)));
-    results.push(credStore);
+      try: () => checkCredentialStore(),
+    }).pipe(Effect.catch((error) => Effect.succeed(error)));
 
     const credRW = yield* Effect.tryPromise({
-      try: () => checkKeychainReadWrite(),
       catch: (e) => fail("Keychain read/write", `Check failed: ${e}`),
-    }).pipe(Effect.catch((result) => Effect.succeed(result)));
-    results.push(credRW);
+      try: () => checkKeychainReadWrite(),
+    }).pipe(Effect.catch((error) => Effect.succeed(error)));
 
     // Database checks
-    results.push(checkDatabase(dbPath));
-
+    const database = checkDatabase(dbPath);
     const integrity = yield* checkDatabaseIntegrity(dbPath);
-    results.push(integrity);
-
     const orphans = yield* checkOrphanedSecrets(dbPath);
-    results.push(orphans);
-
     const expired = yield* checkExpiredSecrets(dbPath);
-    results.push(expired);
+
+    results.push(credStore, credRW, database, integrity, orphans, expired);
 
     // Output
     if (jsonMode) {
       yield* Console.log(
         JSON.stringify(
+          // oxlint-disable-next-line sort-keys -- key order is part of the --json output
           results.map((r) => ({
             name: r.name,
             ok: r.ok,
@@ -446,19 +455,13 @@ export const doctorCommand = Command.make("doctor", {}, () =>
     }
     yield* Console.log("");
 
-    if (failed === 0) {
-      yield* Console.log(
-        indent(
-          `${icons.success} All ${badge(passed, "check")} passed — everything looks good`
-        )
-      );
-    } else {
-      yield* Console.log(
-        indent(
-          `${icons.warning} ${green(String(passed))} passed, ${red(String(failed))} ${yellow("failed")} — see above for details`
-        )
-      );
-    }
+    yield* Console.log(
+      indent(
+        failed === 0
+          ? `${icons.success} All ${badge(passed, "check")} passed — everything looks good`
+          : `${icons.warning} ${green(String(passed))} passed, ${red(String(failed))} ${yellow("failed")} — see above for details`
+      )
+    );
     yield* Console.log("");
   })
 ).pipe(Command.withDescription("Diagnose your envsec setup"));

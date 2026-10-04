@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import path from "node:path";
+
 import {
   DatabaseConfigFrom,
   KeychainAccess,
@@ -30,7 +31,7 @@ const readKeychain = () => {
   if (!existsSync(keychainPath)) {
     return {};
   }
-  return JSON.parse(readFileSync(keychainPath, "utf8"));
+  return JSON.parse(readFileSync(keychainPath, "utf-8"));
 };
 
 const writeKeychain = (entries) => {
@@ -41,7 +42,7 @@ const entryKey = (service, account) => JSON.stringify([service, account]);
 
 const deleteEntry = (service, account) => {
   const entries = readKeychain();
-  delete entries[entryKey(service, account)];
+  Reflect.deleteProperty(entries, entryKey(service, account));
   writeKeychain(entries);
 };
 
@@ -54,36 +55,22 @@ if (args[0] === "__e2e_delete_keychain") {
 const fileKeychainLayer = Layer.succeed(
   KeychainAccess,
   KeychainAccess.of({
-    set: (service, account, password) =>
-      Effect.try({
-        try: () => {
-          const entries = readKeychain();
-          entries[entryKey(service, account)] = password;
-          writeKeychain(entries);
-        },
-        catch: (error) =>
-          new KeychainError({
-            command: "e2e-file-keychain-set",
-            stderr: String(error),
-            message: "Failed to write the E2E keychain fixture",
-          }),
-      }),
     get: (service, account) =>
-      Effect.gen(function* () {
+      Effect.gen(function* getEntry() {
         const entries = yield* Effect.try({
-          try: readKeychain,
           catch: (error) =>
             new KeychainError({
               command: "e2e-file-keychain-get",
-              stderr: String(error),
               message: "Failed to read the E2E keychain fixture",
+              stderr: String(error),
             }),
+          try: readKeychain,
         });
         const password = entries[entryKey(service, account)];
         if (typeof password !== "string") {
           return yield* new SecretNotFoundError({
-            key: account,
             context: service,
+            key: account,
             message: `Secret not found: ${service}/${account}`,
           });
         }
@@ -91,13 +78,27 @@ const fileKeychainLayer = Layer.succeed(
       }),
     remove: (service, account) =>
       Effect.try({
-        try: () => deleteEntry(service, account),
         catch: (error) =>
           new KeychainError({
             command: "e2e-file-keychain-remove",
-            stderr: String(error),
             message: "Failed to update the E2E keychain fixture",
+            stderr: String(error),
           }),
+        try: () => deleteEntry(service, account),
+      }),
+    set: (service, account, password) =>
+      Effect.try({
+        catch: (error) =>
+          new KeychainError({
+            command: "e2e-file-keychain-set",
+            message: "Failed to write the E2E keychain fixture",
+            stderr: String(error),
+          }),
+        try: () => {
+          const entries = readKeychain();
+          entries[entryKey(service, account)] = password;
+          writeKeychain(entries);
+        },
       }),
   })
 );
@@ -108,7 +109,7 @@ const metadataLayer = SqliteMetadataStoreLive.pipe(
 const secretStoreLayer = SecretStore.layerNoDeps.pipe(
   Layer.provide(Layer.merge(fileKeychainLayer, metadataLayer))
 );
-const cachePath = join(dirname(databasePath), "completions.cache");
+const cachePath = path.join(path.dirname(databasePath), "completions.cache");
 const { runCliWithLayer } = await import("../dist/cli-runner.js");
 
 runCliWithLayer(cachePath, secretStoreLayer);

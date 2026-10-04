@@ -25,7 +25,7 @@ const readInput = (
   options: { readonly masked: boolean }
 ): Effect.Effect<string, AbortedError> =>
   Effect.callback((resume) => {
-    const stdin = process.stdin;
+    const { stdin } = process;
     process.stdout.write(prompt);
 
     if (stdin.readableEnded) {
@@ -44,15 +44,24 @@ const readInput = (
 
     let input = "";
     let done = false;
+    // Filled in once the stdin listeners are attached (they are defined after
+    // `finish`, which needs to detach them).
+    const detachListeners: (() => void)[] = [];
 
     const cleanup = () => {
-      stdin.removeListener("data", onData);
-      stdin.removeListener("end", onEnd);
-      stdin.removeListener("error", onError);
+      for (const detach of detachListeners) {
+        detach();
+      }
       if (useRawMode) {
         stdin.setRawMode(wasRaw);
       }
       stdin.pause();
+    };
+
+    const echo = (text: string) => {
+      if (useRawMode) {
+        process.stdout.write(text);
+      }
     };
 
     const finish = (result: Effect.Effect<string, AbortedError>) => {
@@ -63,12 +72,6 @@ const readInput = (
       cleanup();
       echo("\n");
       resume(result);
-    };
-
-    const echo = (text: string) => {
-      if (useRawMode) {
-        process.stdout.write(text);
-      }
     };
 
     const eraseLastChar = () => {
@@ -93,30 +96,35 @@ const readInput = (
       }
     };
 
-    function onData(chunk: string) {
+    const onData = (chunk: string) => {
       for (const ch of chunk) {
         handleChar(ch);
         if (done) {
           return;
         }
       }
-    }
+    };
 
-    function onEnd() {
+    const onEnd = () => {
       finish(input === "" ? Effect.fail(stdinClosed()) : Effect.succeed(input));
-    }
+    };
 
-    function onError(error: Error) {
+    const onError = (cause: Error) => {
       finish(
         Effect.fail(
-          new AbortedError({ message: `Cannot read input: ${error.message}` })
+          new AbortedError({ message: `Cannot read input: ${cause.message}` })
         )
       );
-    }
+    };
 
     stdin.on("data", onData);
     stdin.on("end", onEnd);
     stdin.on("error", onError);
+    detachListeners.push(
+      () => stdin.removeListener("data", onData),
+      () => stdin.removeListener("end", onEnd),
+      () => stdin.removeListener("error", onError)
+    );
 
     return Effect.sync(() => {
       done = true;
@@ -143,9 +151,9 @@ export const readConfirmation = (
       return normalized === "y" || normalized === "yes";
     }),
     Effect.mapError(
-      (error) =>
+      (aborted) =>
         new AbortedError({
-          message: `${error.message}. Use --yes to skip the confirmation prompt.`,
+          message: `${aborted.message}. Use --yes to skip the confirmation prompt.`,
         })
     )
   );

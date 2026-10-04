@@ -1,28 +1,29 @@
 import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { readConfirmation } from "./prompt.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const pattern = Args.String("pattern").pipe(Args.optional);
+const patternArg = Args.String("pattern").pipe(Args.optional);
 
-const to = Options.String("to").pipe(
+const toOption = Options.String("to").pipe(
   Options.withAlias("t"),
   Options.withDescription("Target context to move secrets to")
 );
 
-const all = Options.Boolean("all").pipe(
+const allOption = Options.Boolean("all").pipe(
   Options.withDescription("Move all secrets from source context"),
   Options.withDefault(false)
 );
 
-const force = Options.Boolean("force").pipe(
+const forceOption = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite target secrets if they already exist"),
   Options.withDefault(false)
 );
 
-const yes = Options.Boolean("yes").pipe(
+const yesOption = Options.Boolean("yes").pipe(
   Options.withAlias("y"),
   Options.withDescription("Skip confirmation prompt"),
   Options.withDefault(false)
@@ -30,13 +31,13 @@ const yes = Options.Boolean("yes").pipe(
 
 /** Convert a glob pattern (with * and ?) to a RegExp */
 const globToRegex = (pat: string): RegExp => {
-  const escaped = pat.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-  const withWildcards = escaped.replace(/\*/g, ".*").replace(/\?/g, ".");
-  return new RegExp(`^${withWildcards}$`);
+  const escaped = pat.replaceAll(/[.+^${}()|[\]\\]/gu, "\\$&");
+  const withWildcards = escaped.replaceAll("*", ".*").replaceAll("?", ".");
+  return new RegExp(`^${withWildcards}$`, "u");
 };
 
 /** Resolve which keys to operate on based on --all flag or glob pattern */
-const resolveKeys = Effect.fn("resolveKeys")(function* (
+const resolveKeys = Effect.fn("resolveKeys")(function* resolveKeys(
   sourceCtx: string,
   pat: Option.Option<string>,
   useAll: boolean
@@ -60,7 +61,7 @@ const resolveKeys = Effect.fn("resolveKeys")(function* (
 });
 
 /** Check for conflicts in target context */
-const checkConflicts = Effect.fn("checkConflicts")(function* (
+const checkConflicts = Effect.fn("checkConflicts")(function* checkConflicts(
   targetCtx: string,
   keys: string[]
 ) {
@@ -80,9 +81,16 @@ const checkConflicts = Effect.fn("checkConflicts")(function* (
 
 export const moveCommand = Command.make(
   "move",
-  { pattern, to, all, force, yes },
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
+  {
+    pattern: patternArg,
+    to: toOption,
+    all: allOption,
+    force: forceOption,
+    yes: yesOption,
+  },
   ({ pattern, to, all, force, yes }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* moveHandler() {
       const sourceCtx = yield* requireContext;
       const jsonMode = yield* isJsonOutput;
 
@@ -119,31 +127,29 @@ export const moveCommand = Command.make(
 
       let moved = 0;
       yield* SecretStore.withBatch(
-        Effect.gen(function* () {
+        Effect.gen(function* moveKeys() {
           for (const key of keys) {
             const value = yield* SecretStore.get(sourceCtx, key);
             const meta = yield* SecretStore.getMetadata(sourceCtx, key);
             yield* SecretStore.set(to, key, value, meta.expires_at);
             yield* SecretStore.remove(sourceCtx, key);
-            moved++;
+            moved += 1;
           }
         })
       );
 
-      if (jsonMode) {
-        yield* Console.log(
-          JSON.stringify({
-            action: "move",
-            from: sourceCtx,
-            to,
-            keys,
-            count: moved,
-          })
-        );
-      } else {
-        yield* Console.log(
-          `${icons.success} Moved ${badge(moved, "secret")} from ${bold(`"${sourceCtx}"`)} ${icons.arrow} ${bold(`"${to}"`)}`
-        );
-      }
+      // oxlint-disable-next-line sort-keys -- key order is part of the --json output
+      const summary = {
+        action: "move",
+        from: sourceCtx,
+        to,
+        keys,
+        count: moved,
+      };
+      yield* Console.log(
+        jsonMode
+          ? JSON.stringify(summary)
+          : `${icons.success} Moved ${badge(moved, "secret")} from ${bold(`"${sourceCtx}"`)} ${icons.arrow} ${bold(`"${to}"`)}`
+      );
     })
 ).pipe(Command.withDescription("Move secrets to another context"));

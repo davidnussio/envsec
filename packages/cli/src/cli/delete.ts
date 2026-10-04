@@ -1,23 +1,24 @@
 import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { readConfirmation } from "./prompt.js";
 import { requireContext } from "./root.js";
 
-const key = Args.String("key").pipe(Args.optional);
+const keyArg = Args.String("key").pipe(Args.optional);
 
-const yes = Options.Boolean("yes").pipe(
+const yesOption = Options.Boolean("yes").pipe(
   Options.withAlias("y"),
   Options.withDescription("Skip confirmation prompt"),
   Options.withDefault(false)
 );
 
-const all = Options.Boolean("all").pipe(
+const allOption = Options.Boolean("all").pipe(
   Options.withDescription("Delete all secrets in the context"),
   Options.withDefault(false)
 );
 
-const handler = Effect.fn("handler")(function* ({
+const handler = Effect.fn("handler")(function* handler({
   key,
   yes,
   all,
@@ -87,7 +88,8 @@ const handler = Effect.fn("handler")(function* ({
 
 export const deleteCommand = Command.make(
   "delete",
-  { key, yes, all },
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
+  { key: keyArg, yes: yesOption, all: allOption },
   handler
 ).pipe(
   Command.withDescription("Delete a secret, or every secret with --all"),

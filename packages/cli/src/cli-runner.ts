@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import {
   DatabaseConfigDefault,
@@ -8,6 +9,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Layer, References } from "effect";
 import { Command } from "effect/cli";
+
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";
@@ -15,8 +17,8 @@ import { handleComplete } from "./cli/complete.js";
 import { copyCommand } from "./cli/copy.js";
 import { deleteCommand } from "./cli/delete.js";
 import { doctorCommand } from "./cli/doctor.js";
-import { envCommand } from "./cli/env.js";
 import { envFileCommand } from "./cli/env-file.js";
+import { envCommand } from "./cli/env.js";
 import { getCommand } from "./cli/get.js";
 import { listCommand } from "./cli/list.js";
 import { loadCommand } from "./cli/load.js";
@@ -29,7 +31,8 @@ import { secretCommand } from "./cli/secret.js";
 import { shareCommand } from "./cli/share.js";
 import { shellCommand } from "./cli/shell.js";
 import { tuiCommand } from "./cli/tui.js";
-import { generateCompletions, type ShellType } from "./completions/index.js";
+import { generateCompletions } from "./completions/index.js";
+import type { ShellType } from "./completions/index.js";
 import { reportErrors } from "./report-errors.js";
 
 const require = createRequire(import.meta.url);
@@ -103,7 +106,7 @@ const interceptComplete = (): { type: string; arg?: string } | null => {
   if (args[0] !== "__complete") {
     return null;
   }
-  return { type: args[1] ?? "", arg: args[2] };
+  return { arg: args[2], type: args[1] ?? "" };
 };
 
 /** Commands that mutate secrets or saved commands — trigger cache refresh. */

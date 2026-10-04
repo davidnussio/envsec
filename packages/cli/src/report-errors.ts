@@ -3,12 +3,13 @@ import { Cause, Console, Effect, Option, Runtime } from "effect";
 
 /** Marks a failure whose message was already printed, so `runMain` only
  *  applies the exit code and does not log it again (to stdout). */
-class ReportedFailure extends Error {
+class ReportedFailureError extends Error {
   override readonly [Runtime.errorReported] = false;
   override readonly [Runtime.errorExitCode]: number;
 
   constructor(exitCode: number) {
     super("Failure already reported");
+    this.name = "ReportedFailureError";
     this[Runtime.errorExitCode] = exitCode;
   }
 }
@@ -39,7 +40,9 @@ export const reportErrors = <A, E, R>(
         : `${icons.error} Unexpected error:\n${Cause.pretty(cause)}`;
       return Console.error(output).pipe(
         Effect.andThen(
-          Effect.fail(new ReportedFailure(Runtime.getErrorExitCode(squashed)))
+          Effect.fail(
+            new ReportedFailureError(Runtime.getErrorExitCode(squashed))
+          )
         )
       );
     })
