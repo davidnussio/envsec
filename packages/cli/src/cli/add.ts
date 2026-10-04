@@ -1,5 +1,4 @@
 import {
-  AbortedError,
   bold,
   EmptyValueError,
   expiresAtFromNow,
@@ -11,6 +10,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+import { readSecret } from "./prompt.js";
 import { requireContext } from "./root.js";
 
 const key = Args.String("key");
@@ -24,68 +24,6 @@ const expiresOption = Options.String("expires").pipe(
   Options.withDescription("Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)"),
   Options.optional
 );
-
-const isNewline = (ch: string): boolean => ch === "\r" || ch === "\n";
-const isInterrupt = (ch: string): boolean => ch === "\u0003";
-const isBackspace = (ch: string): boolean => ch === "\u007F" || ch === "\b";
-
-const readSecret = (prompt: string): Effect.Effect<string, AbortedError> =>
-  Effect.callback((resume) => {
-    process.stdout.write(prompt);
-
-    const wasRaw = process.stdin.isRaw;
-
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(true);
-    }
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    let input = "";
-
-    const cleanup = () => {
-      process.stdin.removeListener("data", onData);
-      if (process.stdin.isTTY) {
-        process.stdin.setRawMode(wasRaw);
-      }
-      process.stdin.pause();
-    };
-
-    const handleChar = (ch: string): boolean => {
-      if (isNewline(ch)) {
-        cleanup();
-        process.stdout.write("\n");
-        resume(Effect.succeed(input));
-        return true;
-      }
-      if (isInterrupt(ch)) {
-        cleanup();
-        process.stdout.write("\n");
-        resume(
-          Effect.fail(new AbortedError({ message: "User aborted input" }))
-        );
-        return true;
-      }
-      if (isBackspace(ch) && input.length > 0) {
-        input = input.slice(0, -1);
-        process.stdout.write("\b \b");
-      } else if (!isBackspace(ch)) {
-        input += ch;
-        process.stdout.write("*");
-      }
-      return false;
-    };
-
-    const onData = (chunk: string) => {
-      for (const ch of chunk) {
-        if (handleChar(ch)) {
-          return;
-        }
-      }
-    };
-
-    process.stdin.on("data", onData);
-  });
 
 export const addCommand = Command.make(
   "add",

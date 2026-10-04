@@ -9,6 +9,7 @@ import {
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
+import { readLine } from "./prompt.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
@@ -38,21 +39,6 @@ const inject = Options.Boolean("inject").pipe(
   ),
   Options.withDefault(false)
 );
-
-const readLine = (prompt: string): Effect.Effect<string> =>
-  Effect.callback((resume) => {
-    process.stdout.write(prompt);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    const onData = (chunk: string) => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      resume(Effect.succeed(chunk.toString().trim()));
-    };
-
-    process.stdin.on("data", onData);
-  });
 
 const executeCommand = (
   resolved: ResolvedCommand,

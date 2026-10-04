@@ -7,6 +7,7 @@ import {
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
+import { readConfirmation } from "./prompt.js";
 import { isJsonOutput, requireContext } from "./root.js";
 
 const pattern = Args.String("pattern").pipe(Args.optional);
@@ -32,22 +33,6 @@ const yes = Options.Boolean("yes").pipe(
   Options.withDescription("Skip confirmation prompt"),
   Options.withDefault(false)
 );
-
-const readConfirmation = (message: string): Effect.Effect<boolean, Error> =>
-  Effect.callback((resume) => {
-    process.stdout.write(`${message} [y/N] `);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    const onData = (chunk: string) => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      const answer = chunk.toString().trim().toLowerCase();
-      resume(Effect.succeed(answer === "y" || answer === "yes"));
-    };
-
-    process.stdin.on("data", onData);
-  });
 
 /** Convert a glob pattern (with * and ?) to a RegExp */
 const globToRegex = (pat: string): RegExp => {

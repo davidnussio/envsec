@@ -10,6 +10,7 @@ const CLI_PATH = fileURLToPath(new URL("../dist/main.js", import.meta.url));
 const MISSING_CONTEXT_PATTERN = /Missing required option --context/;
 const MISSING_FILE_PATTERN = /Cannot read file/;
 const INVALID_CONTEXT_PATTERN = /Context name "bad name!!" is invalid/;
+const STDIN_CLOSED_PATTERN = /stdin is closed/;
 const NO_SECRETS_PATTERN = /No secrets found/;
 const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/;
 const VERSION_PATTERN = /envsec v\d/;
@@ -113,5 +114,28 @@ test("exits with the exit code of the command it runs", () => {
     );
 
     assert.equal(result.status, 3);
+  });
+});
+
+test("fails instead of hanging when a prompt gets no input", () => {
+  withDatabase((databasePath) => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        CLI_PATH,
+        "--db",
+        databasePath,
+        "-c",
+        "smoke.context",
+        "run",
+        "--save",
+        "echo ok",
+      ],
+      { encoding: "utf8", input: "", timeout: 10_000 }
+    );
+
+    assert.equal(result.signal, null);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, STDIN_CLOSED_PATTERN);
   });
 });
