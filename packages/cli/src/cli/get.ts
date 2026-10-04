@@ -6,16 +6,12 @@ import {
   yellow,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const key = Args.string("key");
+const key = Args.String("key");
 
-const quiet = Options.boolean("quiet").pipe(
+const quiet = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription(
     "Print only the secret value, no warnings or extra output"

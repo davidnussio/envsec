@@ -15,7 +15,7 @@ import {
   yellow,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { isJsonOutput } from "./root.js";
 
 const require = createRequire(import.meta.url);

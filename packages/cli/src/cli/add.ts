@@ -10,20 +10,16 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { requireContext } from "./root.js";
 
-const key = Args.string("key");
-const valueOption = Options.string("value").pipe(
+const key = Args.String("key");
+const valueOption = Options.String("value").pipe(
   Options.withAlias("v"),
   Options.withDescription("Value to store (omit for interactive prompt)"),
   Options.optional
 );
-const expiresOption = Options.string("expires").pipe(
+const expiresOption = Options.String("expires").pipe(
   Options.withAlias("e"),
   Options.withDescription("Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)"),
   Options.optional

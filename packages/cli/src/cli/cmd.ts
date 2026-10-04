@@ -8,27 +8,23 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---
 
-const cmdRunName = Args.string("name").pipe(
+const cmdRunName = Args.String("name").pipe(
   Args.withDescription("Name of the saved command to execute")
 );
 
-const cmdRunContextOverride = Options.string("override-context").pipe(
+const cmdRunContextOverride = Options.String("override-context").pipe(
   Options.withAlias("o"),
   Options.withDescription("Override the saved context"),
   Options.optional
 );
 
-const cmdRunQuiet = Options.boolean("quiet").pipe(
+const cmdRunQuiet = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription(
     "Suppress informational output, print only command output"
@@ -36,7 +32,7 @@ const cmdRunQuiet = Options.boolean("quiet").pipe(
   Options.withDefault(false)
 );
 
-const cmdRunInject = Options.boolean("inject").pipe(
+const cmdRunInject = Options.Boolean("inject").pipe(
   Options.withAlias("i"),
   Options.withDescription(
     "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"
@@ -89,17 +85,17 @@ const cmdRunCommand = Command.make(
 
 // --- cmd search <pattern> ---
 
-const cmdSearchPattern = Args.string("pattern").pipe(
+const cmdSearchPattern = Args.String("pattern").pipe(
   Args.withDescription("Search pattern")
 );
 
-const cmdSearchName = Options.boolean("name").pipe(
+const cmdSearchName = Options.Boolean("name").pipe(
   Options.withAlias("n"),
   Options.withDescription("Search only in command names"),
   Options.withDefault(false)
 );
 
-const cmdSearchCommand = Options.boolean("command").pipe(
+const cmdSearchCommand = Options.Boolean("command").pipe(
   Options.withAlias("m"),
   Options.withDescription("Search only in command strings"),
   Options.withDefault(false)
@@ -158,7 +154,7 @@ const cmdListCommand = Command.make("list", {}, () =>
 
 // --- cmd delete <name> ---
 
-const cmdDeleteName = Args.string("name").pipe(
+const cmdDeleteName = Args.String("name").pipe(
   Args.withDescription("Name of the command to delete")
 );
 

@@ -10,16 +10,16 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const encryptTo = Options.string("encrypt-to").pipe(
+const encryptTo = Options.String("encrypt-to").pipe(
   Options.withDescription(
     "GPG recipient key (email, key ID, or fingerprint) to encrypt for"
   )
 );
 
-const output = Options.string("output").pipe(
+const output = Options.String("output").pipe(
   Options.withAlias("o"),
   Options.withDescription(
     "Output file path (default: stdout). Use - for stdout explicitly"

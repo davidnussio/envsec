@@ -16,5 +16,6 @@
     "declarationMap": true,
     "sourceMap": true,
     "esModuleInterop": true
-  }
+  },
+  "exclude": ["node_modules", "repos"]
 }

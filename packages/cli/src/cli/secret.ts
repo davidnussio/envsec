@@ -11,22 +11,18 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { optionalContext } from "./root.js";
 
-const key = Args.string("key").pipe(Args.optional);
+const key = Args.String("key").pipe(Args.optional);
 
-const lengthOption = Options.integer("length").pipe(
+const lengthOption = Options.Int("length").pipe(
   Options.withAlias("l"),
   Options.withDescription("Length of the generated secret (default: 32)"),
   Options.withDefault(32)
 );
 
-const prefixOption = Options.string("prefix").pipe(
+const prefixOption = Options.String("prefix").pipe(
   Options.withAlias("p"),
   Options.withDescription(
     'Prefix to prepend to the generated secret (e.g. "sk_")'
@@ -34,19 +30,19 @@ const prefixOption = Options.string("prefix").pipe(
   Options.optional
 );
 
-const expiresOption = Options.string("expires").pipe(
+const expiresOption = Options.String("expires").pipe(
   Options.withAlias("e"),
   Options.withDescription("Expiry duration (e.g. 30m, 2h, 7d, 4w, 3mo, 1y)"),
   Options.optional
 );
 
-const alphanumericOption = Options.boolean("alphanumeric").pipe(
+const alphanumericOption = Options.Boolean("alphanumeric").pipe(
   Options.withAlias("a"),
   Options.withDescription("Use only alphanumeric characters [a-zA-Z0-9]"),
   Options.withDefault(false)
 );
 
-const specialOption = Options.boolean("special").pipe(
+const specialOption = Options.Boolean("special").pipe(
   Options.withAlias("s"),
   Options.withDescription(
     "Include common special characters [a-zA-Z0-9!@#$%^&*]"
@@ -54,7 +50,7 @@ const specialOption = Options.boolean("special").pipe(
   Options.withDefault(false)
 );
 
-const allCharsOption = Options.boolean("all-chars").pipe(
+const allCharsOption = Options.Boolean("all-chars").pipe(
   Options.withAlias("A"),
   Options.withDescription(
     "Use all printable ASCII characters for maximum entropy"

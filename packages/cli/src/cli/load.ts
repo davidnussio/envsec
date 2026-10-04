@@ -1,22 +1,22 @@
 import { readFileSync } from "node:fs";
 import { bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { requireContext } from "./root.js";
 
-const input = Options.string("input").pipe(
+const input = Options.String("input").pipe(
   Options.withAlias("i"),
   Options.withDescription("Input .env file path (default: .env)"),
   Options.withDefault(".env")
 );
 
-const force = Options.boolean("force").pipe(
+const force = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite existing secrets without prompting"),
   Options.withDefault(false)
 );
 
-const batch = Options.boolean("batch").pipe(
+const batch = Options.Boolean("batch").pipe(
   Options.withAlias("b"),
   Options.withDescription(
     "Batch mode: defer database persistence until all secrets are imported"

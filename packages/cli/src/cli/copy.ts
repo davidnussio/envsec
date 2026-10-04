@@ -6,32 +6,28 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const pattern = Args.string("pattern").pipe(Args.optional);
+const pattern = Args.String("pattern").pipe(Args.optional);
 
-const to = Options.string("to").pipe(
+const to = Options.String("to").pipe(
   Options.withAlias("t"),
   Options.withDescription("Target context to copy secrets to")
 );
 
-const all = Options.boolean("all").pipe(
+const all = Options.Boolean("all").pipe(
   Options.withDescription("Copy all secrets from source context"),
   Options.withDefault(false)
 );
 
-const force = Options.boolean("force").pipe(
+const force = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite target secrets if they already exist"),
   Options.withDefault(false)
 );
 
-const yes = Options.boolean("yes").pipe(
+const yes = Options.Boolean("yes").pipe(
   Options.withAlias("y"),
   Options.withDescription("Skip confirmation prompt"),
   Options.withDefault(false)

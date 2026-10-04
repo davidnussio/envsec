@@ -51,8 +51,8 @@
   "dependencies": {
     "@envsec/core": "workspace:*",
     "@envsec/tui": "workspace:*",
-    "@effect/platform-node": "4.0.0-rc.112",
-    "effect": "4.0.0-rc.112",
+    "@effect/platform-node": "4.0.0",
+    "effect": "4.0.0",
     "sql.js": "^1.14.1"
   },
   "devDependencies": {

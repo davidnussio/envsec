@@ -1,21 +1,17 @@
 import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { requireContext } from "./root.js";
 
-const key = Args.string("key").pipe(Args.optional);
+const key = Args.String("key").pipe(Args.optional);
 
-const yes = Options.boolean("yes").pipe(
+const yes = Options.Boolean("yes").pipe(
   Options.withAlias("y"),
   Options.withDescription("Skip confirmation prompt"),
   Options.withDefault(false)
 );
 
-const all = Options.boolean("all").pipe(
+const all = Options.Boolean("all").pipe(
   Options.withDescription("Delete all secrets in the context"),
   Options.withDefault(false)
 );

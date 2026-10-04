@@ -7,35 +7,31 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
 
-const cmd = Args.string("command").pipe(
+const cmd = Args.String("command").pipe(
   Args.withDescription(
     "Command to execute. Use {key} placeholders for secret interpolation"
   )
 );
 
-const save = Options.boolean("save").pipe(
+const save = Options.Boolean("save").pipe(
   Options.withAlias("s"),
   Options.withDescription("Save this command for later use"),
   Options.withDefault(false)
 );
 
-const name = Options.string("name").pipe(
+const name = Options.String("name").pipe(
   Options.withAlias("n"),
   Options.withDescription("Name for the saved command"),
   Options.optional
 );
 
-const inject = Options.boolean("inject").pipe(
+const inject = Options.Boolean("inject").pipe(
   Options.withAlias("i"),
   Options.withDescription(
     "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"

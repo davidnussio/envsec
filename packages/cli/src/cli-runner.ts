@@ -7,7 +7,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, type Layer } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";

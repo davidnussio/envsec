@@ -1,16 +1,12 @@
 import { bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
 import { isJsonOutput, requireContext } from "./root.js";
 
-const oldKey = Args.string("old-key");
-const newKey = Args.string("new-key");
+const oldKey = Args.String("old-key");
+const newKey = Args.String("new-key");
 
-const force = Options.boolean("force").pipe(
+const force = Options.Boolean("force").pipe(
   Options.withAlias("f"),
   Options.withDescription("Overwrite target if it already exists"),
   Options.withDefault(false)

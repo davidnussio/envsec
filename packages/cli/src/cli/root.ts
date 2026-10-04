@@ -1,10 +1,10 @@
 import { ContextName } from "@envsec/core";
 import { Effect, Option, Schema } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 
 const decodeContext = Schema.decodeEffect(ContextName);
 
-const context = Options.string("context").pipe(
+const context = Options.String("context").pipe(
   Options.withAlias("c"),
   Options.withDescription(
     "Context name (e.g. myapp.dev, stripe-api.prod, work.staging). Also reads ENVSEC_CONTEXT env var."
@@ -12,18 +12,18 @@ const context = Options.string("context").pipe(
   Options.optional
 );
 
-const debug = Options.boolean("debug").pipe(
+const debug = Options.Boolean("debug").pipe(
   Options.withAlias("d"),
   Options.withDescription("Enable debug logging"),
   Options.withDefault(false)
 );
 
-const json = Options.boolean("json").pipe(
+const json = Options.Boolean("json").pipe(
   Options.withDescription("Output in JSON format for scripting"),
   Options.withDefault(false)
 );
 
-const db = Options.string("db").pipe(
+const db = Options.String("db").pipe(
   Options.withDescription(
     "Path to SQLite database file (default: ~/.envsec/store.sqlite). Also reads ENVSEC_DB env var."
   ),

@@ -12,12 +12,12 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Duration, Effect, Option } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const DEFAULT_WINDOW = "30d";
 
-const withinOption = Options.string("within").pipe(
+const withinOption = Options.String("within").pipe(
   Options.withAlias("w"),
   Options.withDescription(
     "Show secrets expiring within this duration (default: 30d). Use 0d to show only already-expired."

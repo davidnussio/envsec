@@ -49,5 +49,16 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.biome": "explicit",
     "source.organizeImports.biome": "explicit"
+  },
+  "typescript.preferences.autoImportFileExcludePatterns": ["repos/**"],
+  "javascript.preferences.autoImportFileExcludePatterns": ["repos/**"],
+  "files.exclude": {
+    "repos/**": true
+  },
+  "files.watcherExclude": {
+    "repos/**": true
+  },
+  "search.exclude": {
+    "repos/**": true
   }
 }

@@ -9,10 +9,10 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { requireContext } from "./root.js";
 
-const output = Options.string("output").pipe(
+const output = Options.String("output").pipe(
   Options.withAlias("o"),
   Options.withDescription("Output file path (default: .env)"),
   Options.withDefault(".env")

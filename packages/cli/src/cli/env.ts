@@ -6,12 +6,12 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { requireContext } from "./root.js";
 
 type Shell = "bash" | "zsh" | "fish" | "powershell";
 
-const shell = Options.choice("shell", [
+const shell = Options.Literals("shell", [
   "bash",
   "zsh",
   "fish",
@@ -22,7 +22,7 @@ const shell = Options.choice("shell", [
   Options.withDefault("bash" as Shell)
 );
 
-const unset = Options.boolean("unset").pipe(
+const unset = Options.Boolean("unset").pipe(
   Options.withAlias("u"),
   Options.withDescription("Output unset/remove commands instead of export"),
   Options.withDefault(false)

@@ -3,11 +3,11 @@ import { accessSync, constants } from "node:fs";
 import path from "node:path";
 import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { requireContext } from "./root.js";
 
-const shellOption = Options.string("shell").pipe(
+const shellOption = Options.String("shell").pipe(
   Options.withAlias("s"),
   Options.withDescription(
     "Shell to spawn (bash, zsh, fish, powershell). Default: auto-detect"
@@ -15,12 +15,12 @@ const shellOption = Options.string("shell").pipe(
   Options.optional
 );
 
-const noInherit = Options.boolean("no-inherit").pipe(
+const noInherit = Options.Boolean("no-inherit").pipe(
   Options.withDescription("Do not inherit parent environment variables"),
   Options.withDefault(false)
 );
 
-const quiet = Options.boolean("quiet").pipe(
+const quiet = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription("Suppress startup/exit banner"),
   Options.withDefault(false)

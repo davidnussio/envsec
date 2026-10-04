@@ -252,5 +252,14 @@ All CLI output icons are centralized in `src/ui.ts` via the `icons` object. When
 
 ## Effect libraries
 
-check this out for more info:
-`https://effect.website/llms-full.txt`
+This project uses Effect 4 (`effect`, `@effect/platform-node`). The Effect source for the
+exact version we depend on is vendored at `repos/effect/` via `git subtree`.
+
+- Before writing or reviewing Effect code, read `repos/effect/LLMS.md`, then look in
+  `repos/effect/packages/effect/src/` (and its `test/`) for idiomatic usage, signatures and examples.
+  Prefer this source over web search or memory: Effect 4 APIs differ a lot from Effect 3.
+- CLI modules live in `repos/effect/packages/effect/src/cli/` (imported as `effect/cli`).
+- Migration notes: `repos/effect/MIGRATION.md` and `repos/effect/migration/`.
+- `repos/` is read-only reference material: never edit it and never import from it.
+- When bumping Effect, update the subtree to the matching tag:
+  `git subtree pull --prefix=repos/effect https://github.com/Effect-TS/effect.git effect@<version> --squash`

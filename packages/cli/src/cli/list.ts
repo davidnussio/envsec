@@ -7,7 +7,7 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (
