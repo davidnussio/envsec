@@ -1,10 +1,4 @@
-import {
-  type InvalidKeyError,
-  type KeychainError,
-  type MetadataStoreError,
-  type SecretNotFoundError,
-  SecretStore,
-} from "@envsec/core";
+import { SecretStore } from "@envsec/core";
 import { Effect } from "effect";
 
 const toEnvKey = (key: string): string =>
@@ -15,14 +9,8 @@ const toEnvKey = (key: string): string =>
  * suitable for injection as environment variables.
  * Keys are uppercased with dots replaced by underscores (e.g. db.password → DB_PASSWORD).
  */
-export const fetchContextSecrets = (
-  ctx: string
-): Effect.Effect<
-  Record<string, string>,
-  MetadataStoreError | KeychainError | InvalidKeyError,
-  SecretStore
-> =>
-  Effect.gen(function* () {
+export const fetchContextSecrets = Effect.fn("fetchContextSecrets")(
+  function* fetchContextSecrets(ctx: string) {
     const secrets = yield* SecretStore.list(ctx);
     const env: Record<string, string> = {};
 
@@ -35,14 +23,14 @@ export const fetchContextSecrets = (
       (item) =>
         SecretStore.get(ctx, item.key).pipe(
           Effect.map((value) => ({
-            key: item.key,
             found: true as const,
+            key: item.key,
             value: String(value),
           })),
-          Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
+          Effect.catchTag("SecretNotFoundError", () =>
             Effect.succeed({
-              key: item.key,
               found: false as const,
+              key: item.key,
               value: "",
             })
           )
@@ -57,4 +45,5 @@ export const fetchContextSecrets = (
     }
 
     return env;
-  });
+  }
+);

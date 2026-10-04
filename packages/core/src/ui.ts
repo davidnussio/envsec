@@ -17,7 +17,7 @@ const isColorSupported = (): boolean => {
 const useColor = isColorSupported();
 
 const ansi = (code: string) => (text: string) =>
-  useColor ? `\x1b[${code}m${text}\x1b[0m` : text;
+  useColor ? `\u001B[${code}m${text}\u001B[0m` : text;
 
 // ── Colors ──────────────────────────────────────────────────────────
 export const green = ansi("32");
@@ -32,33 +32,60 @@ export const white = ansi("37");
 
 // ── Icons (clean Unicode — no emoji, no Nerd Fonts) ─────────────────
 export const icons = {
-  success: green("✔"), // U+2714
-  error: red("✖"), // U+2716
-  warning: yellow("▲"), // U+25B2
-  info: blue("●"), // U+25CF
-  key: yellow("◆"), // U+25C6
-  lock: green("■"), // U+25A0
-  unlock: red("□"), // U+25A1
-  search: blue("◎"), // U+25CE
-  folder: blue("▸"), // U+25B8
-  file: cyan("·"), // U+00B7
-  clock: yellow("◔"), // U+25D4
-  expired: red("✖"), // U+2716
-  trash: red("×"), // U+00D7
-  save: green("↓"), // U+2193
-  download: cyan("↓"), // U+2193
-  upload: magenta("↑"), // U+2191
-  shield: green("◈"), // U+25C8
-  chart: blue("▪"), // U+25AA
-  bolt: yellow("›"), // U+203A
-  empty: dim("∅"), // U+2205
-  arrow: dim("→"), // U+2192
-  check: green("✔"), // U+2714
-  cancel: dim("⊘"), // U+2298
-  broom: yellow("~"), // tilde
-  env: cyan("$"), // env var
-  shell: green("▶"), // U+25B6
-  dice: magenta("⬡"), // U+2B21
+  // U+2192
+  arrow: dim("→"),
+  // U+203A
+  bolt: yellow("›"),
+  // tilde
+  broom: yellow("~"),
+  // U+2298
+  cancel: dim("⊘"),
+  // U+25AA
+  chart: blue("▪"),
+  // U+2714
+  check: green("✔"),
+  // U+25D4
+  clock: yellow("◔"),
+  // U+2B21
+  dice: magenta("⬡"),
+  // U+2193
+  download: cyan("↓"),
+  // U+2205
+  empty: dim("∅"),
+  // env var
+  env: cyan("$"),
+  // U+2716
+  error: red("✖"),
+  // U+2716
+  expired: red("✖"),
+  // U+00B7
+  file: cyan("·"),
+  // U+25B8
+  folder: blue("▸"),
+  // U+25CF
+  info: blue("●"),
+  // U+25C6
+  key: yellow("◆"),
+  // U+25A0
+  lock: green("■"),
+  // U+2193
+  save: green("↓"),
+  // U+25CE
+  search: blue("◎"),
+  // U+25B6
+  shell: green("▶"),
+  // U+25C8
+  shield: green("◈"),
+  // U+2714
+  success: green("✔"),
+  // U+00D7
+  trash: red("×"),
+  // U+25A1
+  unlock: red("□"),
+  // U+2191
+  upload: magenta("↑"),
+  // U+25B2
+  warning: yellow("▲"),
 } as const;
 
 // ── Formatting Helpers ──────────────────────────────────────────────

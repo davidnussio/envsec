@@ -28,7 +28,7 @@ Secure environment secrets management using native OS credential stores.
 This is a monorepo containing the following packages:
 
 | Package | Description | npm |
-|---------|-------------|-----|
+| --- | --- | --- |
 | [`envsec`](./packages/cli) | CLI tool for managing secrets | [![npm](https://img.shields.io/npm/v/envsec)](https://www.npmjs.com/package/envsec) |
 | [`@envsec/sdk`](./packages/sdk) | Node.js / Bun SDK for loading secrets programmatically | [![npm](https://img.shields.io/npm/v/@envsec/sdk)](https://www.npmjs.com/package/@envsec/sdk) |
 | [`@envsec/core`](./packages/core) | Core engine — OS credential store adapters + metadata DB | [![npm](https://img.shields.io/npm/v/@envsec/core)](https://www.npmjs.com/package/@envsec/core) |
@@ -115,8 +115,7 @@ mise use -g npm:envsec
 
 ## Usage
 
-Most commands require a context specified with `--context` (or `-c`).
-A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
+Most commands require a context specified with `--context` (or `-c`). A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
 
 ### Global options
 
@@ -446,8 +445,7 @@ Supported shells: `bash` (default), `zsh`, `fish`, `powershell`. Keys are conver
 
 ### Start a secrets-scoped shell session
 
-Spawn an interactive subshell with all secrets from the context injected as
-environment variables. When you `exit`, the secrets are gone — no cleanup needed.
+Spawn an interactive subshell with all secrets from the context injected as environment variables. When you `exit`, the secrets are gone — no cleanup needed.
 
 - `--shell`, `-s` — Shell to spawn (`bash`, `zsh`, `fish`, `powershell`). Default: auto-detect
 - `--no-inherit` — Do not inherit parent environment variables
@@ -479,8 +477,7 @@ envsec -c myapp.dev shell --no-inherit
 envsec -c myapp.dev shell --quiet
 ```
 
-The variable `ENVSEC_CONTEXT` is always set inside the session, so you can
-reference it in scripts or prompt customizations.
+The variable `ENVSEC_CONTEXT` is always set inside the session, so you can reference it in scripts or prompt customizations.
 
 ### Load secrets from a .env file
 
@@ -612,18 +609,18 @@ The TUI provides eight screens accessible from the main menu:
 
 Keyboard shortcuts:
 
-| Key | Action |
-|-----|--------|
-| `↑` / `↓` | Navigate menu items and table rows |
-| `Enter` | Select / confirm |
-| `c` | Open contexts view (main menu) |
-| `s` | Set selected as active context (contexts view) |
-| `x` | Clear active context (contexts view) |
-| `a` | Add a new secret (secrets view) |
-| `d` | Delete selected item |
-| `r` | Reveal secret value (detail view) |
-| `Esc` | Go back / cancel |
-| `q` | Quit the TUI |
+| Key       | Action                                         |
+| --------- | ---------------------------------------------- |
+| `↑` / `↓` | Navigate menu items and table rows             |
+| `Enter`   | Select / confirm                               |
+| `c`       | Open contexts view (main menu)                 |
+| `s`       | Set selected as active context (contexts view) |
+| `x`       | Clear active context (contexts view)           |
+| `a`       | Add a new secret (secrets view)                |
+| `d`       | Delete selected item                           |
+| `r`       | Reveal secret value (detail view)              |
+| `Esc`     | Go back / cancel                               |
+| `q`       | Quit the TUI                                   |
 
 ### Diagnose your setup
 
@@ -640,6 +637,8 @@ envsec --json doctor
 ```
 
 The `doctor` command verifies your envsec installation is working correctly. It checks:
+
+- envsec and Effect runtime versions
 - Platform support and Node.js version
 - Credential store availability (macOS Keychain, Linux secret-tool, Windows cmdkey)
 - Keychain read/write access
@@ -665,6 +664,7 @@ envsec --completions fish | source
 ```
 
 What gets completed dynamically:
+
 - `--context` / `-c` — lists all your contexts
 - Secret key arguments (`get`, `add`, `delete`) — lists keys for the current context
 - `cmd run` / `cmd delete` — lists saved command names
@@ -676,7 +676,7 @@ What gets completed dynamically:
 How does envsec compare to other tools for managing environment secrets?
 
 | Feature | envsec | dotenv / dotenvx | 1Password CLI (`op`) |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Secret storage | OS credential store (Keychain, Secret Service, Credential Manager) | `.env` files on disk (dotenvx adds encryption) | 1Password cloud vault |
 | Encryption at rest | Delegated to OS (Keychain, GNOME Keyring, DPAPI) | None (dotenv) / ECIES per-file (dotenvx) | AES-256 in 1Password cloud |
 | Secrets on disk | Never — values go straight to OS credential store | Always — `.env` files are plaintext by default | Never locally (fetched at runtime from cloud) |
@@ -700,9 +700,10 @@ How does envsec compare to other tools for managing environment secrets?
 | Shell completions | Dynamic (contexts, keys, commands) for bash, zsh, fish | Not built-in | Static completions for bash, zsh, fish, powershell |
 | SDK / programmatic access | `@envsec/sdk` for Node.js / Bun | `require('dotenv').config()` — core use case | 1Password SDKs (Node.js, Python, Go, etc.) |
 | Team / multi-user | GPG sharing (manual) | Git-based sharing with encrypted `.env` (dotenvx) | Built-in team management, RBAC, audit logs |
+
 <!-- | CI/CD integration | Standard CLI — works anywhere Node.js runs | `dotenvx run` in any CI pipeline | Service accounts, native CI/CD integrations | -->
-| Biometric auth | Inherits OS biometrics (e.g. macOS Keychain unlock) | None | Fingerprint / Touch ID via app integration |
-| Metadata tracking | SQLite (key names, timestamps — never values) | None | Cloud-based item history and audit logs |
+
+| Biometric auth | Inherits OS biometrics (e.g. macOS Keychain unlock) | None | Fingerprint / Touch ID via app integration | | Metadata tracking | SQLite (key names, timestamps — never values) | None | Cloud-based item history and audit logs |
 
 In short: dotenv is the simplest approach (files on disk), 1Password CLI is the most feature-rich for teams with cloud sync and RBAC, and envsec sits in between — offering OS-native encryption with zero accounts, zero cloud dependencies, and a developer-focused workflow that goes beyond what `.env` files can do.
 
@@ -710,11 +711,11 @@ In short: dotenv is the simplest approach (files on disk), 1Password CLI is the 
 
 Secrets are stored in the native OS credential store. The backend is selected automatically based on the platform:
 
-| OS      | Backend                        | Tool / API                          |
-|---------|--------------------------------|-------------------------------------|
-| macOS   | Keychain                       | `security` CLI                      |
-| Linux   | Secret Service API (D-Bus)     | `secret-tool` (libsecret)           |
-| Windows | Credential Manager             | `cmdkey` + PowerShell (advapi32)    |
+| OS      | Backend                    | Tool / API                       |
+| ------- | -------------------------- | -------------------------------- |
+| macOS   | Keychain                   | `security` CLI                   |
+| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
+| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
 
 Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
 
@@ -742,7 +743,7 @@ envsec is built around a simple principle: your secrets belong in your OS, not i
 
 We believe in being upfront about what envsec does not yet cover. These are real trade-offs, not bugs — and understanding them helps you make informed decisions.
 
-**Metadata is visible.** The SQLite database at `~/.envsec/store.sqlite` stores key names, context names, and timestamps — never secret values, but enough to reveal *what* secrets exist. Saved command templates (with `{key}` placeholders) are also stored there. If metadata confidentiality matters to you, ensure your home directory is on an encrypted volume.
+**Metadata is visible.** The SQLite database at `~/.envsec/store.sqlite` stores key names, context names, and timestamps — never secret values, but enough to reveal _what_ secrets exist. Saved command templates (with `{key}` placeholders) are also stored there. If metadata confidentiality matters to you, ensure your home directory is on an encrypted volume.
 
 **`env-file` exports are plaintext.** The `env-file` command writes secret values to a `.env` file on disk. This is inherently sensitive — treat the output file accordingly and never commit it to version control. Consider it a convenience bridge, not a storage mechanism.
 
@@ -761,9 +762,7 @@ We believe in being upfront about what envsec does not yet cover. These are real
 - Node.js >= 22
 - pnpm
 
-The core, SDK, CLI, and TUI packages use Effect 4 and are currently pinned to
-`4.0.0-rc.112`. Keep the Effect and `@effect/platform-node` versions aligned
-across the workspace while Effect 4 remains in release-candidate status.
+The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node` versions aligned across the workspace. The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
 
 ### Setup
 
@@ -808,8 +807,7 @@ pnpm --filter envsec test
 pnpm run release
 ```
 
-The isolated E2E suite never accesses the native credential store. To exercise
-the real OS adapter on macOS or Linux, build first and opt in explicitly:
+The isolated E2E suite never accesses the native credential store. To exercise the real OS adapter on macOS or Linux, build first and opt in explicitly:
 
 ```bash
 ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \

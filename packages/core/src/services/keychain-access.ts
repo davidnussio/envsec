@@ -1,4 +1,6 @@
-import { Context, type Effect } from "effect";
+import { Context } from "effect";
+import type { Effect } from "effect";
+
 import type { KeychainError, SecretNotFoundError } from "../errors.js";
 
 export class KeychainAccess extends Context.Service<

@@ -1,27 +1,11 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import path from "node:path";
 
-/**
- * Resolve custom database path from --db flag or ENVSEC_DB env var.
- * Pre-parsed from argv since the layer must be built before CLI parsing.
- */
-const resolveCustomDbPath = (): string | undefined => {
-  const dbIndex = process.argv.indexOf("--db");
-  if (dbIndex !== -1 && dbIndex + 1 < process.argv.length) {
-    return process.argv[dbIndex + 1];
-  }
-  const envDb = process.env.ENVSEC_DB;
-  if (envDb && envDb.trim() !== "") {
-    return envDb.trim();
-  }
-  return undefined;
-};
+import { resolveCustomDbPath, resolveDbPath } from "./db-path.js";
 
-const defaultDbPath = join(homedir(), ".envsec", "store.sqlite");
-const dbPath = resolveCustomDbPath() ?? defaultDbPath;
-const cachePath = join(dirname(dbPath), "completions.cache");
+const dbPath = resolveDbPath();
+const cachePath = path.join(path.dirname(dbPath), "completions.cache");
 
 /** Cache TTL — 60 minutes as safety net. */
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -37,8 +21,7 @@ const tryFastComplete = (): boolean => {
     return false;
   }
 
-  const type = args[1] ?? "";
-  const arg = args[2];
+  const [, type = "", arg] = args;
 
   try {
     if (!existsSync(cachePath)) {
@@ -82,8 +65,9 @@ const tryFastComplete = (): boolean => {
         }
         return true;
       }
-      default:
+      default: {
         return true;
+      }
     }
   } catch {
     return false;

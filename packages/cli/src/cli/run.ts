@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+
 import {
   bold,
   CommandExecutionError,
@@ -7,35 +8,33 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { fetchContextSecrets } from "./inject-secrets.js";
+import { readLine } from "./prompt.js";
 import type { ResolvedCommand } from "./resolve-command.js";
 import { resolveCommand } from "./resolve-command.js";
 import { requireContext } from "./root.js";
 
-const cmd = Args.string("command").pipe(
+const cmdArg = Args.String("command").pipe(
   Args.withDescription(
     "Command to execute. Use {key} placeholders for secret interpolation"
   )
 );
 
-const save = Options.boolean("save").pipe(
+const saveOption = Options.Boolean("save").pipe(
   Options.withAlias("s"),
   Options.withDescription("Save this command for later use"),
   Options.withDefault(false)
 );
 
-const name = Options.string("name").pipe(
+const nameOption = Options.String("name").pipe(
   Options.withAlias("n"),
   Options.withDescription("Name for the saved command"),
   Options.optional
 );
 
-const inject = Options.boolean("inject").pipe(
+const injectOption = Options.Boolean("inject").pipe(
   Options.withAlias("i"),
   Options.withDescription(
     "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"
@@ -43,33 +42,11 @@ const inject = Options.boolean("inject").pipe(
   Options.withDefault(false)
 );
 
-const readLine = (prompt: string): Effect.Effect<string> =>
-  Effect.callback((resume) => {
-    process.stdout.write(prompt);
-    process.stdin.resume();
-    process.stdin.setEncoding("utf-8");
-
-    const onData = (chunk: string) => {
-      process.stdin.removeListener("data", onData);
-      process.stdin.pause();
-      resume(Effect.succeed(chunk.toString().trim()));
-    };
-
-    process.stdin.on("data", onData);
-  });
-
 const executeCommand = (
   resolved: ResolvedCommand,
   injectedEnv: Record<string, string> = {}
 ): Effect.Effect<void, CommandExecutionError> =>
   Effect.try({
-    try: () => {
-      execSync(resolved.command, {
-        stdio: "inherit",
-        shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-        env: { ...process.env, ...injectedEnv, ...resolved.env },
-      });
-    },
     catch: (e) => {
       const status =
         e instanceof Error && "status" in e
@@ -81,13 +58,21 @@ const executeCommand = (
         message: `Command exited with code ${status}`,
       });
     },
+    try: () => {
+      execSync(resolved.command, {
+        env: { ...process.env, ...injectedEnv, ...resolved.env },
+        shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+        stdio: "inherit",
+      });
+    },
   });
 
 export const runCommand = Command.make(
   "run",
-  { cmd, save, name, inject },
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
+  { cmd: cmdArg, save: saveOption, name: nameOption, inject: injectOption },
   ({ cmd, save, name, inject }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* runHandler() {
       const ctx = yield* requireContext;
 
       if (save) {
@@ -116,4 +101,6 @@ export const runCommand = Command.make(
 
       yield* executeCommand(resolved, injectedEnv);
     })
+).pipe(
+  Command.withDescription("Run a command with secrets interpolated or injected")
 );

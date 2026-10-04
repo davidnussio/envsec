@@ -1,13 +1,15 @@
 import { execFileSync, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
+
 import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
+
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { requireContext } from "./root.js";
 
-const shellOption = Options.string("shell").pipe(
+const shellOption = Options.String("shell").pipe(
   Options.withAlias("s"),
   Options.withDescription(
     "Shell to spawn (bash, zsh, fish, powershell). Default: auto-detect"
@@ -15,12 +17,12 @@ const shellOption = Options.string("shell").pipe(
   Options.optional
 );
 
-const noInherit = Options.boolean("no-inherit").pipe(
+const noInheritOption = Options.Boolean("no-inherit").pipe(
   Options.withDescription("Do not inherit parent environment variables"),
   Options.withDefault(false)
 );
 
-const quiet = Options.boolean("quiet").pipe(
+const quietOption = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription("Suppress startup/exit banner"),
   Options.withDefault(false)
@@ -28,17 +30,22 @@ const quiet = Options.boolean("quiet").pipe(
 
 const resolveShell = (name: string): { bin: string; args: string[] } => {
   switch (name) {
-    case "bash":
-      return { bin: "bash", args: ["--norc", "--noprofile"] };
-    case "zsh":
-      return { bin: "zsh", args: ["--no-rcs"] };
-    case "fish":
-      return { bin: "fish", args: [] };
+    case "bash": {
+      return { args: ["--norc", "--noprofile"], bin: "bash" };
+    }
+    case "zsh": {
+      return { args: ["--no-rcs"], bin: "zsh" };
+    }
+    case "fish": {
+      return { args: [], bin: "fish" };
+    }
     case "powershell":
-    case "pwsh":
-      return { bin: "pwsh", args: ["-NoExit", "-NoProfile"] };
-    default:
-      return { bin: name, args: [] };
+    case "pwsh": {
+      return { args: ["-NoExit", "-NoProfile"], bin: "pwsh" };
+    }
+    default: {
+      return { args: [], bin: name };
+    }
   }
 };
 
@@ -51,16 +58,21 @@ const detectShell = (override?: string): { bin: string; args: string[] } => {
     const name = path.basename(shellPath);
     const resolved = resolveShell(name);
     // Use the full path from $SHELL instead of just the name
-    return { bin: shellPath, args: resolved.args };
+    return { args: resolved.args, bin: shellPath };
   }
   if (process.platform === "win32") {
-    return { bin: "powershell.exe", args: ["-NoExit"] };
+    return { args: ["-NoExit"], bin: "powershell.exe" };
   }
-  return { bin: "/bin/sh", args: [] };
+  return { args: [], bin: "/bin/sh" };
 };
 
 const shellExists = (bin: string): Effect.Effect<void, ShellNotFoundError> =>
   Effect.try({
+    catch: () =>
+      new ShellNotFoundError({
+        message: `Shell "${bin}" not found in PATH.`,
+        shell: bin,
+      }),
     try: () => {
       if (path.isAbsolute(bin)) {
         accessSync(bin, constants.X_OK);
@@ -68,11 +80,6 @@ const shellExists = (bin: string): Effect.Effect<void, ShellNotFoundError> =>
         execFileSync("which", [bin], { stdio: "ignore" });
       }
     },
-    catch: () =>
-      new ShellNotFoundError({
-        shell: bin,
-        message: `Shell "${bin}" not found in PATH.`,
-      }),
   });
 
 const buildChildEnv = (
@@ -101,9 +108,10 @@ const buildChildEnv = (
 
 export const shellCommand = Command.make(
   "shell",
-  { shell: shellOption, noInherit, quiet },
+  // oxlint-disable-next-line sort-keys -- key order sets the flag order in --help
+  { shell: shellOption, noInherit: noInheritOption, quiet: quietOption },
   ({ shell: shellOpt, noInherit, quiet }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* shellHandler() {
       const ctx = yield* requireContext;
 
       const existingCtx = process.env.ENVSEC_CONTEXT;
@@ -132,7 +140,7 @@ export const shellCommand = Command.make(
         );
       }
 
-      yield* Effect.callback<void, never>((resume) => {
+      yield* Effect.callback((resume) => {
         const child = spawn(bin, args, {
           env: childEnv,
           stdio: "inherit",
@@ -153,4 +161,6 @@ export const shellCommand = Command.make(
         });
       });
     })
+).pipe(
+  Command.withDescription("Start a shell with the secrets in its environment")
 );

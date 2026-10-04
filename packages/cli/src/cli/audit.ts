@@ -1,23 +1,24 @@
 import { existsSync } from "node:fs";
+
 import {
   badge,
   bold,
   dim,
-  type EnvFileExport,
   formatTimeDistance,
   icons,
   indent,
   parseDuration,
-  type SecretMetadata,
   SecretStore,
 } from "@envsec/core";
+import type { EnvFileExport, SecretMetadata } from "@envsec/core";
 import { Console, Duration, Effect, Option } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
+
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const DEFAULT_WINDOW = "30d";
 
-const withinOption = Options.string("within").pipe(
+const withinOption = Options.String("within").pipe(
   Options.withAlias("w"),
   Options.withDescription(
     "Show secrets expiring within this duration (default: 30d). Use 0d to show only already-expired."
@@ -43,44 +44,43 @@ const formatLine = (
 };
 
 const countExpired = (
-  secrets: Array<{ expires_at: string | null }>,
+  secrets: { expires_at: string | null }[],
   now: number
 ): { expired: number; expiring: number } => {
   const expired = secrets.filter((s) => isExpired(s.expires_at, now)).length;
   return { expired, expiring: secrets.length - expired };
 };
 
-const auditForContext = (
+const auditForContext = Effect.fn("auditForContext")(function* auditForContext(
   ctx: string,
   secrets: SecretMetadata[],
   windowStr: string,
   now: number
-) =>
-  Effect.gen(function* () {
-    if (secrets.length === 0) {
-      yield* Console.log(
-        `${icons.check} No secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}`
-      );
-      return;
-    }
+) {
+  if (secrets.length === 0) {
     yield* Console.log(
-      `${icons.search} Secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}:\n`
+      `${icons.check} No secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}`
     );
-    for (const s of secrets) {
-      yield* Console.log(formatLine(s.key, s.expires_at, now));
-    }
-    const { expired, expiring } = countExpired(secrets, now);
-    yield* Console.log(
-      `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon ${dim(`(${secrets.length} total)`)}`
-    );
-  });
+    return;
+  }
+  yield* Console.log(
+    `${icons.search} Secrets expiring within ${bold(windowStr)} in ${bold(`"${ctx}"`)}:\n`
+  );
+  for (const s of secrets) {
+    yield* Console.log(formatLine(s.key, s.expires_at, now));
+  }
+  const { expired, expiring } = countExpired(secrets, now);
+  yield* Console.log(
+    `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon ${dim(`(${secrets.length} total)`)}`
+  );
+});
 
-const auditAllContexts = (
-  secrets: Array<SecretMetadata & { env: string }>,
-  windowStr: string,
-  now: number
-) =>
-  Effect.gen(function* () {
+const auditAllContexts = Effect.fn("auditAllContexts")(
+  function* auditAllContexts(
+    secrets: (SecretMetadata & { env: string })[],
+    windowStr: string,
+    now: number
+  ) {
     if (secrets.length === 0) {
       yield* Console.log(
         `${icons.check} No secrets expiring within ${bold(windowStr)} across all contexts`
@@ -98,10 +98,11 @@ const auditAllContexts = (
     yield* Console.log(
       `\n${icons.chart} ${bold(String(expired))} expired, ${bold(String(expiring))} expiring soon across ${badge(contextCount, "context")} ${dim(`(${secrets.length} total)`)}`
     );
-  });
+  }
+);
 
-const pruneStaleEnvExports = (exports: EnvFileExport[]) =>
-  Effect.gen(function* () {
+const pruneStaleEnvExports = Effect.fn("pruneStaleEnvExports")(
+  function* pruneStaleEnvExports(exports: EnvFileExport[]) {
     const alive: EnvFileExport[] = [];
     const stale: EnvFileExport[] = [];
 
@@ -124,14 +125,15 @@ const pruneStaleEnvExports = (exports: EnvFileExport[]) =>
     }
 
     return alive;
-  });
+  }
+);
 
-const auditEnvFileExports = (
-  exports: EnvFileExport[],
-  jsonMode: boolean,
-  contextFilter?: string
-) =>
-  Effect.gen(function* () {
+const auditEnvFileExports = Effect.fn("auditEnvFileExports")(
+  function* auditEnvFileExports(
+    exports: EnvFileExport[],
+    jsonMode: boolean,
+    contextFilter?: string
+  ) {
     const filtered = contextFilter
       ? exports.filter((e) => e.context === contextFilter)
       : exports;
@@ -156,13 +158,14 @@ const auditEnvFileExports = (
       `\n${icons.chart} ${badge(filtered.length, "env file")} generated`
     );
     return filtered;
-  });
+  }
+);
 
 export const auditCommand = Command.make(
   "audit",
   { within: withinOption },
   ({ within }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* auditHandler() {
       const context = yield* optionalContext;
       const jsonMode = yield* isJsonOutput;
       const windowStr = Option.isSome(within) ? within.value : DEFAULT_WINDOW;
@@ -181,6 +184,7 @@ export const auditCommand = Command.make(
         );
 
         if (jsonMode) {
+          // oxlint-disable-next-line sort-keys -- key order is part of the --json output
           const items = secrets.map((s) => ({
             context: context.value,
             key: s.key,
@@ -191,6 +195,7 @@ export const auditCommand = Command.make(
             (e) => e.context === context.value
           );
           yield* Console.log(
+            // oxlint-disable-next-line sort-keys -- key order is part of the --json output
             JSON.stringify({ secrets: items, env_files: filteredExports })
           );
           return;
@@ -204,6 +209,7 @@ export const auditCommand = Command.make(
       const secrets = yield* SecretStore.listAllExpiring(windowMs);
 
       if (jsonMode) {
+        // oxlint-disable-next-line sort-keys -- key order is part of the --json output
         const items = secrets.map((s) => ({
           context: s.env,
           key: s.key,
@@ -211,6 +217,7 @@ export const auditCommand = Command.make(
           expired: isExpired(s.expires_at, now),
         }));
         yield* Console.log(
+          // oxlint-disable-next-line sort-keys -- key order is part of the --json output
           JSON.stringify({ secrets: items, env_files: envExports })
         );
         return;
@@ -219,4 +226,4 @@ export const auditCommand = Command.make(
       yield* auditAllContexts(secrets, windowStr, now);
       yield* auditEnvFileExports(envExports, false);
     })
-);
+).pipe(Command.withDescription("Report expired and soon-to-expire secrets"));

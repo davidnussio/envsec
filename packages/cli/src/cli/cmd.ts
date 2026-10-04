@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+
 import {
   bold,
   CommandExecutionError,
@@ -8,27 +9,24 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { fetchContextSecrets } from "./inject-secrets.js";
 import { resolveCommand } from "./resolve-command.js";
 
 // --- cmd run <name> ---
 
-const cmdRunName = Args.string("name").pipe(
+const cmdRunName = Args.String("name").pipe(
   Args.withDescription("Name of the saved command to execute")
 );
 
-const cmdRunContextOverride = Options.string("override-context").pipe(
+const cmdRunContextOverride = Options.String("override-context").pipe(
   Options.withAlias("o"),
   Options.withDescription("Override the saved context"),
   Options.optional
 );
 
-const cmdRunQuiet = Options.boolean("quiet").pipe(
+const cmdRunQuiet = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription(
     "Suppress informational output, print only command output"
@@ -36,7 +34,7 @@ const cmdRunQuiet = Options.boolean("quiet").pipe(
   Options.withDefault(false)
 );
 
-const cmdRunInject = Options.boolean("inject").pipe(
+const cmdRunInject = Options.Boolean("inject").pipe(
   Options.withAlias("i"),
   Options.withDescription(
     "Inject all context secrets as environment variables (KEY.NAME → KEY_NAME)"
@@ -46,6 +44,7 @@ const cmdRunInject = Options.boolean("inject").pipe(
 
 const cmdRunCommand = Command.make(
   "run",
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     name: cmdRunName,
     context: cmdRunContextOverride,
@@ -53,7 +52,7 @@ const cmdRunCommand = Command.make(
     inject: cmdRunInject,
   },
   ({ name, context, quiet, inject }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdRunHandler() {
       const saved = yield* SecretStore.getCommand(name);
       const rawCtx = Option.isSome(context) ? context.value : saved.context;
       const ctx = yield* Schema.decodeEffect(ContextName)(rawCtx);
@@ -65,13 +64,6 @@ const cmdRunCommand = Command.make(
         : ({} as Record<string, string>);
 
       yield* Effect.try({
-        try: () => {
-          execSync(resolved.command, {
-            stdio: "inherit",
-            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
-            env: { ...process.env, ...injectedEnv, ...resolved.env },
-          });
-        },
         catch: (e) => {
           const status =
             e instanceof Error && "status" in e
@@ -83,23 +75,30 @@ const cmdRunCommand = Command.make(
             message: `Command exited with code ${status}`,
           });
         },
+        try: () => {
+          execSync(resolved.command, {
+            env: { ...process.env, ...injectedEnv, ...resolved.env },
+            shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
+            stdio: "inherit",
+          });
+        },
       });
     })
-);
+).pipe(Command.withDescription("Run a saved command"));
 
 // --- cmd search <pattern> ---
 
-const cmdSearchPattern = Args.string("pattern").pipe(
+const cmdSearchPattern = Args.String("pattern").pipe(
   Args.withDescription("Search pattern")
 );
 
-const cmdSearchName = Options.boolean("name").pipe(
+const cmdSearchName = Options.Boolean("name").pipe(
   Options.withAlias("n"),
   Options.withDescription("Search only in command names"),
   Options.withDefault(false)
 );
 
-const cmdSearchCommand = Options.boolean("command").pipe(
+const cmdSearchCommand = Options.Boolean("command").pipe(
   Options.withAlias("m"),
   Options.withDescription("Search only in command strings"),
   Options.withDefault(false)
@@ -107,13 +106,14 @@ const cmdSearchCommand = Options.boolean("command").pipe(
 
 const cmdSearchCommandDef = Command.make(
   "search",
+  // oxlint-disable-next-line sort-keys -- key order sets the argument/flag order in --help
   {
     pattern: cmdSearchPattern,
     nameOnly: cmdSearchName,
     commandOnly: cmdSearchCommand,
   },
   ({ pattern, nameOnly, commandOnly }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdSearchHandler() {
       let field: "name" | "command" | "all";
       if (nameOnly) {
         field = "name";
@@ -135,12 +135,12 @@ const cmdSearchCommandDef = Command.make(
         );
       }
     })
-);
+).pipe(Command.withDescription("Search saved commands"));
 
 // --- cmd list ---
 
 const cmdListCommand = Command.make("list", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* cmdListHandler() {
     const results = yield* SecretStore.listCommands();
 
     if (results.length === 0) {
@@ -154,11 +154,11 @@ const cmdListCommand = Command.make("list", {}, () =>
       );
     }
   })
-);
+).pipe(Command.withDescription("List saved commands"));
 
 // --- cmd delete <name> ---
 
-const cmdDeleteName = Args.string("name").pipe(
+const cmdDeleteName = Args.String("name").pipe(
   Args.withDescription("Name of the command to delete")
 );
 
@@ -166,15 +166,16 @@ const cmdDeleteCommand = Command.make(
   "delete",
   { name: cmdDeleteName },
   ({ name }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* cmdDeleteHandler() {
       yield* SecretStore.removeCommand(name);
       yield* Console.log(`${icons.trash} Command ${bold(`"${name}"`)} removed`);
     })
-);
+).pipe(Command.withDescription("Delete a saved command"));
 
 // --- cmd (parent) ---
 
 export const cmdCommand = Command.make("cmd", {}).pipe(
+  Command.withDescription("Manage saved commands"),
   Command.withSubcommands([
     cmdRunCommand,
     cmdSearchCommandDef,

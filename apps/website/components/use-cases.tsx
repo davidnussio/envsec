@@ -2,15 +2,14 @@
 
 import { ChevronDown } from "lucide-react";
 import { useRef, useState } from "react";
+
 import { trackEvent } from "@/lib/analytics";
+
 import { UseCaseTerminal } from "./use-case-terminal";
 
 const USE_CASES = [
   {
     id: "easy-clean-and-restore-env",
-    question: "How do I clean up .env files scattered across old projects?",
-    problem:
-      "Over time, plaintext .env files pile up in forgotten project directories. A quick find reveals dozens of them sitting on disk with real credentials inside. Import them into envsec, delete the files, and regenerate them only when you need them.",
     lines: [
       { prompt: true, text: "find ~/projects -name '.env' -type f" },
       { prompt: false, text: "  ~/projects/ /.env" },
@@ -52,13 +51,12 @@ const USE_CASES = [
         text: "✔ Wrote 12 secrets to ~/projects/new-project/.env",
       },
     ],
+    problem:
+      "Over time, plaintext .env files pile up in forgotten project directories. A quick find reveals dozens of them sitting on disk with real credentials inside. Import them into envsec, delete the files, and regenerate them only when you need them.",
+    question: "How do I clean up .env files scattered across old projects?",
   },
   {
     id: "manage-secrets-per-environment",
-    question:
-      "How do I manage different secrets for dev, staging, and production?",
-    problem:
-      "Maintaining separate .env files for each environment is fragile and error-prone. It's easy to mix up credentials between environments.",
     lines: [
       { prompt: false, text: "# Add development envs" },
       {
@@ -106,13 +104,13 @@ const USE_CASES = [
       { prompt: false, text: "▸ myapp.dev  (2 secrets)" },
       { prompt: false, text: "▸ myapp.prod  (2 secrets)" },
     ],
+    problem:
+      "Maintaining separate .env files for each environment is fragile and error-prone. It's easy to mix up credentials between environments.",
+    question:
+      "How do I manage different secrets for dev, staging, and production?",
   },
   {
     id: "run-app-without-leaking-secrets",
-    question:
-      "How do I run my app with secrets without exposing them in shell history?",
-    problem:
-      "Passing secrets inline in commands exposes them in shell history and `ps` output. They should be injected as environment variables of the child process. With `-c` you can switch context (e.g. dev, staging, prod) and run the same command against different sets of secrets.",
     lines: [
       {
         prompt: true,
@@ -133,13 +131,13 @@ const USE_CASES = [
         text: `{ "headers": { "Authorization": "Bearer dev-token-abc" }`,
       },
     ],
+    problem:
+      "Passing secrets inline in commands exposes them in shell history and `ps` output. They should be injected as environment variables of the child process. With `-c` you can switch context (e.g. dev, staging, prod) and run the same command against different sets of secrets.",
+    question:
+      "How do I run my app with secrets without exposing them in shell history?",
   },
   {
     id: "generate-env-file-on-demand",
-    question:
-      "How do I generate a .env file for tools that require one (Docker, frameworks)?",
-    problem:
-      "Some tools like Docker Compose or frameworks require a physical .env file. You need a way to generate it on-demand without keeping it in the repo.",
     lines: [
       {
         prompt: true,
@@ -152,12 +150,13 @@ const USE_CASES = [
       { prompt: false, text: 'API_URL="http://localhost:3000"' },
       { prompt: false, text: 'REDIS_URL="redis://localhost:6379"' },
     ],
+    problem:
+      "Some tools like Docker Compose or frameworks require a physical .env file. You need a way to generate it on-demand without keeping it in the repo.",
+    question:
+      "How do I generate a .env file for tools that require one (Docker, frameworks)?",
   },
   {
     id: "import-secrets-from-env-file",
-    question: "How do I import secrets from an existing .env file?",
-    problem:
-      "You already have a .env file with dozens of variables and want to migrate them into the native credential store without re-entering each one manually.",
     lines: [
       { prompt: true, text: "envsec -c myapp.dev load --input .env.local" },
       {
@@ -166,12 +165,12 @@ const USE_CASES = [
       },
       { prompt: false, text: "✔ Done: 3 added, 0 overwritten, 1 skipped" },
     ],
+    problem:
+      "You already have a .env file with dozens of variables and want to migrate them into the native credential store without re-entering each one manually.",
+    question: "How do I import secrets from an existing .env file?",
   },
   {
     id: "audit-expired-secrets",
-    question: "How do I check for expired or expiring secrets?",
-    problem:
-      "API keys and tokens have expiration dates. Without an audit system, you risk discovering expired credentials only when something breaks in production.",
     lines: [
       {
         prompt: true,
@@ -216,12 +215,12 @@ const USE_CASES = [
       },
       { prompt: false, text: "▪ 4 env files generated" },
     ],
+    problem:
+      "API keys and tokens have expiration dates. Without an audit system, you risk discovering expired credentials only when something breaks in production.",
+    question: "How do I check for expired or expiring secrets?",
   },
   {
     id: "share-secrets-with-gpg",
-    question: "How do I securely share secrets with a teammate?",
-    problem:
-      "Sending credentials over Slack, email, or messages is insecure. You need an encrypted channel and a format the recipient can easily import.",
     lines: [
       {
         prompt: true,
@@ -242,13 +241,12 @@ const USE_CASES = [
       },
       { prompt: false, text: "✔ Done: 4 added, 0 overwritten, 0 skipped" },
     ],
+    problem:
+      "Sending credentials over Slack, email, or messages is insecure. You need an encrypted channel and a format the recipient can easily import.",
+    question: "How do I securely share secrets with a teammate?",
   },
   {
     id: "reuse-dev-keys-for-new-projects",
-    question:
-      "How do I reuse my dev API keys when starting a new project or POC?",
-    problem:
-      "When you start a new project or try a new tool, you often need the same API keys you already use in development. Instead of hunting through dashboards or creating new ones, copy them from your dev context into the new project context in one command.",
     lines: [
       { prompt: false, text: "# You already have dev keys stored" },
       { prompt: true, text: "envsec -c dev list" },
@@ -293,12 +291,13 @@ const USE_CASES = [
         text: "eval $(envsec -c my-poc env)",
       },
     ],
+    problem:
+      "When you start a new project or try a new tool, you often need the same API keys you already use in development. Instead of hunting through dashboards or creating new ones, copy them from your dev context into the new project context in one command.",
+    question:
+      "How do I reuse my dev API keys when starting a new project or POC?",
   },
   {
     id: "nextjs-without-env-file",
-    question: "How do I use Next.js without keeping secrets in .env.local?",
-    problem:
-      "Vercel's CLI pulls environment variables into a local .env.local file, but that file sits on disk with real credentials. Import it into envsec, delete the file, and use envsec shell to inject secrets at runtime — no plaintext file needed.",
     lines: [
       { prompt: false, text: "# Pull env vars from Vercel" },
       { prompt: true, text: "vercel env pull" },
@@ -330,13 +329,12 @@ const USE_CASES = [
       { prompt: false, text: "  ▲ Next.js 15.3.1" },
       { prompt: false, text: "  - Local:  http://localhost:3000" },
     ],
+    problem:
+      "Vercel's CLI pulls environment variables into a local .env.local file, but that file sits on disk with real credentials. Import it into envsec, delete the file, and use envsec shell to inject secrets at runtime — no plaintext file needed.",
+    question: "How do I use Next.js without keeping secrets in .env.local?",
   },
   {
     id: "generate-secrets-on-the-fly",
-    question:
-      "How do I generate secure API keys or passwords without leaving the terminal?",
-    problem:
-      "You need a cryptographically secure secret for an API key, database password, or webhook signing key. Instead of reaching for an external tool or website, generate and store it in one command — with a prefix, custom length, and character set.",
     lines: [
       {
         prompt: false,
@@ -415,13 +413,13 @@ const USE_CASES = [
         text: "  ◆ whsec_Xk7mN2pQrS4tUvW6xYzA...",
       },
     ],
+    problem:
+      "You need a cryptographically secure secret for an API key, database password, or webhook signing key. Instead of reaching for an external tool or website, generate and store it in one command — with a prefix, custom length, and character set.",
+    question:
+      "How do I generate secure API keys or passwords without leaving the terminal?",
   },
   {
     id: "export-secrets-to-shell",
-    question:
-      "How do I export secrets as environment variables in my current shell?",
-    problem:
-      "You want secrets available as environment variables in your current session, without writing any files to disk.",
     lines: [
       { prompt: true, text: "eval $(envsec -c myapp.dev env)" },
       { prompt: false, text: "✔ Exported API_KEY, DB_PASSWORD, API_URL" },
@@ -431,10 +429,14 @@ const USE_CASES = [
       { prompt: true, text: "envsec -c myapp.dev env --shell fish" },
       { prompt: false, text: 'set -gx API_KEY "sk-abc123";' },
     ],
+    problem:
+      "You want secrets available as environment variables in your current session, without writing any files to disk.",
+    question:
+      "How do I export secrets as environment variables in my current shell?",
   },
 ] as const;
 
-function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
+const UseCaseItem = ({ item }: { item: (typeof USE_CASES)[number] }) => {
   const [animKey, setAnimKey] = useState(0);
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
@@ -450,13 +452,13 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
       ref={detailsRef}
     >
       <summary className="flex w-full cursor-pointer list-none items-center justify-between gap-4 px-3 py-4 text-left sm:px-6 sm:py-5 [&::-webkit-details-marker]:hidden">
-        <span className="font-medium text-base leading-snug">
+        <span className="text-base leading-snug font-medium">
           {item.question}
         </span>
-        <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
+        <ChevronDown className="text-muted-foreground h-5 w-5 shrink-0 transition-transform duration-200 group-open:rotate-180" />
       </summary>
       <div className="px-3 pb-4 sm:px-6 sm:pb-6">
-        <p className="mb-4 text-muted-foreground text-sm leading-relaxed">
+        <p className="text-muted-foreground mb-4 text-sm leading-relaxed">
           {item.problem}
         </p>
         <div className="-mx-0.5 sm:mx-0">
@@ -465,31 +467,29 @@ function UseCaseItem({ item }: { item: (typeof USE_CASES)[number] }) {
       </div>
     </details>
   );
-}
+};
 
-export function UseCases() {
-  return (
-    <section className="relative px-4 py-32 sm:px-6" id="use-cases">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-16 animate-reveal text-center">
-          <p className="mb-3 font-mono text-emerald-400 text-sm">Use Cases</p>
-          <h2 className="mb-4 font-bold text-4xl tracking-tight md:text-5xl">
-            Real problems, real solutions
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Common scenarios in everyday development and how envsec solves them.
-            Click any question to see a live terminal walkthrough.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {USE_CASES.map((item) => (
-            <div className="animate-reveal" key={item.id}>
-              <UseCaseItem item={item} />
-            </div>
-          ))}
-        </div>
+export const UseCases = () => (
+  <section className="relative px-4 py-32 sm:px-6" id="use-cases">
+    <div className="mx-auto max-w-3xl">
+      <div className="animate-reveal mb-16 text-center">
+        <p className="mb-3 font-mono text-sm text-emerald-400">Use Cases</p>
+        <h2 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
+          Real problems, real solutions
+        </h2>
+        <p className="text-muted-foreground text-lg">
+          Common scenarios in everyday development and how envsec solves them.
+          Click any question to see a live terminal walkthrough.
+        </p>
       </div>
-    </section>
-  );
-}
+
+      <div className="flex flex-col gap-3">
+        {USE_CASES.map((item) => (
+          <div className="animate-reveal" key={item.id}>
+            <UseCaseItem item={item} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);

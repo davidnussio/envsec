@@ -2,20 +2,20 @@
 
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
+
 import { trackEvent } from "@/lib/analytics";
 
 const SECTIONS = [
   {
-    title: "Getting Started",
     items: [
       { id: "why-envsec", label: "Why envsec?" },
       { id: "installation", label: "Installation" },
       { id: "quick-start", label: "Quick Start" },
       { id: "requirements", label: "Requirements" },
     ],
+    title: "Getting Started",
   },
   {
-    title: "Commands",
     items: [
       { id: "add", label: "add" },
       { id: "get", label: "get" },
@@ -36,25 +36,25 @@ const SECTIONS = [
       { id: "secret", label: "secret" },
       { id: "doctor", label: "doctor" },
     ],
+    title: "Commands",
   },
   {
-    title: "Interactive TUI",
     items: [
       { id: "tui-overview", label: "Overview" },
       { id: "tui-views", label: "Views & Screens" },
       { id: "tui-keyboard", label: "Keyboard Shortcuts" },
     ],
+    title: "Interactive TUI",
   },
   {
-    title: "Configuration",
     items: [
       { id: "contexts", label: "Contexts" },
       { id: "database", label: "Custom Database Path" },
       { id: "shell-completions", label: "Shell Completions" },
     ],
+    title: "Configuration",
   },
   {
-    title: "SDK",
     items: [
       { id: "sdk-overview", label: "Overview" },
       { id: "sdk-installation", label: "Installation" },
@@ -63,22 +63,23 @@ const SECTIONS = [
       { id: "sdk-multi-context", label: "Multi-Context" },
       { id: "sdk-options", label: "Options Reference" },
     ],
+    title: "SDK",
   },
   {
-    title: "Security",
     items: [
       { id: "security-model", label: "Security Model" },
       { id: "limitations", label: "Known Limitations" },
     ],
+    title: "Security",
   },
 ] as const;
 
-export function DocsSidebar() {
+export const DocsSidebar = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    "Getting Started": true,
     Commands: true,
-    "Interactive TUI": true,
     Configuration: true,
+    "Getting Started": true,
+    "Interactive TUI": true,
     SDK: true,
     Security: true,
   });
@@ -88,12 +89,12 @@ export function DocsSidebar() {
   };
 
   return (
-    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-y-auto border-white/5 border-r py-8 pr-4 pl-6 md:block">
+    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-64 shrink-0 overflow-y-auto border-r border-white/5 py-8 pr-4 pl-6 md:block">
       <nav aria-label="Documentation navigation">
         {SECTIONS.map((section) => (
           <div className="mb-6" key={section.title}>
             <button
-              className="mb-2 flex w-full items-center gap-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider"
+              className="text-muted-foreground mb-2 flex w-full items-center gap-1 text-xs font-semibold tracking-wider uppercase"
               onClick={() => toggle(section.title)}
               type="button"
             >
@@ -107,12 +108,12 @@ export function DocsSidebar() {
                 {section.items.map((item) => (
                   <li key={item.id}>
                     <a
-                      className="block rounded-md px-2 py-1 font-mono text-muted-foreground text-sm transition-colors hover:bg-white/5 hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground block rounded-md px-2 py-1 font-mono text-sm transition-colors hover:bg-white/5"
                       href={`#${item.id}`}
                       onClick={() =>
                         trackEvent("docs_nav_click", {
-                          section: section.title,
                           item: item.id,
+                          section: section.title,
                         })
                       }
                     >
@@ -127,4 +128,4 @@ export function DocsSidebar() {
       </nav>
     </aside>
   );
-}
+};

@@ -1,15 +1,16 @@
 import { bold, dim, icons, SecretStore } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { Argument as Args, Command } from "effect/unstable/cli";
+import { Argument as Args, Command } from "effect/cli";
+
 import { isJsonOutput, optionalContext } from "./root.js";
 
-const pattern = Args.string("pattern");
+const patternArg = Args.String("pattern");
 
 export const searchCommand = Command.make(
   "search",
-  { pattern },
+  { pattern: patternArg },
   ({ pattern }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* searchHandler() {
       const context = yield* optionalContext;
       const jsonMode = yield* isJsonOutput;
 
@@ -50,4 +51,6 @@ export const searchCommand = Command.make(
         yield* Console.log(`${icons.key} ${item.key}`);
       }
     })
+).pipe(
+  Command.withDescription("Search secrets or contexts with a glob pattern")
 );

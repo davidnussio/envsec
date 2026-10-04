@@ -80,8 +80,7 @@ mise use -g npm:envsec
 
 ## Usage
 
-Most commands require a context specified with `--context` (or `-c`).
-A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
+Most commands require a context specified with `--context` (or `-c`). A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
 
 ### Custom database path
 
@@ -120,8 +119,7 @@ envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 
 ### Generate a secret
 
-Generate a cryptographically secure random secret and store it in one step.
-When used without `--context` or without a key name, it works as a standalone password generator.
+Generate a cryptographically secure random secret and store it in one step. When used without `--context` or without a key name, it works as a standalone password generator.
 
 ```bash
 # Generate a 32-char alphanumeric secret (default)
@@ -153,8 +151,7 @@ envsec secret --special --length 64
 envsec secret --all-chars --length 128 --prefix "pk_"
 ```
 
-When both `--context` and a key name are provided, the generated value is stored and printed.
-Without either, it prints the raw value to stdout — perfect for piping or clipboard.
+When both `--context` and a key name are provided, the generated value is stored and printed. Without either, it prints the raw value to stdout — perfect for piping or clipboard.
 
 ### Get a secret
 
@@ -410,6 +407,7 @@ envsec --json doctor
 ```
 
 The `doctor` command verifies your envsec installation is working correctly. It checks:
+
 - Platform support and Node.js version
 - Credential store availability (macOS Keychain, Linux secret-tool, Windows cmdkey)
 - Keychain read/write access
@@ -435,6 +433,7 @@ envsec --completions fish | source
 ```
 
 What gets completed dynamically:
+
 - `--context` / `-c` — lists all your contexts
 - Secret key arguments (`get`, `add`, `delete`) — lists keys for the current context
 - `cmd run` / `cmd delete` — lists saved command names
@@ -445,11 +444,11 @@ What gets completed dynamically:
 
 Secrets are stored in the native OS credential store. The backend is selected automatically based on the platform:
 
-| OS      | Backend                        | Tool / API                          |
-|---------|--------------------------------|-------------------------------------|
-| macOS   | Keychain                       | `security` CLI                      |
-| Linux   | Secret Service API (D-Bus)     | `secret-tool` (libsecret)           |
-| Windows | Credential Manager             | `cmdkey` + PowerShell (advapi32)    |
+| OS      | Backend                    | Tool / API                       |
+| ------- | -------------------------- | -------------------------------- |
+| macOS   | Keychain                   | `security` CLI                   |
+| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
+| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
 
 Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
 
@@ -477,7 +476,7 @@ envsec is built around a simple principle: your secrets belong in your OS, not i
 
 We believe in being upfront about what envsec does not yet cover. These are real trade-offs, not bugs — and understanding them helps you make informed decisions.
 
-**Metadata is visible.** The SQLite database at `~/.envsec/store.sqlite` stores key names, context names, and timestamps — never secret values, but enough to reveal *what* secrets exist. Saved command templates (with `{key}` placeholders) are also stored there. If metadata confidentiality matters to you, ensure your home directory is on an encrypted volume.
+**Metadata is visible.** The SQLite database at `~/.envsec/store.sqlite` stores key names, context names, and timestamps — never secret values, but enough to reveal _what_ secrets exist. Saved command templates (with `{key}` placeholders) are also stored there. If metadata confidentiality matters to you, ensure your home directory is on an encrypted volume.
 
 **`env-file` exports are plaintext.** The `env-file` command writes secret values to a `.env` file on disk. This is inherently sensitive — treat the output file accordingly and never commit it to version control. Consider it a convenience bridge, not a storage mechanism.
 
@@ -558,15 +557,13 @@ node packages/cli/dist/main.js --help
 
 ### Run e2e tests
 
-The default suite uses temporary SQLite and file-backed credential fixtures, so
-it does not access your native credential store:
+The default suite uses temporary SQLite and file-backed credential fixtures, so it does not access your native credential store:
 
 ```bash
 pnpm --filter envsec test
 ```
 
-To exercise the real macOS or Linux credential-store adapter, build first and
-opt in explicitly:
+To exercise the real macOS or Linux credential-store adapter, build first and opt in explicitly:
 
 ```bash
 ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \

@@ -1,5 +1,5 @@
 /**
- * @envsec/core — Platform-agnostic secrets management engine.
+ * `@envsec/core` — Platform-agnostic secrets management engine.
  * Used by both the envsec CLI and @envsec/sdk.
  * Zero CLI coupling — no yargs, no chalk, no ora.
  */

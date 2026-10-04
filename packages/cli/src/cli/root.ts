@@ -1,29 +1,32 @@
 import { ContextName } from "@envsec/core";
-import { Effect, Option, Schema } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Config, Effect, Option, Schema } from "effect";
+import { Command, Flag as Options } from "effect/cli";
 
 const decodeContext = Schema.decodeEffect(ContextName);
 
-const context = Options.string("context").pipe(
+const contextFlag = Options.String("context").pipe(
   Options.withAlias("c"),
   Options.withDescription(
     "Context name (e.g. myapp.dev, stripe-api.prod, work.staging). Also reads ENVSEC_CONTEXT env var."
   ),
+  Options.withFallbackConfig(
+    Config.String("ENVSEC_CONTEXT").pipe(Config.map((value) => value.trim()))
+  ),
   Options.optional
 );
 
-const debug = Options.boolean("debug").pipe(
+const debugFlag = Options.Boolean("debug").pipe(
   Options.withAlias("d"),
   Options.withDescription("Enable debug logging"),
   Options.withDefault(false)
 );
 
-const json = Options.boolean("json").pipe(
+const jsonFlag = Options.Boolean("json").pipe(
   Options.withDescription("Output in JSON format for scripting"),
   Options.withDefault(false)
 );
 
-const db = Options.string("db").pipe(
+const dbFlag = Options.String("db").pipe(
   Options.withDescription(
     "Path to SQLite database file (default: ~/.envsec/store.sqlite). Also reads ENVSEC_DB env var."
   ),
@@ -31,66 +34,59 @@ const db = Options.string("db").pipe(
 );
 
 export const rootCommand = Command.make("envsec").pipe(
-  Command.withSharedFlags({ context, debug, json, db })
+  Command.withDescription(
+    "Secure environment secrets management using native OS credential stores"
+  ),
+  // oxlint-disable-next-line sort-keys -- key order sets the flag order in --help
+  Command.withSharedFlags({
+    context: contextFlag,
+    debug: debugFlag,
+    json: jsonFlag,
+    db: dbFlag,
+  })
 );
 
 /**
- * Resolve context from --context flag or ENVSEC_CONTEXT env var.
+ * The --context value, falling back to the ENVSEC_CONTEXT env var
+ * (handled by Flag.withFallbackConfig). An empty value counts as unset.
  */
-const resolveRawContext = Effect.gen(function* () {
-  const { context } = yield* rootCommand;
-
-  if (Option.isSome(context)) {
-    return context.value;
-  }
-
-  const envContext = process.env.ENVSEC_CONTEXT;
-  if (envContext && envContext.trim() !== "") {
-    return envContext.trim();
-  }
-
-  return yield* Effect.fail(
-    new Error(
-      "Missing required option --context (-c) or ENVSEC_CONTEXT env var"
-    )
-  );
-});
+const rawContext = rootCommand.pipe(
+  Effect.map(({ context }) =>
+    context.pipe(Option.filter((value) => value !== ""))
+  )
+);
 
 /**
  * Extract and validate the required --context option.
- * Falls back to ENVSEC_CONTEXT env var if --context is not provided.
  * Fails with a user-friendly error if missing or invalid.
  */
-export const requireContext = Effect.gen(function* () {
-  const raw = yield* resolveRawContext;
-  return yield* decodeContext(raw);
+export const requireContext = Effect.gen(function* requireContext() {
+  const context = yield* rawContext;
+  if (Option.isNone(context)) {
+    return yield* Effect.fail(
+      new Error(
+        "Missing required option --context (-c) or ENVSEC_CONTEXT env var"
+      )
+    );
+  }
+  return yield* decodeContext(context.value);
 });
 
 /**
  * Validate an optional context value (for commands where --context is optional).
- * Falls back to ENVSEC_CONTEXT env var if --context is not provided.
  */
-export const optionalContext = Effect.gen(function* () {
-  const { context } = yield* rootCommand;
-
-  if (Option.isSome(context)) {
-    const validated = yield* decodeContext(context.value);
-    return Option.some(validated);
+export const optionalContext = Effect.gen(function* optionalContext() {
+  const context = yield* rawContext;
+  if (Option.isNone(context)) {
+    return Option.none<ContextName>();
   }
-
-  const envContext = process.env.ENVSEC_CONTEXT;
-  if (envContext && envContext.trim() !== "") {
-    const validated = yield* decodeContext(envContext.trim());
-    return Option.some(validated);
-  }
-
-  return Option.none<ContextName>();
+  return Option.some(yield* decodeContext(context.value));
 });
 
 /**
  * Check if --json flag is set.
  */
-export const isJsonOutput = Effect.gen(function* () {
+export const isJsonOutput = Effect.gen(function* isJsonOutput() {
   const { json } = yield* rootCommand;
   return json;
 });

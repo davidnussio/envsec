@@ -6,12 +6,12 @@ import { Console, Effect } from "effect";
  * Called when the cache is missing, stale, or doesn't have the requested data.
  * Queries SecretStore directly and rebuilds the cache.
  */
-export const handleComplete = (
-  type: string,
-  arg: string | undefined,
-  cachePath: string
-): Effect.Effect<void, never, SecretStore> =>
-  Effect.gen(function* () {
+export const handleComplete = Effect.fn("handleComplete")(
+  function* handleComplete(
+    type: string,
+    arg: string | undefined,
+    cachePath: string
+  ) {
     switch (type) {
       case "contexts": {
         const contexts = yield* SecretStore.listContexts();
@@ -37,10 +37,14 @@ export const handleComplete = (
         }
         break;
       }
-      default:
+      default: {
         break;
+      }
     }
 
     // Rebuild cache after slow path query
     yield* refreshCache(cachePath);
-  }).pipe(Effect.catch(() => Effect.void));
+  },
+  // Completion output must never contain errors: fail silently.
+  (effect) => Effect.ignore(effect)
+);

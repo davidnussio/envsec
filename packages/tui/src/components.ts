@@ -3,6 +3,7 @@
  */
 
 import { icons } from "@envsec/core";
+
 import { c, cursor, getSize, screen, write, writeLine } from "./terminal.js";
 
 // ── Header ──────────────────────────────────────────────────────────
@@ -16,7 +17,10 @@ export const renderHeader = (
   const ctx = context ? c.cyan(`[${context}]`) : c.dim("[no context]");
   const line = `${c.bold(c.green(`${icons.lock} envsec`))} ${c.dim("›")} ${c.bold(title)}  ${ctx}`;
   writeLine(startRow, ` ${line}`);
-  writeLine(startRow + 1, ` ${c.dim("─".repeat(Math.min(cols - 2, 60)))}`);
+  writeLine(
+    startRow + 1,
+    ` ${c.dim("─".repeat(Math.max(0, Math.min(cols - 2, 60))))}`
+  );
   return startRow + 2;
 };
 
@@ -48,7 +52,11 @@ export const renderMenu = (
   }
 
   let row = startRow;
-  for (let i = offset; i < Math.min(items.length, offset + safeVisible); i++) {
+  for (
+    let i = offset;
+    i < Math.min(items.length, offset + safeVisible);
+    i += 1
+  ) {
     const item = items[i];
     if (!item) {
       continue;
@@ -59,11 +67,11 @@ export const renderMenu = (
     const label = isSelected ? c.bold(c.cyan(item.label)) : item.label;
     const hint = item.hint ? `  ${c.dim(item.hint)}` : "";
     writeLine(row, ` ${prefix} ${icon}${icon ? " " : ""}${label}${hint}`);
-    row++;
+    row += 1;
   }
 
   // Clear remaining lines
-  for (let r = row; r < startRow + safeVisible; r++) {
+  for (let r = row; r < startRow + safeVisible; r += 1) {
     writeLine(r, "");
   }
 
@@ -85,6 +93,25 @@ const calcOffset = (selected: number, visible: number): number => {
   return 0;
 };
 
+const formatTableRow = (
+  data: string[],
+  columns: TableColumn[],
+  isSelected: boolean
+): string => {
+  let line = "";
+  for (let j = 0; j < columns.length; j += 1) {
+    const col = columns[j];
+    if (!col) {
+      continue;
+    }
+    const cell = (data[j] ?? "").slice(0, col.width);
+    const padded =
+      col.align === "right" ? cell.padStart(col.width) : cell.padEnd(col.width);
+    line += `${isSelected ? c.cyan(padded) : padded} `;
+  }
+  return line;
+};
+
 export const renderTable = (
   columns: TableColumn[],
   rows: string[][],
@@ -102,12 +129,15 @@ export const renderTable = (
     headerLine += `${c.bold(c.dim(text))} `;
   }
   writeLine(startRow, headerLine);
-  writeLine(startRow + 1, ` ${c.dim("─".repeat(Math.min(cols - 2, 70)))}`);
+  writeLine(
+    startRow + 1,
+    ` ${c.dim("─".repeat(Math.max(0, Math.min(cols - 2, 70))))}`
+  );
 
   const offset = calcOffset(selected, visible);
 
   let row = startRow + 2;
-  for (let i = offset; i < Math.min(rows.length, offset + visible); i++) {
+  for (let i = offset; i < Math.min(rows.length, offset + visible); i += 1) {
     const data = rows[i];
     if (!data) {
       continue;
@@ -116,33 +146,14 @@ export const renderTable = (
     const prefix = isSelected ? c.cyan("❯") : " ";
     const line = formatTableRow(data, columns, isSelected);
     writeLine(row, ` ${prefix} ${line}`);
-    row++;
+    row += 1;
   }
 
-  for (let r = row; r < startRow + 2 + visible; r++) {
+  for (let r = row; r < startRow + 2 + visible; r += 1) {
     writeLine(r, "");
   }
 
   return row;
-};
-
-const formatTableRow = (
-  data: string[],
-  columns: TableColumn[],
-  isSelected: boolean
-): string => {
-  let line = "";
-  for (let j = 0; j < columns.length; j++) {
-    const col = columns[j];
-    if (!col) {
-      continue;
-    }
-    const cell = (data[j] ?? "").slice(0, col.width);
-    const padded =
-      col.align === "right" ? cell.padStart(col.width) : cell.padEnd(col.width);
-    line += `${isSelected ? c.cyan(padded) : padded} `;
-  }
-  return line;
 };
 
 // ── Status bar / footer ─────────────────────────────────────────────
@@ -162,10 +173,10 @@ export const renderMessage = (
   type: "success" | "error" | "info" | "warning" = "info"
 ): void => {
   const iconMap = {
-    success: icons.success,
     error: icons.error,
-    warning: icons.warning,
     info: icons.info,
+    success: icons.success,
+    warning: icons.warning,
   };
   writeLine(row, ` ${iconMap[type]} ${msg}`);
 };

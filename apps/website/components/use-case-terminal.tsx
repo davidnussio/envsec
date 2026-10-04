@@ -10,7 +10,11 @@ interface TerminalLine {
 const PROMPT_DELAY = 600;
 const OUTPUT_DELAY = 250;
 
-export function UseCaseTerminal({ lines }: { lines: readonly TerminalLine[] }) {
+export const UseCaseTerminal = ({
+  lines,
+}: {
+  lines: readonly TerminalLine[];
+}) => {
   const [visibleLines, setVisibleLines] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevVisible = useRef(0);
@@ -30,23 +34,23 @@ export function UseCaseTerminal({ lines }: { lines: readonly TerminalLine[] }) {
     }
     prevVisible.current = visibleLines;
     scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
       behavior: "smooth",
+      top: scrollRef.current.scrollHeight,
     });
   });
 
   return (
     <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-lg">
-      <div className="flex items-center gap-2 border-white/5 border-b px-4 py-2.5">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2.5">
         <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
         <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
         <div className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
-        <span className="ml-2 font-mono text-muted-foreground text-xs">
+        <span className="text-muted-foreground ml-2 font-mono text-xs">
           Terminal
         </span>
       </div>
       <div
-        className="max-h-64 overflow-y-auto overflow-x-hidden p-3 font-mono text-sm leading-relaxed sm:p-4"
+        className="max-h-64 overflow-x-hidden overflow-y-auto p-3 font-mono text-sm leading-relaxed sm:p-4"
         ref={scrollRef}
       >
         {lines.slice(0, visibleLines).map((line, i) => (
@@ -60,14 +64,14 @@ export function UseCaseTerminal({ lines }: { lines: readonly TerminalLine[] }) {
             {line.prompt ? (
               <>
                 <span className="mr-2 shrink-0 text-emerald-400">$</span>
-                <span className="wrap-break-word min-w-0 whitespace-pre-wrap text-left text-zinc-200">
+                <span className="min-w-0 text-left wrap-break-word whitespace-pre-wrap text-zinc-200">
                   {line.text}
                 </span>
               </>
             ) : (
               <>
                 <span className="invisible mr-2 shrink-0">$</span>
-                <span className="min-w-0 whitespace-pre-wrap text-left text-zinc-400">
+                <span className="min-w-0 text-left whitespace-pre-wrap text-zinc-400">
                   {line.text}
                 </span>
               </>
@@ -83,4 +87,4 @@ export function UseCaseTerminal({ lines }: { lines: readonly TerminalLine[] }) {
       </div>
     </div>
   );
-}
+};

@@ -1,18 +1,40 @@
 import {
+  ContextName,
   DatabaseConfigDefault,
   DatabaseConfigFrom,
-  type MetadataStoreError,
+  expiresAtFromNow,
+  parseDuration,
   SecretStore,
-  type UnsupportedPlatformError,
 } from "@envsec/core";
-import { Effect, ManagedRuntime } from "effect";
+import type {
+  MetadataStoreError,
+  UnsupportedPlatformError,
+} from "@envsec/core";
+import { Effect, ManagedRuntime, Schema } from "effect";
+
 import type { EnvsecClientOptions } from "./types.js";
 
-function toEnvKey(key: string): string {
-  return key.toUpperCase().replaceAll(".", "_").replaceAll("-", "_");
-}
+const toEnvKey = (key: string): string =>
+  key.toUpperCase().replaceAll(".", "_").replaceAll("-", "_");
 
 type StoreError = UnsupportedPlatformError | MetadataStoreError;
+
+const isValidContextName = Schema.is(ContextName);
+
+const validateContexts = (context: string | string[]): string[] => {
+  const contexts = Array.isArray(context) ? context : [context];
+  if (contexts.length === 0) {
+    throw new Error("[envsec] At least one context is required");
+  }
+  for (const ctx of contexts) {
+    if (!isValidContextName(ctx)) {
+      throw new Error(
+        `[envsec] Invalid context name "${ctx}": use only alphanumeric characters, dots, hyphens, and underscores`
+      );
+    }
+  }
+  return contexts;
+};
 
 /**
  * EnvsecClient — programmatic access to envsec secrets via Effect.
@@ -45,16 +67,24 @@ export class EnvsecClient {
     return this.contexts.at(-1) as string;
   }
 
-  static create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
+  /**
+   * Create a client. Rejects immediately on an invalid context name, an
+   * unsupported platform or an unreadable database, instead of failing
+   * later on the first read or write.
+   */
+  static async create(opts: EnvsecClientOptions): Promise<EnvsecClient> {
+    const contexts = validateContexts(opts.context);
     const dbLayer = opts.dbPath
       ? DatabaseConfigFrom(opts.dbPath)
       : DatabaseConfigDefault;
-    const storeLayer = SecretStore.layer(dbLayer);
-    const runtime = ManagedRuntime.make(storeLayer);
-    const contexts = Array.isArray(opts.context)
-      ? opts.context
-      : [opts.context];
-    return Promise.resolve(new EnvsecClient(runtime, contexts));
+    const runtime = ManagedRuntime.make(SecretStore.layer(dbLayer));
+    try {
+      await runtime.context();
+    } catch (error) {
+      await runtime.dispose();
+      throw error;
+    }
+    return new EnvsecClient(runtime, contexts);
   }
 
   /**
@@ -62,10 +92,10 @@ export class EnvsecClient {
    * searches right-to-left (last context wins).
    */
   get(key: string): Promise<string | null> {
-    const contexts = this.contexts;
+    const { contexts } = this;
     return this.runtime.runPromise(
-      Effect.gen(function* () {
-        for (let i = contexts.length - 1; i >= 0; i--) {
+      Effect.gen(function* get() {
+        for (let i = contexts.length - 1; i >= 0; i -= 1) {
           const value = yield* SecretStore.get(contexts[i] as string, key).pipe(
             Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
           );
@@ -90,10 +120,21 @@ export class EnvsecClient {
     return value;
   }
 
-  /** Write operations target the primary (last) context. */
+  /**
+   * Write operations target the primary (last) context.
+   * `expires` is a duration such as "30m", "2h", "7d", "4w", "3mo" or "1y".
+   */
   set(key: string, value: string, opts?: { expires?: string }): Promise<void> {
+    const context = this.primaryContext;
+    const expires = opts?.expires;
     return this.runtime.runPromise(
-      SecretStore.set(this.primaryContext, key, value, opts?.expires)
+      Effect.gen(function* set() {
+        const expiresAt =
+          expires === undefined
+            ? undefined
+            : expiresAtFromNow(yield* parseDuration(expires));
+        yield* SecretStore.set(context, key, value, expiresAt);
+      })
     );
   }
 
@@ -109,21 +150,24 @@ export class EnvsecClient {
    * secrets are merged left-to-right (later contexts override).
    */
   async loadAll(): Promise<Record<string, string>> {
-    const result: Record<string, string> = {};
-    for (const ctx of this.contexts) {
-      const entries = await this.runtime.runPromise(SecretStore.list(ctx));
-      for (const entry of entries) {
-        const value = await this.runtime.runPromise(
-          SecretStore.get(ctx, entry.key).pipe(
-            Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
-          )
-        );
-        if (value !== null) {
-          result[entry.key] = value;
+    const { contexts } = this;
+    return await this.runtime.runPromise(
+      Effect.gen(function* loadAll() {
+        const result: Record<string, string> = {};
+        for (const ctx of contexts) {
+          const entries = yield* SecretStore.list(ctx);
+          for (const entry of entries) {
+            const value = yield* SecretStore.get(ctx, entry.key).pipe(
+              Effect.catchTag("SecretNotFoundError", () => Effect.succeed(null))
+            );
+            if (value !== null) {
+              result[entry.key] = value;
+            }
+          }
         }
-      }
-    }
-    return result;
+        return result;
+      })
+    );
   }
 
   async injectEnv(): Promise<void> {

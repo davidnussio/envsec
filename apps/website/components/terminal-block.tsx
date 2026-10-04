@@ -7,7 +7,7 @@ interface TerminalBlockProps {
   code: string;
 }
 
-export function TerminalBlock({ code }: TerminalBlockProps) {
+export const TerminalBlock = ({ code }: TerminalBlockProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -22,7 +22,7 @@ export function TerminalBlock({ code }: TerminalBlockProps) {
 
   return (
     <div className="group relative my-4 overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
-      <div className="flex items-center justify-between border-white/5 border-b px-4 py-2.5">
+      <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <div className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
           <div className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
@@ -31,7 +31,7 @@ export function TerminalBlock({ code }: TerminalBlockProps) {
         </div>
         <button
           aria-label="Copy code"
-          className="text-zinc-400 opacity-0 transition-opacity hover:text-zinc-300 group-hover:opacity-100"
+          className="text-zinc-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-zinc-300"
           onClick={handleCopy}
           type="button"
         >
@@ -64,7 +64,7 @@ export function TerminalBlock({ code }: TerminalBlockProps) {
 
             return (
               <div className="flex items-start" key={`line-${i.toString()}`}>
-                <span className="mr-2 shrink-0 select-none text-emerald-400">
+                <span className="mr-2 shrink-0 text-emerald-400 select-none">
                   $
                 </span>
                 <span className="text-zinc-200">{line}</span>
@@ -75,4 +75,4 @@ export function TerminalBlock({ code }: TerminalBlockProps) {
       </pre>
     </div>
   );
-}
+};

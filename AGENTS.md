@@ -4,11 +4,11 @@ This project uses **Ultracite**, a zero-config preset that enforces strict code 
 
 ## Quick Reference
 
-- **Format code**: `bun x ultracite fix`
-- **Check for issues**: `bun x ultracite check`
+- **Format code**: `pnpm run fix`
+- **Check for issues**: `pnpm run check`
 - **Diagnose setup**: `bun x ultracite doctor`
 
-Biome (the underlying engine) provides robust linting and formatting. Most issues are automatically fixable.
+Oxlint (linting) and Oxfmt (formatting) are the underlying engines. Most issues are automatically fixable.
 
 ---
 
@@ -88,14 +88,17 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 ### Framework-Specific Guidance
 
 **Next.js:**
+
 - Use Next.js `<Image>` component for images
 - Use `next/head` or App Router metadata API for head elements
 - Use Server Components for async data fetching instead of async Client Components
 
 **React 19+:**
+
 - Use ref as a prop instead of `React.forwardRef`
 
 **Solid/Svelte/Vue/Qwik:**
+
 - Use `class` and `for` attributes (not `className` or `htmlFor`)
 
 ---
@@ -107,11 +110,11 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Don't use `.only` or `.skip` in committed code
 - Keep test suites reasonably flat - avoid excessive `describe` nesting
 
-## When Biome Can't Help
+## When the Linter Can't Help
 
-Biome's linter will catch most issues automatically. Focus your attention on:
+Oxlint will catch most issues automatically. Focus your attention on:
 
-1. **Business logic correctness** - Biome can't validate your algorithms
+1. **Business logic correctness** - Oxlint can't validate your algorithms
 2. **Meaningful naming** - Use descriptive names for functions, variables, and types
 3. **Architecture decisions** - Component structure, data flow, and API design
 4. **Edge cases** - Handle boundary conditions and error states
@@ -120,7 +123,7 @@ Biome's linter will catch most issues automatically. Focus your attention on:
 
 ---
 
-Most formatting and common issues are automatically fixed by Biome. Run `bun x ultracite fix` before committing to ensure compliance.
+Most formatting and common issues are automatically fixed by Oxlint and Oxfmt. Run `pnpm run fix` before committing to ensure compliance.
 
 ## CLI Icons
 
@@ -143,3 +146,13 @@ Every time a new command or functionality has been added the e2e test file have 
 ## Readme file
 
 Important: update readme file with the new things done
+
+## Effect libraries
+
+This project uses Effect 4 (`effect`, `@effect/platform-node`). The Effect source for the exact version we depend on is vendored at `repos/effect/` via `git subtree`.
+
+- Before writing or reviewing Effect code, read `repos/effect/LLMS.md`, then look in `repos/effect/packages/effect/src/` (and its `test/`) for idiomatic usage, signatures and examples. Prefer this source over web search or memory: Effect 4 APIs differ a lot from Effect 3.
+- CLI modules live in `repos/effect/packages/effect/src/cli/` (imported as `effect/cli`).
+- Migration notes: `repos/effect/MIGRATION.md` and `repos/effect/migration/`.
+- `repos/` is read-only reference material: never edit it and never import from it.
+- When bumping Effect, update the subtree to the matching tag: `git subtree pull --prefix=repos/effect https://github.com/Effect-TS/effect.git effect@<version> --squash`

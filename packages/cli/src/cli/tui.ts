@@ -1,12 +1,13 @@
 import { runTUI } from "@envsec/tui";
 import { Effect, Option } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
+
 import { optionalContext } from "./root.js";
 
 export const tuiCommand = Command.make("tui", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* tuiHandler() {
     const context = yield* optionalContext;
     const ctx = Option.isSome(context) ? context.value : null;
     yield* runTUI(ctx);
   })
-);
+).pipe(Command.withDescription("Open the interactive terminal UI"));

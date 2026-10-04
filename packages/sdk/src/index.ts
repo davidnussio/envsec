@@ -1,5 +1,5 @@
 /**
- * @envsec/sdk — Node.js / Bun SDK for envsec.
+ * `@envsec/sdk` — Node.js / Bun SDK for envsec.
  *
  * Two APIs:
  * - EnvsecClient (class)          — multi-operation, lifecycle-managed

@@ -7,7 +7,8 @@ import {
   SecretStore,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
-import { Command } from "effect/unstable/cli";
+import { Command } from "effect/cli";
+
 import { isJsonOutput, optionalContext } from "./root.js";
 
 const formatSecretLine = (
@@ -27,46 +28,49 @@ const formatSecretLine = (
   return `${icons.key} ${item.key}  ${updated}  ${expiry}`;
 };
 
-const listContexts = (jsonMode: boolean) =>
-  Effect.gen(function* () {
-    const contexts = yield* SecretStore.listContexts();
-    if (jsonMode) {
-      yield* Console.log(JSON.stringify(contexts));
-      return;
-    }
-    if (contexts.length === 0) {
-      yield* Console.log(`${icons.empty} No contexts found.`);
-      return;
-    }
-    for (const item of contexts) {
-      yield* Console.log(
-        `${icons.folder} ${bold(item.context)}  ${dim(`(${item.count} secrets)`)}`
-      );
-    }
-  });
-
-const listSecrets = (ctx: string, jsonMode: boolean) =>
-  Effect.gen(function* () {
-    const results = yield* SecretStore.list(ctx);
-    if (jsonMode) {
-      yield* Console.log(JSON.stringify(results));
-      return;
-    }
-    if (results.length === 0) {
-      yield* Console.log(`${icons.empty} No secrets found.`);
-      return;
-    }
-    const now = Date.now();
-    for (const item of results) {
-      yield* Console.log(formatSecretLine(item, now));
-    }
+const listContexts = Effect.fn("listContexts")(function* listContexts(
+  jsonMode: boolean
+) {
+  const contexts = yield* SecretStore.listContexts();
+  if (jsonMode) {
+    yield* Console.log(JSON.stringify(contexts));
+    return;
+  }
+  if (contexts.length === 0) {
+    yield* Console.log(`${icons.empty} No contexts found.`);
+    return;
+  }
+  for (const item of contexts) {
     yield* Console.log(
-      `\n${icons.chart} ${badge(results.length, "secret")} in ${bold(ctx)}`
+      `${icons.folder} ${bold(item.context)}  ${dim(`(${item.count} secrets)`)}`
     );
-  });
+  }
+});
+
+const listSecrets = Effect.fn("listSecrets")(function* listSecrets(
+  ctx: string,
+  jsonMode: boolean
+) {
+  const results = yield* SecretStore.list(ctx);
+  if (jsonMode) {
+    yield* Console.log(JSON.stringify(results));
+    return;
+  }
+  if (results.length === 0) {
+    yield* Console.log(`${icons.empty} No secrets found.`);
+    return;
+  }
+  const now = Date.now();
+  for (const item of results) {
+    yield* Console.log(formatSecretLine(item, now));
+  }
+  yield* Console.log(
+    `\n${icons.chart} ${badge(results.length, "secret")} in ${bold(ctx)}`
+  );
+});
 
 export const listCommand = Command.make("list", {}, () =>
-  Effect.gen(function* () {
+  Effect.gen(function* listHandler() {
     const context = yield* optionalContext;
     const jsonMode = yield* isJsonOutput;
 
@@ -76,4 +80,4 @@ export const listCommand = Command.make("list", {}, () =>
     }
     yield* listSecrets(context.value, jsonMode);
   })
-);
+).pipe(Command.withDescription("List secrets in a context, or all contexts"));

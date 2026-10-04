@@ -2,30 +2,35 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const CLI_PATH = fileURLToPath(new URL("../dist/main.js", import.meta.url));
-const MISSING_CONTEXT_PATTERN = /Missing required option --context/;
-const MISSING_FILE_PATTERN = /Cannot read file/;
-const NO_SECRETS_PATTERN = /No secrets found/;
-const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/;
-const VERSION_PATTERN = /envsec v\d/;
+const MISSING_CONTEXT_PATTERN = /Missing required option --context/u;
+const MISSING_FILE_PATTERN = /Cannot read file/u;
+const INVALID_CONTEXT_PATTERN = /Context name "bad name!!" is invalid/u;
+const STDIN_CLOSED_PATTERN = /stdin is closed/u;
+const NO_SECRETS_PATTERN = /No secrets found/u;
+const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/u;
+const VERSION_PATTERN = /envsec v\d/u;
+const COMPLETE_COMMAND_PATTERN = /__complete/u;
+const DESCRIBED_SUBCOMMAND_PATTERN = /^\s+\S.*\s{2,}\S/u;
+const DELETE_ALIAS_PATTERN = /delete, del/u;
 
 const runCli = (...args) =>
   spawnSync(process.execPath, [CLI_PATH, ...args], {
-    encoding: "utf8",
+    encoding: "utf-8",
   });
 
 const withDatabase = (run) => {
-  const directory = mkdtempSync(join(tmpdir(), "envsec-cli-effect-4-"));
-  const databasePath = join(directory, "store.sqlite");
+  const directory = mkdtempSync(path.join(tmpdir(), "envsec-cli-effect-4-"));
+  const databasePath = path.join(directory, "store.sqlite");
 
   try {
     run(databasePath);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    rmSync(directory, { force: true, recursive: true });
   }
 };
 
@@ -80,7 +85,7 @@ test("keeps omitted boolean flags optional", () => {
       "--context",
       "smoke.context",
       "--input",
-      join(tmpdir(), "envsec-missing.env"),
+      path.join(tmpdir(), "envsec-missing.env"),
       "--db",
       databasePath
     );
@@ -88,4 +93,90 @@ test("keeps omitted boolean flags optional", () => {
     assert.equal(result.status, 1);
     assert.match(`${result.stdout}${result.stderr}`, MISSING_FILE_PATTERN);
   });
+});
+
+test("prints handler errors to stderr and keeps stdout clean", () => {
+  withDatabase((databasePath) => {
+    const result = runCli("--db", databasePath, "-c", "bad name!!", "list");
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, INVALID_CONTEXT_PATTERN);
+  });
+});
+
+test("exits with the exit code of the command it runs", () => {
+  withDatabase((databasePath) => {
+    const result = runCli(
+      "--db",
+      databasePath,
+      "-c",
+      "smoke.context",
+      "run",
+      "exit 3"
+    );
+
+    assert.equal(result.status, 3);
+  });
+});
+
+test("fails instead of hanging when a prompt gets no input", () => {
+  withDatabase((databasePath) => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        CLI_PATH,
+        "--db",
+        databasePath,
+        "-c",
+        "smoke.context",
+        "run",
+        "--save",
+        "echo ok",
+      ],
+      { encoding: "utf-8", input: "", timeout: 10_000 }
+    );
+
+    assert.equal(result.signal, null);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, STDIN_CLOSED_PATTERN);
+  });
+});
+
+test("honours --db=<path> as well as --db <path>", () => {
+  withDatabase((databasePath) => {
+    const result = runCli(
+      "list",
+      "--context",
+      "smoke.context",
+      `--db=${databasePath}`
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(existsSync(databasePath), true);
+  });
+});
+
+test("describes every subcommand in the help output", () => {
+  withDatabase((databasePath) => {
+    const help = runCli("--db", databasePath, "--help");
+    const subcommandLines = help.stdout
+      .split("\n")
+      .slice(help.stdout.split("\n").indexOf("SUBCOMMANDS") + 1)
+      .filter((line) => line.trim() !== "");
+
+    assert.ok(subcommandLines.length > 0);
+    for (const line of subcommandLines) {
+      assert.match(line, DESCRIBED_SUBCOMMAND_PATTERN);
+    }
+    assert.match(help.stdout, DELETE_ALIAS_PATTERN);
+  });
+});
+
+test("serves dynamic completions for --completions=<shell> too", () => {
+  for (const args of [["--completions", "zsh"], ["--completions=zsh"]]) {
+    const result = runCli(...args);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, COMPLETE_COMMAND_PATTERN);
+  }
 });

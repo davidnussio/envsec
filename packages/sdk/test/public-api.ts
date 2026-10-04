@@ -1,10 +1,8 @@
-import {
-  EnvsecClient,
-  type EnvsecClientOptions,
-  type LoadSecretsOptions,
-  loadSecrets,
-  type WithSecretsOptions,
-  withSecrets,
+import { EnvsecClient, loadSecrets, withSecrets } from "../src/index.js";
+import type {
+  EnvsecClientOptions,
+  LoadSecretsOptions,
+  WithSecretsOptions,
 } from "../src/index.js";
 
 export const createContract: (

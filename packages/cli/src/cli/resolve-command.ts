@@ -1,17 +1,14 @@
 import {
   badge,
-  type InvalidKeyError,
   icons,
   indent,
-  type KeychainError,
-  type MetadataStoreError,
   MissingSecretsError,
-  type SecretNotFoundError,
   SecretStore,
 } from "@envsec/core";
+import type { SecretNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
 
-const placeholderPattern = /(?<!\$)\{([^}]+)\}/g;
+const placeholderPattern = /(?<!\$)\{(?<key>[^}]+)\}/gu;
 
 export interface ResolvedCommand {
   readonly command: string;
@@ -19,18 +16,14 @@ export interface ResolvedCommand {
 }
 
 const toEnvVarName = (key: string, index: number): string =>
-  `ENVSEC_${index}_${key.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+  `ENVSEC_${index}_${key.replaceAll(/[^a-zA-Z0-9]/gu, "_").toUpperCase()}`;
 
-export const resolveCommand = (
-  cmd: string,
-  ctx: string,
-  options?: { quiet?: boolean }
-): Effect.Effect<
-  ResolvedCommand,
-  KeychainError | MetadataStoreError | InvalidKeyError | MissingSecretsError,
-  SecretStore
-> =>
-  Effect.gen(function* () {
+export const resolveCommand = Effect.fn("resolveCommand")(
+  function* resolveCommand(
+    cmd: string,
+    ctx: string,
+    options?: { quiet?: boolean }
+  ) {
     const placeholders = [...cmd.matchAll(placeholderPattern)];
 
     if (placeholders.length === 0) {
@@ -42,7 +35,7 @@ export const resolveCommand = (
     const env: Record<string, string> = {};
 
     for (const [index, match] of placeholders.entries()) {
-      const key = match[1];
+      const key = match.groups?.key;
       if (key === undefined) {
         continue;
       }
@@ -70,8 +63,8 @@ export const resolveCommand = (
       const message = `Missing secrets in context "${ctx}":\n${keyList}\n\nAdd them with: envsec -c ${ctx} add <key>`;
       yield* Console.error(`${icons.error} ${message}`);
       return yield* new MissingSecretsError({
-        keys: missing,
         context: ctx,
+        keys: missing,
         message,
       });
     }
@@ -82,4 +75,5 @@ export const resolveCommand = (
           `${icons.lock} Resolved ${badge(placeholders.length, "secret")}`
         );
     return { command: resolved, env };
-  });
+  }
+);

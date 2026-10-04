@@ -1,18 +1,13 @@
 import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import {
-  badge,
-  bold,
-  FileAccessError,
-  icons,
-  type SecretNotFoundError,
-  SecretStore,
-} from "@envsec/core";
+import path from "node:path";
+
+import { badge, bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
-import { Command, Flag as Options } from "effect/unstable/cli";
+import { Command, Flag as Options } from "effect/cli";
+
 import { requireContext } from "./root.js";
 
-const output = Options.string("output").pipe(
+const outputOption = Options.String("output").pipe(
   Options.withAlias("o"),
   Options.withDescription("Output file path (default: .env)"),
   Options.withDefault(".env")
@@ -20,9 +15,9 @@ const output = Options.string("output").pipe(
 
 export const envFileCommand = Command.make(
   "env-file",
-  { output },
+  { output: outputOption },
   ({ output }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* envFileHandler() {
       const ctx = yield* requireContext;
 
       const secrets = yield* SecretStore.list(ctx);
@@ -39,14 +34,14 @@ export const envFileCommand = Command.make(
         (item) =>
           SecretStore.get(ctx, item.key).pipe(
             Effect.map((value) => ({
-              key: item.key,
               found: true as const,
+              key: item.key,
               value: String(value),
             })),
-            Effect.catchTag("SecretNotFoundError", (_: SecretNotFoundError) =>
+            Effect.catchTag("SecretNotFoundError", () =>
               Effect.succeed({
-                key: item.key,
                 found: false as const,
+                key: item.key,
                 value: "",
               })
             )
@@ -76,19 +71,22 @@ export const envFileCommand = Command.make(
       }
 
       yield* Effect.try({
-        try: () => writeFileSync(output, `${lines.join("\n")}\n`, "utf-8"),
         catch: (error) =>
           new FileAccessError({
-            path: output,
+            cause: error,
             message: `Failed to write env file: ${error}`,
+            path: output,
           }),
+        try: () => writeFileSync(output, `${lines.join("\n")}\n`, "utf-8"),
       });
 
-      const absolutePath = resolve(output);
+      const absolutePath = path.resolve(output);
       yield* SecretStore.trackEnvFileExport(ctx, absolutePath);
 
       yield* Console.log(
         `${icons.file} Written ${badge(lines.length, "secret")} to ${bold(output)}`
       );
     })
+).pipe(
+  Command.withDescription("Write the secrets of a context to a .env file")
 );

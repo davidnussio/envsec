@@ -13,9 +13,9 @@ envsec -c myapp.dev shell [options]
 ### Options
 
 | Flag | Alias | Type | Default | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `--shell` | `-s` | `string` | auto-detect | Shell to spawn (`bash`, `zsh`, `fish`, `powershell`) |
-| `--no-inherit` | | `boolean` | `false` | Do not inherit parent environment variables |
+| `--no-inherit` |  | `boolean` | `false` | Do not inherit parent environment variables |
 | `--quiet` | `-q` | `boolean` | `false` | Suppress startup/exit banner |
 
 ### Examples
@@ -83,18 +83,24 @@ Auto-detection order:
 function detectShell(override?: string): { bin: string; args: string[] } {
   if (override) return resolveShell(override);
   if (process.env.SHELL) return resolveShell(path.basename(process.env.SHELL));
-  if (process.platform === 'win32') return { bin: 'powershell.exe', args: ['-NoExit'] };
-  return { bin: '/bin/sh', args: [] };
+  if (process.platform === "win32")
+    return { bin: "powershell.exe", args: ["-NoExit"] };
+  return { bin: "/bin/sh", args: [] };
 }
 
 function resolveShell(name: string): { bin: string; args: string[] } {
   switch (name) {
-    case 'bash': return { bin: 'bash', args: ['--norc', '--noprofile'] }; // see note below
-    case 'zsh':  return { bin: 'zsh',  args: ['--no-rcs'] };
-    case 'fish': return { bin: 'fish', args: [] };
-    case 'powershell':
-    case 'pwsh': return { bin: 'pwsh', args: ['-NoExit', '-NoProfile'] };
-    default:     return { bin: name,   args: [] };
+    case "bash":
+      return { bin: "bash", args: ["--norc", "--noprofile"] }; // see note below
+    case "zsh":
+      return { bin: "zsh", args: ["--no-rcs"] };
+    case "fish":
+      return { bin: "fish", args: [] };
+    case "powershell":
+    case "pwsh":
+      return { bin: "pwsh", args: ["-NoExit", "-NoProfile"] };
+    default:
+      return { bin: name, args: [] };
   }
 }
 ```
@@ -111,7 +117,7 @@ Set `PS1` in the child environment:
 
 ```ts
 const contextLabel = `(envsec:${context})`;
-env.PS1 = `${contextLabel} ${process.env.PS1 || '\\u@\\h:\\w\\$ '}`;
+env.PS1 = `${contextLabel} ${process.env.PS1 || "\\u@\\h:\\w\\$ "}`;
 ```
 
 ### fish
@@ -134,12 +140,14 @@ Inject `$env:ENVSEC_CONTEXT`. Prompt modification requires a function override �
 Unless `--quiet`:
 
 **Startup:**
+
 ```
 🔐 envsec shell — context: myapp.dev (12 secrets loaded)
 Type 'exit' to leave the session.
 ```
 
 **Exit:**
+
 ```
 👋 Exiting envsec shell — secrets cleared.
 ```
@@ -162,10 +170,10 @@ src/
 ### Core logic sketch (`shell.ts`)
 
 ```ts
-import { spawn } from 'node:child_process';
-import path from 'node:path';
-import { getAll } from '../store.js';          // existing store method
-import { toUpperSnakeCase } from '../utils.js'; // existing util
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { getAll } from "../store.js"; // existing store method
+import { toUpperSnakeCase } from "../utils.js"; // existing util
 
 export async function runShellCommand(options: {
   context: string;
@@ -174,7 +182,13 @@ export async function runShellCommand(options: {
   quiet?: boolean;
   db: string;
 }): Promise<void> {
-  const { context, shell: shellOverride, noInherit = false, quiet = false, db } = options;
+  const {
+    context,
+    shell: shellOverride,
+    noInherit = false,
+    quiet = false,
+    db,
+  } = options;
 
   // 1. Fetch secrets
   const secrets = await getAll({ context, db });
@@ -185,7 +199,7 @@ export async function runShellCommand(options: {
 
   // 2. Build env
   const parentEnv = noInherit
-    ? { PATH: process.env.PATH ?? '' }
+    ? { PATH: process.env.PATH ?? "" }
     : { ...process.env };
 
   const childEnv: Record<string, string> = {
@@ -197,26 +211,26 @@ export async function runShellCommand(options: {
   // 3. Prompt indicator (bash/zsh only)
   const { bin, args } = detectShell(shellOverride);
   const shellName = path.basename(bin);
-  if (['bash', 'zsh'].includes(shellName)) {
-    childEnv.PS1 = `(envsec:${context}) ${process.env.PS1 ?? '\\u@\\h:\\w\\$ '}`;
+  if (["bash", "zsh"].includes(shellName)) {
+    childEnv.PS1 = `(envsec:${context}) ${process.env.PS1 ?? "\\u@\\h:\\w\\$ "}`;
   }
 
   // 4. Banner
   if (!quiet) {
     const count = Object.keys(secrets).length;
     process.stderr.write(
-      `🔐 envsec shell — context: ${context} (${count} secret${count !== 1 ? 's' : ''} loaded)\n` +
-      `Type 'exit' to leave the session.\n`
+      `🔐 envsec shell — context: ${context} (${count} secret${count !== 1 ? "s" : ""} loaded)\n` +
+        `Type 'exit' to leave the session.\n`
     );
   }
 
   // 5. Spawn
-  const child = spawn(bin, args, { env: childEnv, stdio: 'inherit' });
+  const child = spawn(bin, args, { env: childEnv, stdio: "inherit" });
 
   await new Promise<void>((resolve) => {
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       if (!quiet) {
-        process.stderr.write('👋 Exiting envsec shell — secrets cleared.\n');
+        process.stderr.write("👋 Exiting envsec shell — secrets cleared.\n");
       }
       process.exit(code ?? 0);
       resolve();
@@ -230,7 +244,7 @@ export async function runShellCommand(options: {
 ## Error Cases
 
 | Condition | Behavior |
-|---|---|
+| --- | --- |
 | Context has no secrets | Warn and proceed (empty env injected) |
 | Context does not exist | Hard fail with clear message: `Context "x" not found.` |
 | Requested shell binary not found | Hard fail: `Shell "fish" not found in PATH.` |
@@ -269,8 +283,7 @@ assert_equals "$result" "UNSET"
 ````markdown
 ### Start a secrets-scoped shell session
 
-Spawn an interactive subshell with all secrets from the context injected as
-environment variables. When you `exit`, the secrets are gone — no cleanup needed.
+Spawn an interactive subshell with all secrets from the context injected as environment variables. When you `exit`, the secrets are gone — no cleanup needed.
 
 ```bash
 envsec -c myapp.dev shell
@@ -300,8 +313,7 @@ envsec -c myapp.dev shell --no-inherit
 envsec -c myapp.dev shell --quiet
 ```
 
-The variable `ENVSEC_CONTEXT` is always set inside the session, so you can
-reference it in scripts or prompt customizations.
+The variable `ENVSEC_CONTEXT` is always set inside the session, so you can reference it in scripts or prompt customizations.
 ````
 
 ---

@@ -6,16 +6,13 @@ import {
   yellow,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
-import {
-  Argument as Args,
-  Command,
-  Flag as Options,
-} from "effect/unstable/cli";
+import { Argument as Args, Command, Flag as Options } from "effect/cli";
+
 import { isJsonOutput, requireContext } from "./root.js";
 
-const key = Args.string("key");
+const keyArg = Args.String("key");
 
-const quiet = Options.boolean("quiet").pipe(
+const quietOption = Options.Boolean("quiet").pipe(
   Options.withAlias("q"),
   Options.withDescription(
     "Print only the secret value, no warnings or extra output"
@@ -25,16 +22,16 @@ const quiet = Options.boolean("quiet").pipe(
 
 export const getCommand = Command.make(
   "get",
-  { key, quiet },
+  { key: keyArg, quiet: quietOption },
   ({ key, quiet }) =>
-    Effect.gen(function* () {
+    Effect.gen(function* getHandler() {
       const ctx = yield* requireContext;
       const jsonMode = yield* isJsonOutput;
 
       if (quiet) {
         const value = yield* SecretStore.get(ctx, key).pipe(
           Effect.catchTag("SecretNotFoundError", (err) =>
-            Effect.gen(function* () {
+            Effect.gen(function* reportMissing() {
               if (err.message.includes("missing from the OS keychain")) {
                 yield* Console.error(`${icons.warning} ${err.message}`);
                 yield* Console.error(
@@ -52,7 +49,7 @@ export const getCommand = Command.make(
       const meta = yield* SecretStore.getMetadata(ctx, key);
       const value = yield* SecretStore.get(ctx, key).pipe(
         Effect.catchTag("SecretNotFoundError", (err) =>
-          Effect.gen(function* () {
+          Effect.gen(function* reportMissing() {
             if (err.message.includes("missing from the OS keychain")) {
               yield* Console.error(
                 `${icons.warning} Secret ${bold(`"${key}"`)} has metadata but is missing from the OS keychain.`
@@ -68,6 +65,7 @@ export const getCommand = Command.make(
 
       if (jsonMode) {
         yield* Console.log(
+          // oxlint-disable-next-line sort-keys -- key order is part of the --json output
           JSON.stringify({
             context: ctx,
             key,
@@ -96,4 +94,4 @@ export const getCommand = Command.make(
         }
       }
     })
-);
+).pipe(Command.withDescription("Print the value of a secret"));
