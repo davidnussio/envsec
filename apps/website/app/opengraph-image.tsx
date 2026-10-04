@@ -4,29 +4,28 @@ export const runtime = "edge";
 
 export const alt =
   "envsec — Cross-platform CLI for managing environment secrets";
-export const size = { width: 1200, height: 630 };
+export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
 export default function OGImage() {
   return new ImageResponse(
     <div
       style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
         backgroundColor: "#0a0a0a",
         backgroundImage:
           "radial-gradient(ellipse at center, rgba(16,185,129,0.12) 0%, transparent 70%)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        justifyContent: "center",
+        width: "100%",
       }}
     >
       {/* Shield icon */}
       <svg
         fill="none"
         height="80"
-        role="img"
         viewBox="0 0 80 80"
         width="80"
         xmlns="http://www.w3.org/2000/svg"
@@ -50,13 +49,13 @@ export default function OGImage() {
 
       <div
         style={{
+          color: "#ffffff",
           display: "flex",
-          marginTop: 32,
           fontFamily: "monospace",
           fontSize: 64,
           fontWeight: 700,
-          color: "#ffffff",
           letterSpacing: "-0.02em",
+          marginTop: 32,
         }}
       >
         envsec
@@ -64,10 +63,10 @@ export default function OGImage() {
 
       <div
         style={{
-          display: "flex",
-          marginTop: 16,
-          fontSize: 28,
           color: "#a1a1aa",
+          display: "flex",
+          fontSize: 28,
+          marginTop: 16,
         }}
       >
         Secrets that never touch disk
@@ -75,11 +74,11 @@ export default function OGImage() {
 
       <div
         style={{
+          color: "#52525b",
           display: "flex",
-          marginTop: 24,
           fontFamily: "monospace",
           fontSize: 18,
-          color: "#52525b",
+          marginTop: 24,
         }}
       >
         macOS Keychain · Linux Secret Service · Windows Credential Manager

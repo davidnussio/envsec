@@ -3,18 +3,19 @@
 import { Menu, Shield, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+
 import { buttonVariants } from "@/components/ui/button";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
-export function Navbar() {
+export const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 z-50 w-full border-white/5 border-b bg-black/80 backdrop-blur-xl">
+    <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-black/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
-          className="flex items-center gap-2 font-bold font-mono text-lg tracking-tight"
+          className="flex items-center gap-2 font-mono text-lg font-bold tracking-tight"
           href="/"
         >
           <Shield className="h-5 w-5 text-emerald-400" />
@@ -23,42 +24,42 @@ export function Navbar() {
 
         <div className="hidden items-center gap-8 md:flex">
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/#features"
             onClick={() => trackEvent("nav_click", { link: "features" })}
           >
             Features
           </Link>
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/#how-it-works"
             onClick={() => trackEvent("nav_click", { link: "how-it-works" })}
           >
             How it works
           </Link>
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/#use-cases"
             onClick={() => trackEvent("nav_click", { link: "use-cases" })}
           >
             Use Cases
           </Link>
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/#install"
             onClick={() => trackEvent("nav_click", { link: "install" })}
           >
             Install
           </Link>
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/compare"
             onClick={() => trackEvent("nav_click", { link: "compare" })}
           >
             Compare
           </Link>
           <Link
-            className="text-muted-foreground text-sm transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
             href="/docs"
             onClick={() => trackEvent("nav_click", { link: "docs" })}
           >
@@ -93,7 +94,7 @@ export function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-white/5 border-t bg-black/95 px-4 py-4 sm:px-6 md:hidden">
+        <div className="border-t border-white/5 bg-black/95 px-4 py-4 sm:px-6 md:hidden">
           <div className="flex flex-col gap-4">
             <Link
               className="text-muted-foreground text-sm"
@@ -160,4 +161,4 @@ export function Navbar() {
       )}
     </nav>
   );
-}
+};

@@ -3,17 +3,18 @@
 import { ArrowRight, Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const INSTALL_OPTIONS = [
-  { label: "brew", command: "brew install davidnussio/homebrew-tap/envsec" },
-  { label: "npm", command: "npm install -g envsec" },
-  { label: "npx", command: "npx envsec" },
-  { label: "mise", command: "mise use -g npm:envsec" },
+  { command: "brew install davidnussio/homebrew-tap/envsec", label: "brew" },
+  { command: "npm install -g envsec", label: "npm" },
+  { command: "npx envsec", label: "npx" },
+  { command: "mise use -g npm:envsec", label: "mise" },
 ] as const;
 
-export function InstallSection() {
+export const InstallSection = () => {
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -27,11 +28,11 @@ export function InstallSection() {
     <section className="relative px-4 py-32 sm:px-6" id="install">
       <div className="mx-auto max-w-2xl text-center">
         <div className="animate-reveal">
-          <p className="mb-3 font-mono text-emerald-400 text-sm">Install</p>
-          <h2 className="mb-4 font-bold text-4xl tracking-tight md:text-5xl">
+          <p className="mb-3 font-mono text-sm text-emerald-400">Install</p>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
             Ready in seconds
           </h2>
-          <p className="mb-10 text-lg text-muted-foreground">
+          <p className="text-muted-foreground mb-10 text-lg">
             One command. No config. Node.js 22+ required.
           </p>
         </div>
@@ -63,7 +64,7 @@ export function InstallSection() {
             </code>
             <Button
               aria-label="Copy install command"
-              className="ml-4 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground ml-4"
               onClick={handleCopy}
               size="sm"
               variant="ghost"
@@ -86,7 +87,7 @@ export function InstallSection() {
             </p>
             <Link
               className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
+                buttonVariants({ size: "sm", variant: "outline" }),
                 "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
               )}
               href="/docs#quick-start"
@@ -99,4 +100,4 @@ export function InstallSection() {
       </div>
     </section>
   );
-}
+};

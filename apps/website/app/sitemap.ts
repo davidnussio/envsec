@@ -5,28 +5,28 @@ const siteUrl = "https://envsec.dev";
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: siteUrl,
-      lastModified: new Date(),
       changeFrequency: "daily",
+      lastModified: new Date(),
       priority: 1,
+      url: siteUrl,
     },
     {
-      url: `${siteUrl}/docs`,
-      lastModified: new Date(),
       changeFrequency: "daily",
+      lastModified: new Date(),
       priority: 0.9,
+      url: `${siteUrl}/docs`,
     },
     {
-      url: `${siteUrl}/compare`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
+      lastModified: new Date(),
       priority: 0.8,
+      url: `${siteUrl}/compare`,
     },
     {
-      url: `${siteUrl}/llms.txt`,
-      lastModified: new Date(),
       changeFrequency: "weekly",
+      lastModified: new Date(),
       priority: 0.5,
+      url: `${siteUrl}/llms.txt`,
     },
   ];
 }

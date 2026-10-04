@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+
 import { Analytics } from "../components/analytics";
+
 import "./globals.css";
 
 const inter = Inter({
-  variable: "--font-sans",
   subsets: ["latin"],
+  variable: "--font-sans",
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
+  variable: "--font-geist-mono",
 });
 
 const siteUrl = "https://envsec.dev";
@@ -23,11 +25,18 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: {
-    default: "envsec — Secrets that never touch disk",
-    template: "%s | envsec",
+  alternates: {
+    canonical: "./",
   },
+  authors: [{ name: "David Nussio", url: "https://github.com/davidnussio" }],
+  creator: "David Nussio",
   description: siteDescription,
+  icons: {
+    icon: [
+      { type: "image/svg+xml", url: "/favicon.svg" },
+      { type: "image/svg+xml", url: "/icon.svg" },
+    ],
+  },
   keywords: [
     "secrets management",
     "environment variables",
@@ -56,66 +65,60 @@ export const metadata: Metadata = {
     "DevOps secrets",
     "secret injection",
   ],
-  authors: [{ name: "David Nussio", url: "https://github.com/davidnussio" }],
-  creator: "David Nussio",
   metadataBase: new URL(siteUrl),
-  alternates: {
-    canonical: "./",
-  },
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-  },
   openGraph: {
-    type: "website",
+    description: siteDescription,
     locale: "en_US",
-    url: siteUrl,
     siteName,
     title: "envsec — Secrets that never touch disk",
-    description: siteDescription,
+    type: "website",
+    url: siteUrl,
+  },
+  robots: {
+    follow: true,
+    googleBot: {
+      follow: true,
+      index: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+    index: true,
+  },
+  title: {
+    default: "envsec — Secrets that never touch disk",
+    template: "%s | envsec",
   },
   twitter: {
     card: "summary_large_image",
-    title: "envsec — Secrets that never touch disk",
-    description: siteDescription,
     creator: "@davidnussio",
+    description: siteDescription,
     site: "@davidnussio",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
+    title: "envsec — Secrets that never touch disk",
   },
 };
 
-export default function RootLayout({
+const RootLayout = ({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
-  return (
-    <html
-      className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
-      lang="en"
-    >
-      <head>
-        <link href="/favicon.svg" rel="icon" type="image/svg+xml" />
-        <script src="/consent-default.js" />
-      </head>
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        {children}
-      </body>
-      {process.env.NODE_ENV === "production" && (
-        <Analytics gaId={process.env.NEXT_PUBLIC_GA_ID ?? ""} />
-      )}
-    </html>
-  );
-}
+}>) => (
+  <html
+    className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
+    lang="en"
+  >
+    <head>
+      <link href="/favicon.svg" rel="icon" type="image/svg+xml" />
+      {/* oxlint-disable-next-line next/no-sync-scripts -- consent defaults must be set synchronously, before gtag.js loads */}
+      <script src="/consent-default.js" />
+    </head>
+    <body className="bg-background text-foreground flex min-h-full flex-col">
+      {children}
+    </body>
+    {process.env.NODE_ENV === "production" && (
+      <Analytics gaId={process.env.NEXT_PUBLIC_GA_ID ?? ""} />
+    )}
+  </html>
+);
+
+export default RootLayout;

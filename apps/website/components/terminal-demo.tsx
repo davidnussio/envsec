@@ -42,7 +42,7 @@ const LINES = [
 const PROMPT_DELAY = 800;
 const OUTPUT_DELAY = 300;
 
-export function TerminalDemo() {
+export const TerminalDemo = () => {
   const [visibleLines, setVisibleLines] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -62,26 +62,26 @@ export function TerminalDemo() {
     }
     prevVisibleLines.current = visibleLines;
     scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
       behavior: "smooth",
+      top: scrollRef.current.scrollHeight,
     });
   });
 
   return (
-    <div className="w-full max-w-3xl animate-terminal-fade-in overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-2xl shadow-emerald-500/5">
+    <div className="animate-terminal-fade-in w-full max-w-3xl overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-2xl shadow-emerald-500/5">
       {/* Title bar */}
-      <div className="flex items-center gap-2 border-white/5 border-b px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-3">
         <div className="h-3 w-3 rounded-full bg-red-500/80" />
         <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
         <div className="h-3 w-3 rounded-full bg-green-500/80" />
-        <span className="ml-2 font-mono text-muted-foreground text-xs">
+        <span className="text-muted-foreground ml-2 font-mono text-xs">
           Terminal
         </span>
       </div>
 
       {/* Terminal content */}
       <div
-        className="h-[28rem] overflow-y-auto overflow-x-hidden p-4 font-mono text-sm leading-relaxed"
+        className="h-[28rem] overflow-x-hidden overflow-y-auto p-4 font-mono text-sm leading-relaxed"
         ref={scrollRef}
       >
         {LINES.slice(0, visibleLines).map((line) => (
@@ -89,7 +89,7 @@ export function TerminalDemo() {
             {line.prompt ? (
               <>
                 <span className="mr-2 shrink-0 text-emerald-400">$</span>
-                <span className="min-w-0 break-words text-left text-zinc-200">
+                <span className="min-w-0 text-left break-words text-zinc-200">
                   {line.text}
                 </span>
               </>
@@ -112,4 +112,4 @@ export function TerminalDemo() {
       </div>
     </div>
   );
-}
+};
