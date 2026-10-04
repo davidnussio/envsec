@@ -14,6 +14,7 @@ const STDIN_CLOSED_PATTERN = /stdin is closed/;
 const NO_SECRETS_PATTERN = /No secrets found/;
 const SUBCOMMANDS_PATTERN = /SUBCOMMANDS/;
 const VERSION_PATTERN = /envsec v\d/;
+const COMPLETE_COMMAND_PATTERN = /__complete/;
 const DESCRIBED_SUBCOMMAND_PATTERN = /^\s+\S.*\s{2,}\S/;
 const DELETE_ALIAS_PATTERN = /delete, del/;
 
@@ -170,4 +171,12 @@ test("describes every subcommand in the help output", () => {
     }
     assert.match(help.stdout, DELETE_ALIAS_PATTERN);
   });
+});
+
+test("serves dynamic completions for --completions=<shell> too", () => {
+  for (const args of [["--completions", "zsh"], ["--completions=zsh"]]) {
+    const result = runCli(...args);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, COMPLETE_COMMAND_PATTERN);
+  }
 });
