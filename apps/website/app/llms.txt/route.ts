@@ -2,7 +2,7 @@ const content = `# envsec
 
 > envsec is a cross-platform CLI tool and Node.js SDK for managing environment secrets using native OS credential stores (macOS Keychain, Linux Secret Service/GNOME Keyring, Windows Credential Manager). Secrets are never stored as plaintext on disk.
 
-envsec stores secret values directly in the OS native credential store and tracks metadata (key names, timestamps) in a local SQLite database. It is published on npm as \`envsec\` (CLI) and \`@envsec/sdk\` (SDK). Requires Node.js >= 22.
+envsec stores secret values directly in the OS native credential store and tracks metadata (key names, timestamps) in a local SQLite database. It is published on npm as \`envsec\` (CLI) and \`@envsec/sdk\` (SDK). Requires Node.js >= 22.13.
 
 Key capabilities:
 - Store, retrieve, delete, rename, move, and copy secrets organized by context (e.g. \`myapp.dev\`, \`stripe-api.prod\`)
@@ -331,7 +331,7 @@ The project is a monorepo with four packages:
 - \`@envsec/core\` — core engine with OS credential store adapters and metadata DB
 - \`@envsec/tui\` — interactive terminal UI
 
-Built with TypeScript (strict mode), Effect for functional error handling and dependency injection, and sql.js for WASM-based SQLite.
+Built with TypeScript (strict mode), Effect for functional error handling and dependency injection, and the built-in \`node:sqlite\` module for SQLite (no WASM, no native addon).
 
 | OS      | Backend                     | Tool / API                       |
 |---------|-----------------------------|----------------------------------|

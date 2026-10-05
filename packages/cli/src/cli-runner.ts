@@ -1,5 +1,3 @@
-import { createRequire } from "node:module";
-
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import {
   DatabaseConfigDefault,
@@ -10,6 +8,7 @@ import {
 import { Console, Effect, Layer, References } from "effect";
 import { Command } from "effect/cli";
 
+import { envsecVersion } from "./build-info.js";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";
@@ -34,9 +33,6 @@ import { tuiCommand } from "./cli/tui.js";
 import { generateCompletions } from "./completions/index.js";
 import type { ShellType } from "./completions/index.js";
 import { reportErrors } from "./report-errors.js";
-
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json") as { version: string };
 
 const command = rootCommand.pipe(
   Command.withSubcommands([
@@ -67,7 +63,7 @@ const command = rootCommand.pipe(
 );
 
 const cli = Command.runWith(command, {
-  version: pkg.version,
+  version: envsecVersion,
 })(process.argv.slice(2));
 
 const COMPLETIONS_FLAG = "--completions";

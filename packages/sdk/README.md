@@ -10,7 +10,7 @@ npm install @envsec/sdk
 pnpm add @envsec/sdk
 ```
 
-Requires Node.js >= 22 and a working envsec setup (OS credential store accessible).
+Requires Node.js >= 22.13 (or Bun) and a working envsec setup (OS credential store accessible).
 
 ## Quick Start
 

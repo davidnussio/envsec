@@ -35,7 +35,7 @@
 ### Phase 4 — Architecture
 
 - [x] Eliminate secret value injection risk — secrets passed via env vars, `execSync` still used for command itself
-- [ ] Evaluate migration from sql.js to libSQL for performance (trade-off: adds native dependency)
+- [x] Replace sql.js with the built-in `node:sqlite` (works on Node and Bun, no WASM)
 
 ---
 

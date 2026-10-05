@@ -33,7 +33,7 @@ export const InstallSection = () => {
             Ready in seconds
           </h2>
           <p className="text-muted-foreground mb-10 text-lg">
-            One command. No config. Node.js 22+ required.
+            One command. No config. Node.js 22.13+ required.
           </p>
         </div>
 

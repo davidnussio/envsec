@@ -59,7 +59,7 @@ See the full [SDK documentation](./packages/sdk/README.md) for all APIs, multi-c
 
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.13
 
 ### macOS
 
@@ -756,7 +756,7 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 22.13
 - pnpm
 
 The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node` versions aligned across the workspace. The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
@@ -813,6 +813,16 @@ ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \
 ```
 
 Native E2E tests use dedicated `test.e2e*` contexts and remove them afterward.
+
+### Standalone binary
+
+The CLI can also be compiled with [Bun](https://bun.sh) into a single executable that embeds its runtime, so it runs without Node.js or `node_modules`:
+
+```bash
+pnpm run build                           # builds @envsec/core and @envsec/tui first
+pnpm --filter envsec run build:bin       # current platform → packages/cli/release/envsec
+pnpm --filter envsec run build:bin --all # darwin/linux (arm64, x64) and windows-x64
+```
 
 ### Running locally without installing
 

@@ -1,15 +1,8 @@
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { chmodSync, closeSync, mkdirSync, openSync } from "node:fs";
 import nodePath from "node:path";
+import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 
 import { Effect, Layer, Schema } from "effect";
-import initSqlJs from "sql.js";
-import type { BindParams, Database } from "sql.js";
 
 import {
   CommandNotFoundError,
@@ -69,45 +62,76 @@ const EnvExportRow = Schema.Struct({
 
 const DIR_PERMISSIONS = 0o700;
 const FILE_PERMISSIONS = 0o600;
+/** How long a write waits for another envsec process holding the lock. */
+const BUSY_TIMEOUT_MS = 5000;
 
-const persist = (db: Database, dbPath: string) => {
-  writeFileSync(dbPath, Buffer.from(db.export()), { mode: FILE_PERMISSIONS });
+const SQLITE_EXPERIMENTAL_WARNING = "SQLite is an experimental feature";
+
+/**
+ * Load `node:sqlite` (Node ≥ 22.13, Bun). Node 22 flags the module as
+ * experimental and prints a warning when it loads; that would pollute the
+ * CLI's stderr on every run, so this one warning is filtered out.
+ */
+const loadSqlite = async (): Promise<{
+  readonly DatabaseSync: typeof DatabaseSync;
+}> => {
+  const { emitWarning } = process;
+  process.emitWarning = ((warning: string | Error, ...rest: unknown[]) => {
+    const message = typeof warning === "string" ? warning : warning.message;
+    if (message.startsWith(SQLITE_EXPERIMENTAL_WARNING)) {
+      return;
+    }
+    Reflect.apply(emitWarning, process, [warning, ...rest]);
+  }) as typeof process.emitWarning;
+  try {
+    return await import("node:sqlite");
+  } finally {
+    process.emitWarning = emitWarning;
+  }
 };
 
-const initDb = async (dbPath: string): Promise<Database> => {
+const initDb = async (dbPath: string): Promise<DatabaseSync> => {
   const dbDir = nodePath.dirname(dbPath);
   mkdirSync(dbDir, { mode: DIR_PERMISSIONS, recursive: true });
   chmodSync(dbDir, DIR_PERMISSIONS);
-  const SQL = await initSqlJs();
-  const db = existsSync(dbPath)
-    ? new SQL.Database(readFileSync(dbPath))
-    : new SQL.Database();
-  db.run(
-    "CREATE TABLE IF NOT EXISTS secrets (id INTEGER PRIMARY KEY AUTOINCREMENT, env TEXT NOT NULL, key TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'string', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(env, key))"
-  );
-  db.run(
-    "CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, command TEXT NOT NULL, context TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
-  );
-  db.run(
-    "CREATE TABLE IF NOT EXISTS env_exports (id INTEGER PRIMARY KEY AUTOINCREMENT, context TEXT NOT NULL, path TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
-  );
-  db.run(
-    "CREATE UNIQUE INDEX IF NOT EXISTS idx_env_exports_path ON env_exports(path)"
-  );
-  const cols = db
-    .exec("PRAGMA table_info(secrets)")
-    .flatMap((r) => r.values.map((v) => v[1]));
-  if (!cols.includes("expires_at")) {
-    db.run("ALTER TABLE secrets ADD COLUMN expires_at TEXT DEFAULT NULL");
+  // Create the file ourselves so it never exists with the default umask
+  // permissions; SQLite gives its journal files the same mode.
+  closeSync(openSync(dbPath, "a", FILE_PERMISSIONS));
+  chmodSync(dbPath, FILE_PERMISSIONS);
+
+  const { DatabaseSync } = await loadSqlite();
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS secrets (id INTEGER PRIMARY KEY AUTOINCREMENT, env TEXT NOT NULL, key TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'string', created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(env, key))"
+    );
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS commands (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, command TEXT NOT NULL, context TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    );
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS env_exports (id INTEGER PRIMARY KEY AUTOINCREMENT, context TEXT NOT NULL, path TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+    );
+    db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_env_exports_path ON env_exports(path)"
+    );
+    const cols = db
+      .prepare("PRAGMA table_info(secrets)")
+      .all()
+      .map((column) => column.name);
+    if (!cols.includes("expires_at")) {
+      db.exec("ALTER TABLE secrets ADD COLUMN expires_at TEXT DEFAULT NULL");
+    }
+    return db;
+  } catch (error) {
+    db.close();
+    throw error;
   }
-  persist(db, dbPath);
-  return db;
 };
 
 const make = Effect.gen(function* make() {
   const { path: dbPath } = yield* DatabaseConfig;
   let batching = false;
-  let dirty = false;
   const db = yield* Effect.acquireRelease(
     Effect.tryPromise({
       catch: (error) =>
@@ -118,74 +142,75 @@ const make = Effect.gen(function* make() {
         }),
       try: () => initDb(dbPath),
     }),
-    // Flush changes left pending by a batch that never reached endBatch
-    // (failure or interruption), so metadata stays in sync with the keychain.
+    // Commit a batch that never reached endBatch (failure or interruption),
+    // so metadata stays in sync with the keychain.
     (openDb) =>
       Effect.try(() => {
-        if (dirty) {
-          persist(openDb, dbPath);
+        if (batching) {
+          openDb.exec("COMMIT");
         }
       }).pipe(Effect.ignore, Effect.ensuring(Effect.sync(() => openDb.close())))
   );
   /** Run a query and decode every row. Throws (inside Effect.try) on SQL
-   *  or decode errors; the statement is always freed. */
+   *  or decode errors. */
   const queryAll = <S extends Schema.ConstraintDecoder<unknown>>(
     schema: S,
     sql: string,
-    params: BindParams = []
+    params: SQLInputValue[] = []
   ): S["Type"][] => {
     const decode = Schema.decodeUnknownSync(schema);
-    const stmt = db.prepare(sql);
-    try {
-      stmt.bind(params);
-      const rows: S["Type"][] = [];
-      while (stmt.step()) {
-        rows.push(decode(stmt.getAsObject()));
-      }
-      return rows;
-    } finally {
-      stmt.free();
-    }
+    return db
+      .prepare(sql)
+      .all(...params)
+      .map((row) => decode(row));
   };
 
   const queryOne = <S extends Schema.ConstraintDecoder<unknown>>(
     schema: S,
     sql: string,
-    params: BindParams
+    params: SQLInputValue[]
   ): S["Type"] | null => queryAll(schema, sql, params)[0] ?? null;
 
-  const maybePersist = () => {
-    if (batching) {
-      dirty = true;
-      return;
-    }
-    persist(db, dbPath);
-  };
+  /** Run a write statement; returns the number of rows it changed. */
+  const execute = (sql: string, params: SQLInputValue[]): number =>
+    Number(db.prepare(sql).run(...params).changes);
+
   return MetadataStore.of({
     beginBatch: Effect.fn("SqliteMetadataStore.beginBatch")(
       function* beginBatch() {
-        yield* Effect.sync(() => {
-          batching = true;
-          dirty = false;
-        });
-      }
-    ),
-    endBatch: Effect.fn("SqliteMetadataStore.endBatch")(function* endBatch() {
-      batching = false;
-      if (dirty) {
+        if (batching) {
+          return;
+        }
         yield* Effect.try({
           catch: (error) =>
             new MetadataStoreError({
               cause: error,
-              message: `Failed to persist batched changes: ${error}`,
-              operation: "endBatch",
+              message: `Failed to begin batch: ${error}`,
+              operation: "beginBatch",
             }),
           try: () => {
-            persist(db, dbPath);
-            dirty = false;
+            db.exec("BEGIN IMMEDIATE");
+            batching = true;
           },
         });
       }
+    ),
+    endBatch: Effect.fn("SqliteMetadataStore.endBatch")(function* endBatch() {
+      if (!batching) {
+        return;
+      }
+      yield* Effect.try({
+        catch: (error) =>
+          new MetadataStoreError({
+            cause: error,
+            message: `Failed to persist batched changes: ${error}`,
+            operation: "endBatch",
+          }),
+        try: () => {
+          db.exec("COMMIT");
+          batching = false;
+        },
+      });
     }),
     get: Effect.fn("SqliteMetadataStore.get")(function* get(
       env: string,
@@ -366,8 +391,7 @@ const make = Effect.gen(function* make() {
             operation: "remove",
           }),
         try: () => {
-          db.run("DELETE FROM secrets WHERE env = ? AND key = ?", [env, key]);
-          maybePersist();
+          execute("DELETE FROM secrets WHERE env = ? AND key = ?", [env, key]);
         },
       });
     }),
@@ -380,10 +404,7 @@ const make = Effect.gen(function* make() {
               message: `Failed to remove command "${name}": ${error}`,
               operation: "removeCommand",
             }),
-          try: () => {
-            db.run("DELETE FROM commands WHERE name = ?", [name]);
-            return db.getRowsModified();
-          },
+          try: () => execute("DELETE FROM commands WHERE name = ?", [name]),
         });
         if (rowsModified === 0) {
           return yield* new CommandNotFoundError({
@@ -391,15 +412,6 @@ const make = Effect.gen(function* make() {
             name,
           });
         }
-        yield* Effect.try({
-          catch: (error) =>
-            new MetadataStoreError({
-              cause: error,
-              message: `Failed to persist after removing command "${name}": ${error}`,
-              operation: "removeCommand",
-            }),
-          try: () => maybePersist(),
-        });
       }
     ),
     removeEnvFileExport: Effect.fn("SqliteMetadataStore.removeEnvFileExport")(
@@ -412,8 +424,7 @@ const make = Effect.gen(function* make() {
               operation: "removeEnvFileExport",
             }),
           try: () => {
-            db.run("DELETE FROM env_exports WHERE path = ?", [path]);
-            maybePersist();
+            execute("DELETE FROM env_exports WHERE path = ?", [path]);
           },
         });
       }
@@ -428,11 +439,10 @@ const make = Effect.gen(function* make() {
               operation: "saveCommand",
             }),
           try: () => {
-            db.run(
+            execute(
               "INSERT INTO commands (name, command, context) VALUES (?, ?, ?) ON CONFLICT(name) DO UPDATE SET command = excluded.command, context = excluded.context",
               [name, command, context]
             );
-            maybePersist();
           },
         });
       }
@@ -517,11 +527,10 @@ const make = Effect.gen(function* make() {
               operation: "trackEnvFileExport",
             }),
           try: () => {
-            db.run(
+            execute(
               "INSERT INTO env_exports (context, path) VALUES (?, ?) ON CONFLICT(path) DO UPDATE SET context = excluded.context, created_at = datetime('now')",
               [context, path]
             );
-            maybePersist();
           },
         });
       }
@@ -539,11 +548,10 @@ const make = Effect.gen(function* make() {
             operation: "upsert",
           }),
         try: () => {
-          db.run(
+          execute(
             "INSERT INTO secrets (env, key, type, expires_at) VALUES (?, ?, 'string', ?) ON CONFLICT(env, key) DO UPDATE SET updated_at = datetime('now'), expires_at = ?",
             [env, key, expiresAt ?? null, expiresAt ?? null]
           );
-          maybePersist();
         },
       });
     }),
