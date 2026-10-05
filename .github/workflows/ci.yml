@@ -12,7 +12,7 @@ jobs:
     name: Lint, typecheck & unit tests
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-and-build
 
@@ -27,7 +27,7 @@ jobs:
     name: Standalone binary (bun build --compile)
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-and-build
 

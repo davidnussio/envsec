@@ -24,7 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Binaries (${{ matrix.os }})
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The binary embeds the CLI version at compile time (build-info.ts).
       - name: Set CLI version from tag
@@ -59,7 +59,7 @@ jobs:
           "$BIN" --version | grep -qF "${GITHUB_REF_NAME#v}"
           "$BIN" cmd list
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: binaries-${{ runner.os }}
           path: |
@@ -74,7 +74,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Extract version from tag
         id: version
@@ -168,9 +168,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: binaries-*
           path: bin
@@ -277,7 +277,7 @@ jobs:
           sed -i 's/^          //' envsec.rb
           cat envsec.rb
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: homebrew-formula
           path: envsec.rb
@@ -292,7 +292,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Homebrew install (${{ matrix.os }})
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: homebrew-formula
 
@@ -316,12 +316,12 @@ jobs:
     needs: homebrew-test
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: homebrew-formula
 
       - name: Checkout homebrew-tap
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: davidnussio/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
