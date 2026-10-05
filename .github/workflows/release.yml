@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             targets: bun-linux-x64 bun-linux-arm64 bun-linux-x64-musl bun-linux-arm64-musl
             smoke: envsec-linux-x64
           - os: macos-latest
@@ -70,7 +70,7 @@ jobs:
 
   publish:
     needs: binaries
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -164,7 +164,7 @@ jobs:
 
   attach-binaries:
     needs: publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -209,7 +209,7 @@ jobs:
     needs: attach-binaries
     # Homebrew tracks stable releases only
     if: ${{ !contains(github.ref_name, '-') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Generate formula
         env:
@@ -288,7 +288,7 @@ jobs:
     needs: homebrew-formula
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, ubuntu-24.04-arm]
+        os: [macos-latest, ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     name: Homebrew install (${{ matrix.os }})
     steps:
@@ -314,7 +314,7 @@ jobs:
 
   update-homebrew:
     needs: homebrew-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
         with:

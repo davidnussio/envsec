@@ -8,7 +8,7 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Lint, typecheck & unit tests
 
     steps:
@@ -23,7 +23,7 @@ jobs:
         run: pnpm turbo run lint test:unit
 
   binary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Standalone binary (bun build --compile)
 
     steps:
