@@ -2,7 +2,7 @@ name: E2E Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "packages/**"
       - "package.json"
@@ -10,7 +10,7 @@ on:
       - "pnpm-workspace.yaml"
       - "turbo.json"
   pull_request:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "packages/**"
       - "package.json"
