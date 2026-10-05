@@ -771,7 +771,7 @@ We believe in being upfront about what envsec does not yet cover. These are real
 - Node.js >= 22.13
 - pnpm
 
-The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node` versions aligned across the workspace. The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
+The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node-shared` versions aligned across the workspace (the CLI imports its modules directly instead of `@effect/platform-node`, which would also pull in redis and undici). The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
 
 ### Setup
 
