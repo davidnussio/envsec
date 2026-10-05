@@ -59,7 +59,7 @@ See the full [SDK documentation](./packages/sdk/README.md) for all APIs, multi-c
 
 ## Requirements
 
-- Node.js >= 22.13
+- Node.js >= 22.13 — only for npm, npx and mise installs. Homebrew and the standalone binaries embed their own runtime.
 
 ### macOS
 
@@ -89,6 +89,8 @@ No extra dependencies. Uses the built-in Windows Credential Manager via `cmdkey`
 ## Installation
 
 ### Homebrew (macOS / Linux)
+
+Installs the standalone binary (no Node.js), with shell completions for bash, zsh and fish.
 
 ```bash
 brew tap davidnussio/homebrew-tap

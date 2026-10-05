@@ -204,81 +204,134 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
 
-  update-homebrew:
-    needs: publish
+  # The formula installs the prebuilt binaries attached above: no Node.js.
+  homebrew-formula:
+    needs: attach-binaries
     # Homebrew tracks stable releases only
     if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for npm registry propagation
+      - name: Generate formula
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          echo "Waiting for @envsec/core@${VERSION} to be available on npm..."
-          for i in $(seq 1 30); do
-            if npm view "@envsec/core@${VERSION}" version 2>/dev/null; then
-              echo "Package available on registry after attempt $i"
-              break
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
+
+          sha() {
+            local hash
+            hash="$(awk -v f="envsec-$1.tar.gz" '$2 == f { print $1 }' SHA256SUMS)"
+            if [ -z "$hash" ]; then
+              echo "::error::No checksum for envsec-$1.tar.gz" >&2
+              exit 1
             fi
-            echo "Attempt $i/30: not yet available, waiting 30s..."
-            sleep 30
-          done
+            echo "$hash"
+          }
+          DARWIN_ARM64="$(sha darwin-arm64)"
+          DARWIN_X64="$(sha darwin-x64)"
+          LINUX_ARM64="$(sha linux-arm64)"
+          LINUX_X64="$(sha linux-x64)"
+
+          cat > envsec.rb << EOF
+          class Envsec < Formula
+            desc "Secure environment secrets management using native OS credential stores"
+            homepage "https://github.com/davidnussio/envsec"
+            version "$VERSION"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "$BASE/envsec-darwin-arm64.tar.gz"
+                sha256 "$DARWIN_ARM64"
+              end
+              on_intel do
+                url "$BASE/envsec-darwin-x64.tar.gz"
+                sha256 "$DARWIN_X64"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "$BASE/envsec-linux-arm64.tar.gz"
+                sha256 "$LINUX_ARM64"
+              end
+              on_intel do
+                url "$BASE/envsec-linux-x64.tar.gz"
+                sha256 "$LINUX_X64"
+              end
+            end
+
+            def install
+              bin.install "envsec"
+              generate_completions_from_executable(bin/"envsec", "--completions", shells: [:bash, :zsh, :fish])
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/envsec --version")
+              shell_output("ENVSEC_DB=#{testpath}/store.sqlite #{bin}/envsec cmd list")
+            end
+          end
+          EOF
+
+          sed -i 's/^          //' envsec.rb
+          cat envsec.rb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: envsec.rb
+          retention-days: 7
+
+  # Install the generated formula for real before it reaches the tap.
+  homebrew-test:
+    needs: homebrew-formula
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    name: Homebrew install (${{ matrix.os }})
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: homebrew-formula
+
+      - name: Install and test
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+              NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            fi
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          fi
+          export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew tap-new --no-git envsec/release-test
+          cp envsec.rb "$(brew --repository envsec/release-test)/Formula/envsec.rb"
+          brew install envsec/release-test/envsec
+          brew test envsec/release-test/envsec
+          envsec --version
+          test -f "$(brew --prefix)/share/zsh/site-functions/_envsec"
+
+  update-homebrew:
+    needs: homebrew-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: homebrew-formula
 
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
         with:
           repository: davidnussio/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-
-      - name: Update formula
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          URL="https://registry.npmjs.org/envsec/-/envsec-${VERSION}.tgz"
-
-          for i in 1 2 3 4 5; do
-            HTTP_CODE=$(curl -sL -o envsec.tgz -w "%{http_code}" "$URL")
-            if [ "$HTTP_CODE" = "200" ]; then
-              break
-            fi
-            echo "Attempt $i: got HTTP $HTTP_CODE, retrying in 15s..."
-            sleep 15
-          done
-
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Failed to download tarball after 5 attempts"
-            exit 1
-          fi
-
-          SHA256=$(shasum -a 256 envsec.tgz | awk '{print $1}')
-          rm envsec.tgz
-
-          cat > Formula/envsec.rb << EOF
-          class Envsec < Formula
-            desc "Secure environment secrets management using native OS credential stores"
-            homepage "https://github.com/davidnussio/envsec"
-            url "$URL"
-            sha256 "$SHA256"
-            license "MIT"
-            version "$VERSION"
-
-            depends_on "node"
-
-            def install
-              system "npm", "install", *std_npm_args, "--min-release-age=0"
-              bin.install_symlink libexec.glob("bin/*")
-              generate_completions_from_executable(bin/"envsec", "--completions", shells: [:bash, :zsh, :fish])
-            end
-
-            test do
-              assert_match version.to_s, shell_output("#{bin}/envsec --version")
-            end
-          end
-          EOF
-
-          sed -i 's/^          //' Formula/envsec.rb
+          path: homebrew-tap
 
       - name: Commit and push
+        working-directory: homebrew-tap
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          cp ../envsec.rb Formula/envsec.rb
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/envsec.rb
