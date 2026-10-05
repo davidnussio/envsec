@@ -6,7 +6,70 @@ on:
     types: [published]
 
 jobs:
+  # Built and smoke-tested on native runners before anything is published,
+  # so a broken binary blocks the whole release.
+  binaries:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            targets: bun-linux-x64 bun-linux-arm64 bun-linux-x64-musl bun-linux-arm64-musl
+            smoke: envsec-linux-x64
+          - os: macos-latest
+            targets: bun-darwin-arm64 bun-darwin-x64
+            smoke: envsec-darwin-arm64
+          - os: windows-latest
+            targets: bun-windows-x64
+            smoke: envsec-windows-x64.exe
+    runs-on: ${{ matrix.os }}
+    name: Binaries (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@v4
+
+      # The binary embeds the CLI version at compile time (build-info.ts).
+      - name: Set CLI version from tag
+        shell: bash
+        working-directory: packages/cli
+        run: npm pkg set version="${GITHUB_REF_NAME#v}"
+
+      - uses: ./.github/actions/setup-and-build
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Compile
+        shell: bash
+        run: pnpm -F envsec run build:bin ${{ matrix.targets }}
+
+      - name: Ad-hoc sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for f in packages/cli/release/envsec-darwin-*; do
+            [[ "$f" == *.map ]] && continue
+            codesign --force --sign - "$f"
+            codesign --verify --verbose "$f"
+          done
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          BIN="packages/cli/release/${{ matrix.smoke }}"
+          export ENVSEC_DB="$RUNNER_TEMP/smoke/store.sqlite"
+          "$BIN" --version | grep -qF "${GITHUB_REF_NAME#v}"
+          "$BIN" cmd list
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ runner.os }}
+          path: |
+            packages/cli/release/envsec-*
+            !packages/cli/release/*.map
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
+    needs: binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,6 +161,48 @@ jobs:
           git add packages/cli/package.json packages/core/package.json packages/sdk/package.json packages/tui/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
           git push origin HEAD:main
+
+  attach-binaries:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: bin
+          merge-multiple: true
+
+      # Asset names carry no version, so releases/latest/download/<asset> is a
+      # stable URL. Artifacts lose the executable bit: it is restored here.
+      - name: Package archives and checksums
+        run: |
+          OUT="$PWD/release-assets"
+          mkdir -p "$OUT"
+          for f in bin/envsec-*; do
+            name="$(basename "$f")"
+            target="${name#envsec-}"
+            target="${target%.exe}"
+            stage="$(mktemp -d)"
+            cp LICENSE README.md "$stage/"
+            if [[ "$name" == *.exe ]]; then
+              cp "$f" "$stage/envsec.exe"
+              (cd "$stage" && zip -q "$OUT/envsec-${target}.zip" envsec.exe LICENSE README.md)
+            else
+              install -m 755 "$f" "$stage/envsec"
+              tar -C "$stage" -czf "$OUT/envsec-${target}.tar.gz" envsec LICENSE README.md
+            fi
+          done
+          (cd "$OUT" && sha256sum envsec-* > SHA256SUMS)
+          cat "$OUT/SHA256SUMS"
+
+      - name: Upload to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
 
   update-homebrew:
     needs: publish

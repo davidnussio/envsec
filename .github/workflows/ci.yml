@@ -32,6 +32,8 @@ jobs:
       - uses: ./.github/actions/setup-and-build
 
       - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
 
       - name: Compile
         run: pnpm -F envsec run build:bin
@@ -43,7 +45,8 @@ jobs:
           BIN="$RUNNER_TEMP/envsec"
           cp packages/cli/release/envsec "$BIN"
           rm -rf node_modules packages/*/node_modules
-          export HOME="$(mktemp -d)"
+          HOME="$(mktemp -d)"
+          export HOME
           export PATH="/usr/bin:/bin"
           "$BIN" --version | grep -q "$(jq -r .version packages/cli/package.json)"
           "$BIN" -c ci run --save --name hello "echo hi" | grep -q hi

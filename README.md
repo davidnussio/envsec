@@ -113,6 +113,18 @@ npx envsec
 mise use -g npm:envsec
 ```
 
+### Standalone binary (no Node.js)
+
+Every [GitHub release](https://github.com/davidnussio/envsec/releases) ships self-contained executables for macOS (arm64, x64), Linux (x64, arm64, glibc and musl) and Windows (x64), plus a `SHA256SUMS` file:
+
+```bash
+TARGET=darwin-arm64   # or darwin-x64, linux-x64, linux-arm64, linux-x64-musl, linux-arm64-musl
+curl -fsSL "https://github.com/davidnussio/envsec/releases/latest/download/envsec-${TARGET}.tar.gz" | tar -xz envsec
+sudo mv envsec /usr/local/bin/
+```
+
+On Windows, download `envsec-windows-x64.zip` and put `envsec.exe` on your `PATH`.
+
 ## Usage
 
 Most commands require a context specified with `--context` (or `-c`). A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
@@ -821,7 +833,7 @@ The CLI can also be compiled with [Bun](https://bun.sh) into a single executable
 ```bash
 pnpm run build                           # builds @envsec/core and @envsec/tui first
 pnpm --filter envsec run build:bin       # current platform → packages/cli/release/envsec
-pnpm --filter envsec run build:bin --all # darwin/linux (arm64, x64) and windows-x64
+pnpm --filter envsec run build:bin --all # darwin, linux (glibc + musl), windows
 ```
 
 ### Running locally without installing
