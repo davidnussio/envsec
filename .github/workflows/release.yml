@@ -160,7 +160,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packages/cli/package.json packages/core/package.json packages/sdk/package.json packages/tui/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
-          git push origin HEAD:main
+          # Prereleases are cut from the beta branch: never push them to main.
+          if [[ "$VERSION" == *-* ]]; then BRANCH=beta; else BRANCH=main; fi
+          git push origin "HEAD:${BRANCH}"
 
   attach-binaries:
     needs: publish
@@ -205,17 +207,34 @@ jobs:
         run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
 
   # The formula installs the prebuilt binaries attached above: no Node.js.
+  # Stable releases update `envsec`, `-beta` prereleases update `envsec-beta`
+  # (`envsec@beta` is not possible: Homebrew needs a digit after the `@`).
+  # Other prereleases (alpha, rc, ...) are npm only.
   homebrew-formula:
     needs: attach-binaries
-    # Homebrew tracks stable releases only
-    if: ${{ !contains(github.ref_name, '-') }}
+    if: ${{ !contains(github.ref_name, '-') || contains(github.ref_name, '-beta') }}
     runs-on: ubuntu-24.04
+    outputs:
+      formula: ${{ steps.generate.outputs.formula }}
     steps:
       - name: Generate formula
+        id: generate
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *-beta* ]]; then
+            FORMULA=envsec-beta
+            CLASS=EnvsecBeta
+            DESC_SUFFIX=" (beta channel)"
+            CONFLICTS='conflicts_with "envsec", because: "both install an envsec binary"'
+          else
+            FORMULA=envsec
+            CLASS=Envsec
+            DESC_SUFFIX=""
+            CONFLICTS=""
+          fi
+          echo "formula=$FORMULA" >> "$GITHUB_OUTPUT"
           BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
           gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
 
@@ -233,12 +252,14 @@ jobs:
           LINUX_ARM64="$(sha linux-arm64)"
           LINUX_X64="$(sha linux-x64)"
 
-          cat > envsec.rb << EOF
-          class Envsec < Formula
-            desc "Secure environment secrets management using native OS credential stores"
+          cat > "$FORMULA.rb" << EOF
+          class $CLASS < Formula
+            desc "Secure environment secrets management using native OS credential stores$DESC_SUFFIX"
             homepage "https://github.com/davidnussio/envsec"
             version "$VERSION"
             license "MIT"
+
+            $CONFLICTS
 
             on_macos do
               on_arm do
@@ -274,13 +295,16 @@ jobs:
           end
           EOF
 
-          sed -i 's/^          //' envsec.rb
-          cat envsec.rb
+          sed -i 's/^          //' "$FORMULA.rb"
+          # Drop the empty conflicts line on the stable formula.
+          sed -i '/^  $/d' "$FORMULA.rb"
+          cat -s "$FORMULA.rb" > formula.tmp && mv formula.tmp "$FORMULA.rb"
+          cat "$FORMULA.rb"
 
       - uses: actions/upload-artifact@v7
         with:
           name: homebrew-formula
-          path: envsec.rb
+          path: ${{ steps.generate.outputs.formula }}.rb
           retention-days: 7
 
   # Install the generated formula for real before it reaches the tap.
@@ -297,6 +321,8 @@ jobs:
           name: homebrew-formula
 
       - name: Install and test
+        env:
+          FORMULA: ${{ needs.homebrew-formula.outputs.formula }}
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
@@ -306,14 +332,14 @@ jobs:
           fi
           export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
           brew tap-new --no-git envsec/release-test
-          cp envsec.rb "$(brew --repository envsec/release-test)/Formula/envsec.rb"
-          brew install envsec/release-test/envsec
-          brew test envsec/release-test/envsec
+          cp "$FORMULA.rb" "$(brew --repository envsec/release-test)/Formula/"
+          brew install "envsec/release-test/$FORMULA"
+          brew test "envsec/release-test/$FORMULA"
           envsec --version
           test -f "$(brew --prefix)/share/zsh/site-functions/_envsec"
 
   update-homebrew:
-    needs: homebrew-test
+    needs: [homebrew-formula, homebrew-test]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v8
@@ -329,11 +355,13 @@ jobs:
 
       - name: Commit and push
         working-directory: homebrew-tap
+        env:
+          FORMULA: ${{ needs.homebrew-formula.outputs.formula }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          cp ../envsec.rb Formula/envsec.rb
+          cp "../$FORMULA.rb" "Formula/$FORMULA.rb"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/envsec.rb
-          git commit -m "envsec ${VERSION}"
+          git add "Formula/$FORMULA.rb"
+          git commit -m "$FORMULA ${VERSION}"
           git push

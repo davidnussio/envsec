@@ -127,6 +127,19 @@ sudo mv envsec /usr/local/bin/
 
 On Windows, download `envsec-windows-x64.zip` and put `envsec.exe` on your `PATH`.
 
+### Beta channel
+
+Prereleases (`vX.Y.Z-beta.N`) are published on npm under the `beta` dist-tag and on Homebrew as a separate `envsec-beta` formula. It conflicts with `envsec`, since both install the `envsec` command:
+
+```bash
+npm install -g envsec@beta
+
+brew uninstall envsec   # if the stable formula is installed
+brew install davidnussio/tap/envsec-beta
+```
+
+Go back to stable with `npm install -g envsec@latest`, or `brew uninstall envsec-beta && brew install envsec`.
+
 ## Usage
 
 Most commands require a context specified with `--context` (or `-c`). A context is a free-form label for grouping secrets — e.g. `myapp.dev`, `stripe-api.prod`, `work.staging`.
