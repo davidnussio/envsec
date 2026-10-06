@@ -6,12 +6,75 @@ on:
     types: [published]
 
 jobs:
+  # Built and smoke-tested on native runners before anything is published,
+  # so a broken binary blocks the whole release.
+  binaries:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            targets: bun-linux-x64 bun-linux-arm64 bun-linux-x64-musl bun-linux-arm64-musl
+            smoke: envsec-linux-x64
+          - os: macos-latest
+            targets: bun-darwin-arm64 bun-darwin-x64
+            smoke: envsec-darwin-arm64
+          - os: windows-latest
+            targets: bun-windows-x64
+            smoke: envsec-windows-x64.exe
+    runs-on: ${{ matrix.os }}
+    name: Binaries (${{ matrix.os }})
+    steps:
+      - uses: actions/checkout@v7
+
+      # The binary embeds the CLI version at compile time (build-info.ts).
+      - name: Set CLI version from tag
+        shell: bash
+        working-directory: packages/cli
+        run: npm pkg set version="${GITHUB_REF_NAME#v}"
+
+      - uses: ./.github/actions/setup-and-build
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Compile
+        shell: bash
+        run: pnpm -F envsec run build:bin ${{ matrix.targets }}
+
+      - name: Ad-hoc sign (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for f in packages/cli/release/envsec-darwin-*; do
+            [[ "$f" == *.map ]] && continue
+            codesign --force --sign - "$f"
+            codesign --verify --verbose "$f"
+          done
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          BIN="packages/cli/release/${{ matrix.smoke }}"
+          export ENVSEC_DB="$RUNNER_TEMP/smoke/store.sqlite"
+          "$BIN" --version | grep -qF "${GITHUB_REF_NAME#v}"
+          "$BIN" cmd list
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries-${{ runner.os }}
+          path: |
+            packages/cli/release/envsec-*
+            !packages/cli/release/*.map
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
-    runs-on: ubuntu-latest
+    needs: binaries
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Extract version from tag
         id: version
@@ -97,85 +160,208 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packages/cli/package.json packages/core/package.json packages/sdk/package.json packages/tui/package.json
           git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: bump version to ${VERSION}"
-          git push origin HEAD:main
+          # Prereleases are cut from the beta branch: never push them to main.
+          if [[ "$VERSION" == *-* ]]; then BRANCH=beta; else BRANCH=main; fi
+          git push origin "HEAD:${BRANCH}"
 
-  update-homebrew:
+  attach-binaries:
     needs: publish
-    # Homebrew tracks stable releases only
-    if: ${{ !contains(github.ref_name, '-') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
-      - name: Wait for npm registry propagation
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "Waiting for @envsec/core@${VERSION} to be available on npm..."
-          for i in $(seq 1 30); do
-            if npm view "@envsec/core@${VERSION}" version 2>/dev/null; then
-              echo "Package available on registry after attempt $i"
-              break
-            fi
-            echo "Attempt $i/30: not yet available, waiting 30s..."
-            sleep 30
-          done
+      - uses: actions/checkout@v7
 
-      - name: Checkout homebrew-tap
-        uses: actions/checkout@v4
+      - uses: actions/download-artifact@v8
         with:
-          repository: davidnussio/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          pattern: binaries-*
+          path: bin
+          merge-multiple: true
 
-      - name: Update formula
+      # Asset names carry no version, so releases/latest/download/<asset> is a
+      # stable URL. Artifacts lose the executable bit: it is restored here.
+      - name: Package archives and checksums
+        run: |
+          OUT="$PWD/release-assets"
+          mkdir -p "$OUT"
+          for f in bin/envsec-*; do
+            name="$(basename "$f")"
+            target="${name#envsec-}"
+            target="${target%.exe}"
+            stage="$(mktemp -d)"
+            cp LICENSE README.md "$stage/"
+            if [[ "$name" == *.exe ]]; then
+              cp "$f" "$stage/envsec.exe"
+              (cd "$stage" && zip -q "$OUT/envsec-${target}.zip" envsec.exe LICENSE README.md)
+            else
+              install -m 755 "$f" "$stage/envsec"
+              tar -C "$stage" -czf "$OUT/envsec-${target}.tar.gz" envsec LICENSE README.md
+            fi
+          done
+          (cd "$OUT" && sha256sum envsec-* > SHA256SUMS)
+          cat "$OUT/SHA256SUMS"
+
+      - name: Upload to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber
+
+  # The formula installs the prebuilt binaries attached above: no Node.js.
+  # Stable releases update `envsec`, `-beta` prereleases update `envsec-beta`
+  # (`envsec@beta` is not possible: Homebrew needs a digit after the `@`).
+  # Other prereleases (alpha, rc, ...) are npm only.
+  homebrew-formula:
+    needs: attach-binaries
+    if: ${{ !contains(github.ref_name, '-') || contains(github.ref_name, '-beta') }}
+    runs-on: ubuntu-24.04
+    outputs:
+      formula: ${{ steps.generate.outputs.formula }}
+    steps:
+      - name: Generate formula
+        id: generate
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          URL="https://registry.npmjs.org/envsec/-/envsec-${VERSION}.tgz"
-
-          for i in 1 2 3 4 5; do
-            HTTP_CODE=$(curl -sL -o envsec.tgz -w "%{http_code}" "$URL")
-            if [ "$HTTP_CODE" = "200" ]; then
-              break
-            fi
-            echo "Attempt $i: got HTTP $HTTP_CODE, retrying in 15s..."
-            sleep 15
-          done
-
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "Failed to download tarball after 5 attempts"
-            exit 1
+          if [[ "$VERSION" == *-beta* ]]; then
+            FORMULA=envsec-beta
+            CLASS=EnvsecBeta
+            DESC_SUFFIX=" (beta channel)"
+            CONFLICTS='conflicts_with "envsec", because: "both install an envsec binary"'
+          else
+            FORMULA=envsec
+            CLASS=Envsec
+            DESC_SUFFIX=""
+            CONFLICTS=""
           fi
+          echo "formula=$FORMULA" >> "$GITHUB_OUTPUT"
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS
 
-          SHA256=$(shasum -a 256 envsec.tgz | awk '{print $1}')
-          rm envsec.tgz
+          sha() {
+            local hash
+            hash="$(awk -v f="envsec-$1.tar.gz" '$2 == f { print $1 }' SHA256SUMS)"
+            if [ -z "$hash" ]; then
+              echo "::error::No checksum for envsec-$1.tar.gz" >&2
+              exit 1
+            fi
+            echo "$hash"
+          }
+          DARWIN_ARM64="$(sha darwin-arm64)"
+          DARWIN_X64="$(sha darwin-x64)"
+          LINUX_ARM64="$(sha linux-arm64)"
+          LINUX_X64="$(sha linux-x64)"
 
-          cat > Formula/envsec.rb << EOF
-          class Envsec < Formula
-            desc "Secure environment secrets management using native OS credential stores"
+          cat > "$FORMULA.rb" << EOF
+          class $CLASS < Formula
+            desc "Secure environment secrets management using native OS credential stores$DESC_SUFFIX"
             homepage "https://github.com/davidnussio/envsec"
-            url "$URL"
-            sha256 "$SHA256"
-            license "MIT"
             version "$VERSION"
+            license "MIT"
 
-            depends_on "node"
+            $CONFLICTS
+
+            on_macos do
+              on_arm do
+                url "$BASE/envsec-darwin-arm64.tar.gz"
+                sha256 "$DARWIN_ARM64"
+              end
+              on_intel do
+                url "$BASE/envsec-darwin-x64.tar.gz"
+                sha256 "$DARWIN_X64"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "$BASE/envsec-linux-arm64.tar.gz"
+                sha256 "$LINUX_ARM64"
+              end
+              on_intel do
+                url "$BASE/envsec-linux-x64.tar.gz"
+                sha256 "$LINUX_X64"
+              end
+            end
 
             def install
-              system "npm", "install", *std_npm_args, "--min-release-age=0"
-              bin.install_symlink libexec.glob("bin/*")
+              bin.install "envsec"
               generate_completions_from_executable(bin/"envsec", "--completions", shells: [:bash, :zsh, :fish])
             end
 
             test do
               assert_match version.to_s, shell_output("#{bin}/envsec --version")
+              shell_output("ENVSEC_DB=#{testpath}/store.sqlite #{bin}/envsec cmd list")
             end
           end
           EOF
 
-          sed -i 's/^          //' Formula/envsec.rb
+          sed -i 's/^          //' "$FORMULA.rb"
+          # Drop the empty conflicts line on the stable formula.
+          sed -i '/^  $/d' "$FORMULA.rb"
+          cat -s "$FORMULA.rb" > formula.tmp && mv formula.tmp "$FORMULA.rb"
+          cat "$FORMULA.rb"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: homebrew-formula
+          path: ${{ steps.generate.outputs.formula }}.rb
+          retention-days: 7
+
+  # Install the generated formula for real before it reaches the tap.
+  homebrew-test:
+    needs: homebrew-formula
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    name: Homebrew install (${{ matrix.os }})
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: homebrew-formula
+
+      - name: Install and test
+        env:
+          FORMULA: ${{ needs.homebrew-formula.outputs.formula }}
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+              NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            fi
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          fi
+          export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew tap-new --no-git envsec/release-test
+          cp "$FORMULA.rb" "$(brew --repository envsec/release-test)/Formula/"
+          brew install "envsec/release-test/$FORMULA"
+          brew test "envsec/release-test/$FORMULA"
+          envsec --version
+          test -f "$(brew --prefix)/share/zsh/site-functions/_envsec"
+
+  update-homebrew:
+    needs: [homebrew-formula, homebrew-test]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: homebrew-formula
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v7
+        with:
+          repository: davidnussio/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
 
       - name: Commit and push
+        working-directory: homebrew-tap
+        env:
+          FORMULA: ${{ needs.homebrew-formula.outputs.formula }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          cp "../$FORMULA.rb" "Formula/$FORMULA.rb"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/envsec.rb
-          git commit -m "envsec ${VERSION}"
+          git add "Formula/$FORMULA.rb"
+          git commit -m "$FORMULA ${VERSION}"
           git push

@@ -2,7 +2,7 @@ name: E2E Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "packages/**"
       - "package.json"
@@ -10,7 +10,7 @@ on:
       - "pnpm-workspace.yaml"
       - "turbo.json"
   pull_request:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "packages/**"
       - "package.json"
@@ -23,12 +23,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     name: E2E (${{ matrix.os }})
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-and-build
 
@@ -56,7 +56,7 @@ jobs:
     name: E2E (windows-latest)
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-and-build
 

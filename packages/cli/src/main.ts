@@ -12,7 +12,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 
 /**
  * Ultra-fast completion path.
- * Reads only the JSON cache file — zero Effect, zero sql.js, zero WASM.
+ * Reads only the JSON cache file — zero Effect, zero SQLite.
  * Falls through to the full CLI if cache is missing or stale.
  */
 const tryFastComplete = (): boolean => {

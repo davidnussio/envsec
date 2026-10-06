@@ -149,7 +149,7 @@ Important: update readme file with the new things done
 
 ## Effect libraries
 
-This project uses Effect 4 (`effect`, `@effect/platform-node`). The Effect source for the exact version we depend on is vendored at `repos/effect/` via `git subtree`.
+This project uses Effect 4 (`effect`, `@effect/platform-node-shared`). The Effect source for the exact version we depend on is vendored at `repos/effect/` via `git subtree`.
 
 - Before writing or reviewing Effect code, read `repos/effect/LLMS.md`, then look in `repos/effect/packages/effect/src/` (and its `test/`) for idiomatic usage, signatures and examples. Prefer this source over web search or memory: Effect 4 APIs differ a lot from Effect 3.
 - CLI modules live in `repos/effect/packages/effect/src/cli/` (imported as `effect/cli`).

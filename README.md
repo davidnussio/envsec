@@ -59,7 +59,7 @@ See the full [SDK documentation](./packages/sdk/README.md) for all APIs, multi-c
 
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.13 — only for npm, npx and mise installs. Homebrew and the standalone binaries embed their own runtime.
 
 ### macOS
 
@@ -90,6 +90,8 @@ No extra dependencies. Uses the built-in Windows Credential Manager via `cmdkey`
 
 ### Homebrew (macOS / Linux)
 
+Installs the standalone binary (no Node.js), with shell completions for bash, zsh and fish.
+
 ```bash
 brew tap davidnussio/homebrew-tap
 brew install envsec
@@ -112,6 +114,31 @@ npx envsec
 ```bash
 mise use -g npm:envsec
 ```
+
+### Standalone binary (no Node.js)
+
+Every [GitHub release](https://github.com/davidnussio/envsec/releases) ships self-contained executables for macOS (arm64, x64), Linux (x64, arm64, glibc and musl) and Windows (x64), plus a `SHA256SUMS` file:
+
+```bash
+TARGET=darwin-arm64   # or darwin-x64, linux-x64, linux-arm64, linux-x64-musl, linux-arm64-musl
+curl -fsSL "https://github.com/davidnussio/envsec/releases/latest/download/envsec-${TARGET}.tar.gz" | tar -xz envsec
+sudo mv envsec /usr/local/bin/
+```
+
+On Windows, download `envsec-windows-x64.zip` and put `envsec.exe` on your `PATH`.
+
+### Beta channel
+
+Prereleases (`vX.Y.Z-beta.N`) are published on npm under the `beta` dist-tag and on Homebrew as a separate `envsec-beta` formula. It conflicts with `envsec`, since both install the `envsec` command:
+
+```bash
+npm install -g envsec@beta
+
+brew uninstall envsec   # if the stable formula is installed
+brew install davidnussio/tap/envsec-beta
+```
+
+Go back to stable with `npm install -g envsec@latest`, or `brew uninstall envsec-beta && brew install envsec`.
 
 ## Usage
 
@@ -756,10 +783,10 @@ We believe in being upfront about what envsec does not yet cover. These are real
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 22.13
 - pnpm
 
-The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node` versions aligned across the workspace. The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
+The core, SDK, CLI, and TUI packages use Effect 4 and are pinned to `4.0.0`. Keep the Effect and `@effect/platform-node-shared` versions aligned across the workspace (the CLI imports its modules directly instead of `@effect/platform-node`, which would also pull in redis and undici). The matching Effect source is vendored in `repos/effect` (via `git subtree`) as read-only reference material for contributors and coding agents; never import from it.
 
 ### Setup
 
@@ -813,6 +840,16 @@ ENVSEC_E2E_CLI="$PWD/packages/cli/dist/main.js" \
 ```
 
 Native E2E tests use dedicated `test.e2e*` contexts and remove them afterward.
+
+### Standalone binary
+
+The CLI can also be compiled with [Bun](https://bun.sh) into a single executable that embeds its runtime, so it runs without Node.js or `node_modules`:
+
+```bash
+pnpm run build                           # builds @envsec/core and @envsec/tui first
+pnpm --filter envsec run build:bin       # current platform → packages/cli/release/envsec
+pnpm --filter envsec run build:bin --all # darwin, linux (glibc + musl), windows
+```
 
 ### Running locally without installing
 

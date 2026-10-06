@@ -38,25 +38,23 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:bin": "bun scripts/build-bin.ts",
     "prepublishOnly": "npm run build",
     "test": "bash test/e2e-test.sh",
     "test:unit": "pnpm run build && node --test test/*.test.mjs",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist release"
   },
   "dependencies": {
-    "@effect/platform-node": "4.0.0",
     "@effect/platform-node-shared": "4.0.0",
     "@envsec/core": "workspace:*",
     "@envsec/tui": "workspace:*",
-    "effect": "4.0.0",
-    "sql.js": "^1.14.1"
+    "effect": "4.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.13"
   }
 }

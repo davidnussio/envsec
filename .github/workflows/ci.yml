@@ -2,17 +2,17 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
   pull_request:
-    branches: [main]
+    branches: [main, beta]
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Lint, typecheck & unit tests
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-and-build
 
@@ -21,3 +21,35 @@ jobs:
 
       - name: Typecheck & unit tests
         run: pnpm turbo run lint test:unit
+
+  binary:
+    runs-on: ubuntu-24.04
+    name: Standalone binary (bun build --compile)
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-and-build
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.2"
+
+      - name: Compile
+        run: pnpm -F envsec run build:bin
+
+      # node_modules is removed first: the binary must not read anything
+      # from the build tree at run time (e.g. a WASM file or package.json).
+      - name: Smoke test without Node.js or node_modules
+        run: |
+          BIN="$RUNNER_TEMP/envsec"
+          cp packages/cli/release/envsec "$BIN"
+          rm -rf node_modules packages/*/node_modules
+          HOME="$(mktemp -d)"
+          export HOME
+          export PATH="/usr/bin:/bin"
+          "$BIN" --version | grep -q "$(jq -r .version packages/cli/package.json)"
+          "$BIN" -c ci run --save --name hello "echo hi" | grep -q hi
+          "$BIN" cmd list | grep -q hello
+          "$BIN" cmd delete hello
+          test "$(stat -c %a "$HOME/.envsec/store.sqlite")" = 600

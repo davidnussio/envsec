@@ -24,7 +24,7 @@ Secure environment secrets management using native OS credential stores.
 
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.13
 
 ### macOS
 

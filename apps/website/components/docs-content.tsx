@@ -49,7 +49,7 @@ export const DocsContent = () => (
         code={"brew tap davidnussio/homebrew-tap\nbrew install envsec"}
       />
       <H3>npm</H3>
-      <P>Requires Node.js 22 or later.</P>
+      <P>Requires Node.js 22.13 or later.</P>
       <CodeBlock code="npm install -g envsec" />
       <P>Or run directly without installing:</P>
       <CodeBlock code="npx envsec" />
@@ -808,7 +808,7 @@ envsec --json doctor`}
           supported
         </li>
         <li>
-          <Mono>Node.js</Mono> — runtime version (22+ required)
+          <Mono>Node.js</Mono> — runtime version (22.13+ required)
         </li>
         <li>
           <Mono>Shell</Mono> — active shell detected from the environment

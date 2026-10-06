@@ -14,15 +14,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url || '' }}
 
-    - uses: pnpm/action-setup@v4
+    - uses: pnpm/action-setup@v6
 
     - name: Cache pnpm store
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.pnpm-store
         key: pnpm-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}

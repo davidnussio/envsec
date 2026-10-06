@@ -1,11 +1,10 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import { Effect, Layer } from "effect";
-import initSqlJs from "sql.js";
 
 import {
   DatabaseConfigFrom,
@@ -183,10 +182,9 @@ test("rejects malformed metadata rows with a MetadataStoreError", () =>
         Effect.provide(storeLayer(databasePath))
       )
     );
-    const SQL = await initSqlJs();
-    const db = new SQL.Database(readFileSync(databasePath));
-    db.run("UPDATE secrets SET expires_at = X'00'");
-    writeFileSync(databasePath, Buffer.from(db.export()));
+    const { DatabaseSync } = await import("node:sqlite");
+    const db = new DatabaseSync(databasePath);
+    db.exec("UPDATE secrets SET expires_at = X'00'");
     db.close();
 
     const error = await Effect.runPromise(

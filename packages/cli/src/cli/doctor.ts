@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import { accessSync, constants, existsSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
 import { platform, release } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -19,13 +18,9 @@ import {
 import { Console, Effect } from "effect";
 import { Command } from "effect/cli";
 
+import { effectVersion, envsecVersion } from "../build-info.js";
 import { resolveDbPath } from "../db-path.js";
 import { isJsonOutput } from "./root.js";
-
-const require = createRequire(import.meta.url);
-const pkg = require("../../package.json") as { version: string };
-// The Effect runtime actually resolved at run time (not the declared range).
-const effectPkg = require("effect/package.json") as { version: string };
 
 interface CheckResult {
   readonly detail?: string;
@@ -93,13 +88,28 @@ const checkPlatform = (): CheckResult => {
   return fail("Platform", `${os} ${ver}`, "Unsupported platform");
 };
 
-const checkNodeVersion = (): CheckResult => {
+/** node:sqlite runs without a flag from Node 22.13. */
+const MIN_NODE_MAJOR = 22;
+const MIN_NODE_MINOR = 13;
+
+const checkRuntime = (): CheckResult => {
+  const bunVersion = process.versions.bun;
+  if (bunVersion !== undefined) {
+    return pass("Bun", bunVersion);
+  }
   const ver = process.version;
-  const major = Math.trunc(Number(ver.slice(1).split(".")[0] ?? "0"));
-  if (major >= 22) {
+  const [major = 0, minor = 0] = ver.slice(1).split(".").map(Number);
+  if (
+    major > MIN_NODE_MAJOR ||
+    (major === MIN_NODE_MAJOR && minor >= MIN_NODE_MINOR)
+  ) {
     return pass("Node.js", ver);
   }
-  return fail("Node.js", ver, "Node.js >= 22 required");
+  return fail(
+    "Node.js",
+    ver,
+    `Node.js >= ${MIN_NODE_MAJOR}.${MIN_NODE_MINOR} required`
+  );
 };
 
 const checkCredentialStore = async (): Promise<CheckResult> => {
@@ -406,10 +416,10 @@ export const doctorCommand = Command.make("doctor", {}, () =>
 
     // Sync checks
     const results: CheckResult[] = [
-      pass("Version", pkg.version),
-      pass("Effect", effectPkg.version),
+      pass("Version", envsecVersion),
+      pass("Effect", effectVersion),
       checkPlatform(),
-      checkNodeVersion(),
+      checkRuntime(),
       checkShell(),
       checkEnvConfig(),
     ];
