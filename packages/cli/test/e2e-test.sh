@@ -42,6 +42,10 @@ cleanup_secrets() {
   node "$CLI" -c "test.e2e-roundtrip" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "test.e2e-roundtrip2" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "e2e-rescue-app.prod" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-git.dev" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-git.prod" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-dup.dev" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-bom.dev" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-echo" >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-multi" >/dev/null 2>&1 || true
 }
@@ -1272,6 +1276,51 @@ assert_eq "rescue --force: overwritten" "rotated_token_456" "$out"
 
 run_ok -c "e2e-rescue-app.dev" delete --all -y >/dev/null || true
 run_ok -c "e2e-rescue-app.prod" delete --all -y >/dev/null || true
+
+# CRLF line endings and a UTF-8 BOM (Notepad, Windows PowerShell 5)
+RESCUE_BOM_DIR="$TMPDIR_TEST/rescue-bom"
+mkdir -p "$RESCUE_BOM_DIR/e2e-rescue-bom"
+printf '\xEF\xBB\xBFAPI_TOKEN=bom_token_789\r\nPORT=5000\r\n' > "$RESCUE_BOM_DIR/e2e-rescue-bom/.env"
+run_ok rescue "$RESCUE_BOM_DIR" --import --no-gitignore >/dev/null
+out=$(run_ok -c "e2e-rescue-bom.dev" get -q api.token)
+assert_eq "rescue bom/crlf: first key readable" "bom_token_789" "$out"
+out=$(run_ok -c "e2e-rescue-bom.dev" get -q port)
+assert_eq "rescue bom/crlf: no trailing CR" "5000" "$out"
+run_ok -c "e2e-rescue-bom.dev" delete --all -y >/dev/null || true
+
+# git integration: .gitignore, committed files, duplicates, invalid names
+RESCUE_GIT_DIR="$TMPDIR_TEST/rescue-git"
+mkdir -p "$RESCUE_GIT_DIR/e2e-rescue-git" "$RESCUE_GIT_DIR/e2e-rescue-dup"
+git -C "$RESCUE_GIT_DIR/e2e-rescue-git" init -q
+printf 'SHARED_KEY=shared-value-123456\nBAD__NAME=x\n' > "$RESCUE_GIT_DIR/e2e-rescue-git/.env"
+printf 'DB_URL=postgres://committed\n' > "$RESCUE_GIT_DIR/e2e-rescue-git/.env.production"
+git -C "$RESCUE_GIT_DIR/e2e-rescue-git" add .env.production
+git -C "$RESCUE_GIT_DIR/e2e-rescue-git" -c user.name=e2e -c user.email=e2e@example.com commit -qm init
+printf 'SHARED_KEY=shared-value-123456\n' > "$RESCUE_GIT_DIR/e2e-rescue-dup/.env"
+
+out=$(run_ok rescue "$RESCUE_GIT_DIR")
+assert_contains "rescue git: committed file flagged" "committed to git" "$out"
+assert_contains "rescue git: duplicate value" "appears in more than one place" "$out"
+assert_not_contains "rescue git: duplicate value never printed" "shared-value-123456" "$out"
+assert_contains "rescue git: invalid name listed" "BAD__NAME" "$out"
+if [[ ! -f "$RESCUE_GIT_DIR/e2e-rescue-git/.gitignore" ]]; then
+  green "  ✓ rescue git: report leaves .gitignore alone"; ((PASS++))
+else
+  red "  ✗ rescue git: report created a .gitignore"; ((FAIL++))
+fi
+
+out=$(run_ok rescue "$RESCUE_GIT_DIR" --import)
+assert_contains "rescue git: .gitignore updated" "added to" "$out"
+gitignore=$(cat "$RESCUE_GIT_DIR/e2e-rescue-git/.gitignore" 2>/dev/null || true)
+assert_contains "rescue git: .gitignore has .env" $'\n.env\n' "$gitignore"
+assert_contains "rescue git: .gitignore has .env.production" ".env.production" "$gitignore"
+run_ok rescue "$RESCUE_GIT_DIR" --import >/dev/null
+count=$(grep -cx '.env' "$RESCUE_GIT_DIR/e2e-rescue-git/.gitignore" || true)
+assert_eq "rescue git: no duplicate .gitignore lines" "1" "$count"
+
+run_ok -c "e2e-rescue-git.dev" delete --all -y >/dev/null || true
+run_ok -c "e2e-rescue-git.prod" delete --all -y >/dev/null || true
+run_ok -c "e2e-rescue-dup.dev" delete --all -y >/dev/null || true
 
 # ─── 24. CLEANUP & VERIFY ────────────────────────────────────────────────────
 echo ""

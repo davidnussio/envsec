@@ -52,6 +52,12 @@ test("parses the common dotenv dialect", () => {
   );
 });
 
+test("ignores a UTF-8 byte order mark", () => {
+  const [entry] = parseDotenv("\uFEFFAPI_TOKEN=abc\r\nPORT=1\r\n");
+  assert.equal(entry.name, "API_TOKEN");
+  assert.equal(entry.value, "abc");
+});
+
 test("reads back the escaping written by envsec env-file", () => {
   // env-file writes KEY="value" escaping \\, " and newlines.
   const value = 'a\nb "quoted" back\\slash';
