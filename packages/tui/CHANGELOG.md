@@ -1,12 +1,14 @@
 # @envsec/tui
 
-## 1.1.0
+## 1.1.2
+
+Released as 1.1.2 to stay aligned with `envsec` 1.1.2 (`envsec@1.1.0` / `1.1.1` cannot be published on npm). Nothing was published as 1.1.0.
 
 ### Minor Changes
 
 - d7e1616: Requires Node.js >= 22.13 (was >= 22), like the other `@envsec/*` packages. No code changes.
 - Updated dependencies [d7e1616]
-  - @envsec/core@1.1.0
+  - @envsec/core@1.1.2
 
 ## 1.0.2
 

@@ -1,6 +1,8 @@
 # envsec
 
-## 1.1.0
+## 1.1.2
+
+Released as 1.1.2: `envsec@1.1.0` and `1.1.1` cannot be published, because those version numbers were used by an earlier, unrelated package with the same name and npm never allows reusing them. All `@envsec/*` packages move to 1.1.2 as well so that versions stay aligned.
 
 ### Minor Changes
 
@@ -18,8 +20,8 @@
 - c002d2c: Faster startup and a smaller install. The CLI depends on `@effect/platform-node-shared` directly instead of `@effect/platform-node`, which also loaded undici and redis on every start: the npm install goes from 78 MB / 17 packages to 60 MB / 9 packages, and startup on Node 24 from about 241 ms to 149 ms.
 - Shell completions for `rescue`.
 - Updated dependencies [d7e1616]
-  - @envsec/core@1.1.0
-  - @envsec/tui@1.1.0
+  - @envsec/core@1.1.2
+  - @envsec/tui@1.1.2
 
 ## 1.0.2
 
