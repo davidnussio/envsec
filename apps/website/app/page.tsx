@@ -39,7 +39,7 @@ const faqJsonLd = {
       "@type": "Question",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Import them into envsec with 'envsec -c context load --input path/.env', delete the original files, and regenerate them on-demand with 'envsec -c context env-file --output .env'. Secrets are stored in your OS native credential store instead of plaintext files.",
+        text: "Run 'envsec rescue ~/projects' to find every plaintext .env file, grouped by project with a proposed context for each. Then run 'envsec rescue ~/projects --import --remove-plaintext' to move the secrets into your OS native credential store and delete the files, and regenerate a .env on demand with 'envsec -c context env-file --output .env'.",
       },
       name: "How do I clean up .env files scattered across old projects?",
     },

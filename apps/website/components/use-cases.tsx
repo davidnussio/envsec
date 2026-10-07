@@ -11,40 +11,50 @@ const USE_CASES = [
   {
     id: "easy-clean-and-restore-env",
     lines: [
-      { prompt: true, text: "find ~/projects -name '.env' -type f" },
-      { prompt: false, text: "  ~/projects/ /.env" },
-      { prompt: false, text: "  ~/projects/demo-app/.env" },
-      { prompt: false, text: "  ~/projects/freelance-2023/.env" },
-      { prompt: false, text: "  ~/projects/new-project/.env" },
-      { prompt: true, text: "# Import each one into envsec, then delete" },
+      { prompt: true, text: "envsec rescue ~/projects" },
+      { prompt: false, text: "▸ old-api  ~/projects/old-api" },
+      {
+        prompt: false,
+        text: "    · .env             18 secrets  → old-api.dev",
+      },
+      { prompt: false, text: "▸ demo-app  ~/projects/demo-app" },
+      {
+        prompt: false,
+        text: "    · .env              6 secrets  → demo-app.dev",
+      },
+      { prompt: false, text: "▸ freelance-2023  ~/projects/freelance-2023" },
+      {
+        prompt: false,
+        text: "    · .env              5 secrets  → freelance-2023.dev",
+      },
+      {
+        prompt: false,
+        text: "    · .env.production   4 secrets  → freelance-2023.prod",
+      },
+      { prompt: false, text: "▸ new-project  ~/projects/new-project" },
+      {
+        prompt: false,
+        text: "    · .env             12 secrets  → new-project.dev",
+      },
+      {
+        prompt: false,
+        text: "▪ 45 secrets in 5 files · 4 projects · 5 contexts",
+      },
+      { prompt: false, text: "◆ 2 values appear in more than one place" },
+      { prompt: false, text: "● Nothing changed." },
+      { prompt: true, text: "# Looks right: import and delete the plaintext" },
       {
         prompt: true,
-        text: "envsec -c old-api load --input ~/projects/old-api/.env",
+        text: "envsec rescue ~/projects --import --remove-plaintext",
       },
-      { prompt: false, text: "✔ Done: 18 added, 0 overwritten, 0 skipped" },
-      { prompt: true, text: "rm ~/projects/old-api/.env" },
       {
-        prompt: true,
-        text: "envsec -c demo-app load --input ~/projects/demo-app/.env",
+        prompt: false,
+        text: "✔ 45 secrets secured · 5 plaintext files removed",
       },
-      { prompt: false, text: "✔ Done: 6 added, 0 overwritten, 0 skipped" },
-      { prompt: true, text: "rm ~/projects/demo-app/.env" },
-      {
-        prompt: true,
-        text: "envsec -c freelance-2023 load --input ~/projects/freelance-2023/.env",
-      },
-      { prompt: false, text: "✔ Done: 5 added, 0 overwritten, 0 skipped" },
-      { prompt: true, text: "rm ~/projects/freelance-2023/.env" },
       { prompt: true, text: "# Regenerate .env only for the active project" },
       {
         prompt: true,
-        text: "envsec -c new-project load --input ~/projects/new-project/.env",
-      },
-      { prompt: false, text: "✔ Done: 12 added, 0 overwritten, 0 skipped" },
-      { prompt: true, text: "rm ~/projects/new-project/.env" },
-      {
-        prompt: true,
-        text: "envsec -c new-project env-file --output ~/projects/new-project/.env",
+        text: "envsec -c new-project.dev env-file --output ~/projects/new-project/.env",
       },
       {
         prompt: false,
@@ -52,7 +62,7 @@ const USE_CASES = [
       },
     ],
     problem:
-      "Over time, plaintext .env files pile up in forgotten project directories. A quick find reveals dozens of them sitting on disk with real credentials inside. Import them into envsec, delete the files, and regenerate them only when you need them.",
+      "Over time, plaintext .env files pile up in forgotten project directories, with real credentials inside. envsec rescue finds them all, groups them by project and shows what it found. Then one more run moves every secret into the OS keychain and deletes the files, so you regenerate a .env only when you need one.",
     question: "How do I clean up .env files scattered across old projects?",
   },
   {
