@@ -1,5 +1,13 @@
 # @envsec/tui
 
+## 1.1.0
+
+### Minor Changes
+
+- d7e1616: Requires Node.js >= 22.13 (was >= 22), like the other `@envsec/*` packages. No code changes.
+- Updated dependencies [d7e1616]
+  - @envsec/core@1.1.0
+
 ## 1.0.2
 
 ### Patch Changes

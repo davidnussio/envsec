@@ -1,5 +1,11 @@
 # @envsec/core
 
+## 1.1.0
+
+### Minor Changes
+
+- d7e1616: `SqliteMetadataStore` uses the built-in `node:sqlite` (Node.js >= 22.13 and Bun) instead of sql.js. Writes go straight to the database file instead of re-exporting the whole in-memory database, batches run in a transaction, and there is no WASM file to locate at run time. Existing databases are used as they are. The `sql.js` dependency is removed and the minimum Node.js version is now 22.13; Node 22's `ExperimentalWarning` for `node:sqlite` is filtered out.
+
 ## 1.0.2
 
 ### Patch Changes
