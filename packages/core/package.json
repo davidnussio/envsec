@@ -1,6 +1,6 @@
 {
   "name": "@envsec/core",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Core secrets management engine — native OS credential store adapters + metadata DB",
   "keywords": [
     "credential-store",
@@ -43,15 +43,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "effect": "4.0.0",
-    "sql.js": "^1.14.1"
+    "effect": "4.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "@types/sql.js": "^1.4.11",
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13"
   }
 }

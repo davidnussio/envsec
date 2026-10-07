@@ -4,6 +4,7 @@ import { bold, FileAccessError, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
+import { parseDotenv, toSecretKey } from "../dotenv.js";
 import { requireContext } from "./root.js";
 
 const inputOption = Options.String("input").pipe(
@@ -26,23 +27,6 @@ const batchOption = Options.Boolean("batch").pipe(
   Options.withDefault(false)
 );
 
-const parseLine = (line: string): { key: string; value: string } | null => {
-  const trimmed = line.trim();
-  if (trimmed === "" || trimmed.startsWith("#")) {
-    return null;
-  }
-  const eqIndex = trimmed.indexOf("=");
-  if (eqIndex === -1) {
-    return null;
-  }
-  const key = trimmed.slice(0, eqIndex).trim();
-  const value = trimmed
-    .slice(eqIndex + 1)
-    .trim()
-    .replaceAll(/^["']|["']$/gu, "");
-  return { key, value };
-};
-
 export const loadCommand = Command.make(
   "load",
   // oxlint-disable-next-line sort-keys -- key order sets the flag order in --help
@@ -60,7 +44,7 @@ export const loadCommand = Command.make(
         try: () => readFileSync(input, "utf-8"),
       });
 
-      const lines = content.split("\n");
+      const entries = parseDotenv(content);
       let added = 0;
       let skipped = 0;
       let overwritten = 0;
@@ -69,13 +53,8 @@ export const loadCommand = Command.make(
       const existingKeys = new Set(existingSecrets.map((item) => item.key));
 
       const importAll = Effect.gen(function* importAll() {
-        for (const line of lines) {
-          const parsed = parseLine(line);
-          if (!parsed) {
-            continue;
-          }
-
-          const secretKey = parsed.key.toLowerCase().replaceAll("_", ".");
+        for (const entry of entries) {
+          const secretKey = toSecretKey(entry.name);
 
           const exists = existingKeys.has(secretKey);
 
@@ -93,7 +72,7 @@ export const loadCommand = Command.make(
             added += 1;
           }
 
-          yield* SecretStore.set(ctx, secretKey, parsed.value);
+          yield* SecretStore.set(ctx, secretKey, entry.value);
           existingKeys.add(secretKey);
         }
       });

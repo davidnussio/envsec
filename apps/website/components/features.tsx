@@ -33,7 +33,7 @@ const FEATURES = [
   },
   {
     description:
-      "Generate .env files or import from them. Bridge between envsec and your existing workflow.",
+      "Generate .env files or import from them, or rescue every .env in a directory tree at once. Bridge between envsec and your existing workflow.",
     icon: FileText,
     title: ".env Import/Export",
   },

@@ -49,7 +49,7 @@ export const DocsContent = () => (
         code={"brew tap davidnussio/homebrew-tap\nbrew install envsec"}
       />
       <H3>npm</H3>
-      <P>Requires Node.js 22 or later.</P>
+      <P>Requires Node.js 22.13 or later.</P>
       <CodeBlock code="npm install -g envsec" />
       <P>Or run directly without installing:</P>
       <CodeBlock code="npx envsec" />
@@ -67,6 +67,17 @@ export const DocsContent = () => (
         files parked on disk, in plaintext, surviving every reboot.
       </P>
       <P>Your OS already has a vault. envsec uses it.</P>
+      <P>
+        <Mono>envsec rescue ~/projects</Mono> finds them all, and{" "}
+        <Mono>--import</Mono> moves them into the keychain: see{" "}
+        <a
+          className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
+          href="#rescue"
+        >
+          envsec rescue
+        </a>
+        .
+      </P>
     </Section>
 
     <Section id="quick-start">
@@ -636,6 +647,81 @@ envsec -c myapp.dev load --force`}
       />
     </Section>
 
+    <Section id="rescue">
+      <H2>envsec rescue</H2>
+      <P>
+        Scan a directory tree for plaintext <Mono>.env</Mono> files and move
+        their secrets into the OS keychain. By default it only reports what it
+        found: run it again with <Mono>--import</Mono>, then{" "}
+        <Mono>--remove-plaintext</Mono> when you are ready. Files are grouped by
+        project (the nearest directory with a <Mono>.git</Mono>,{" "}
+        <Mono>package.json</Mono>, <Mono>pyproject.toml</Mono>,{" "}
+        <Mono>go.mod</Mono>…) and each gets a proposed context such as{" "}
+        <Mono>shop.dev</Mono> or <Mono>shop.prod</Mono>. Templates like{" "}
+        <Mono>.env.example</Mono> and folders like <Mono>node_modules</Mono> are
+        skipped.
+      </P>
+      <OptionsList
+        options={[
+          {
+            description:
+              "Import the secrets into the keychain (without it, rescue only reports)",
+            name: "--import, -i",
+          },
+          {
+            description:
+              "Delete each .env file whose secrets are all verified in the keychain",
+            name: "--remove-plaintext",
+          },
+          {
+            description:
+              "With --import, overwrite secrets already in the keychain with a different value",
+            name: "--force, -f",
+          },
+          {
+            description: "Do not add the .env files to .gitignore",
+            name: "--no-gitignore",
+          },
+          {
+            description: "Maximum directory depth to scan (default: 8)",
+            name: "--depth",
+          },
+        ]}
+      />
+      <TerminalBlock
+        code={`# Report what is there (changes nothing)
+envsec rescue ~/projects
+
+# Import the secrets into the keychain
+envsec rescue ~/projects --import
+
+# Delete the plaintext files once their secrets are verified
+envsec rescue ~/projects --remove-plaintext`}
+      />
+      <ul className="text-muted-foreground mb-4 list-inside list-disc space-y-1">
+        <li>
+          <Mono>.env</Mono> and <Mono>.env.local</Mono> map to{" "}
+          <Mono>&lt;project&gt;.dev</Mono>, <Mono>.env.production</Mono> to{" "}
+          <Mono>&lt;project&gt;.prod</Mono>; files of the same mode are layered
+          like Vite and Next.js do.
+        </li>
+        <li>
+          Values reused across projects are reported by name (never by value),
+          and files committed to git are flagged so you can rotate them.
+        </li>
+        <li>
+          With <Mono>--import</Mono> the files are added to{" "}
+          <Mono>.gitignore</Mono>. Running <Mono>rescue</Mono> again is safe:
+          identical secrets count as secured, different ones are kept unless you
+          pass <Mono>--force</Mono>.
+        </li>
+        <li>
+          Files are deleted only with <Mono>--remove-plaintext</Mono>, and only
+          when every value in them is read back from the keychain unchanged.
+        </li>
+      </ul>
+    </Section>
+
     <Section id="share">
       <H2>envsec share</H2>
       <P>Encrypt secrets with GPG for team sharing.</P>
@@ -808,7 +894,7 @@ envsec --json doctor`}
           supported
         </li>
         <li>
-          <Mono>Node.js</Mono> — runtime version (22+ required)
+          <Mono>Node.js</Mono> — runtime version (22.13+ required)
         </li>
         <li>
           <Mono>Shell</Mono> — active shell detected from the environment

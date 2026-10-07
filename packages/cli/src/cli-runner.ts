@@ -1,6 +1,3 @@
-import { createRequire } from "node:module";
-
-import { NodeRuntime, NodeServices } from "@effect/platform-node";
 import {
   DatabaseConfigDefault,
   DatabaseConfigFrom,
@@ -10,6 +7,7 @@ import {
 import { Console, Effect, Layer, References } from "effect";
 import { Command } from "effect/cli";
 
+import { envsecVersion } from "./build-info.js";
 import { addCommand } from "./cli/add.js";
 import { auditCommand } from "./cli/audit.js";
 import { cmdCommand } from "./cli/cmd.js";
@@ -24,6 +22,7 @@ import { listCommand } from "./cli/list.js";
 import { loadCommand } from "./cli/load.js";
 import { moveCommand } from "./cli/move.js";
 import { renameCommand } from "./cli/rename.js";
+import { rescueCommand } from "./cli/rescue.js";
 import { rootCommand } from "./cli/root.js";
 import { runCommand } from "./cli/run.js";
 import { searchCommand } from "./cli/search.js";
@@ -33,10 +32,8 @@ import { shellCommand } from "./cli/shell.js";
 import { tuiCommand } from "./cli/tui.js";
 import { generateCompletions } from "./completions/index.js";
 import type { ShellType } from "./completions/index.js";
+import { nodeServicesLayer, runMain } from "./node-services.js";
 import { reportErrors } from "./report-errors.js";
-
-const require = createRequire(import.meta.url);
-const pkg = require("../package.json") as { version: string };
 
 const command = rootCommand.pipe(
   Command.withSubcommands([
@@ -54,6 +51,7 @@ const command = rootCommand.pipe(
     envFileCommand,
     envCommand,
     loadCommand,
+    rescueCommand,
     shareCommand,
     shellCommand,
     tuiCommand,
@@ -67,7 +65,7 @@ const command = rootCommand.pipe(
 );
 
 const cli = Command.runWith(command, {
-  version: pkg.version,
+  version: envsecVersion,
 })(process.argv.slice(2));
 
 const COMPLETIONS_FLAG = "--completions";
@@ -115,6 +113,7 @@ const MUTATING_COMMANDS = new Set([
   "delete",
   "del",
   "load",
+  "rescue",
   "cmd",
   "rename",
   "move",
@@ -136,7 +135,7 @@ export const runCliWithLayer = (
 
   if (shell) {
     const bin = "envsec";
-    Console.log(generateCompletions(shell, bin)).pipe(NodeRuntime.runMain);
+    Console.log(generateCompletions(shell, bin)).pipe(runMain);
     return;
   }
 
@@ -144,7 +143,7 @@ export const runCliWithLayer = (
     handleComplete(complete.type, complete.arg, cachePath).pipe(
       Effect.provide(secretStoreLayer),
       reportErrors,
-      NodeRuntime.runMain
+      runMain
     );
     return;
   }
@@ -157,11 +156,11 @@ export const runCliWithLayer = (
 
   program.pipe(
     Effect.provide(secretStoreLayer),
-    Effect.provide(NodeServices.layer),
+    Effect.provide(nodeServicesLayer),
     // Logs are diagnostics: keep them off stdout, which carries data.
     Effect.provideService(References.LogToStderr, true),
     reportErrors,
-    NodeRuntime.runMain
+    runMain
   );
 };
 

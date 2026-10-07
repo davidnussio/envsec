@@ -36,7 +36,7 @@ function __envsec_needs_command
     set -l args (commandline -opc)
     for arg in $args[2..]
         switch $arg
-            case add get delete del search list run env env-file load cmd audit share rename move copy secret shell tui doctor
+            case add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor
                 return 1
         end
     end
@@ -106,6 +106,7 @@ complete -c envsec -n __envsec_needs_command -a run -d 'Execute command with sec
 complete -c envsec -n __envsec_needs_command -a env -d 'Export secrets as env vars'
 complete -c envsec -n __envsec_needs_command -a env-file -d 'Export secrets to .env file'
 complete -c envsec -n __envsec_needs_command -a load -d 'Import from .env file'
+complete -c envsec -n __envsec_needs_command -a rescue -d 'Find .env files and secure their secrets'
 complete -c envsec -n __envsec_needs_command -a cmd -d 'Saved command management'
 complete -c envsec -n __envsec_needs_command -a audit -d 'Check expired secrets'
 complete -c envsec -n __envsec_needs_command -a share -d 'GPG-encrypted export'
@@ -150,6 +151,14 @@ complete -c envsec -n '__envsec_using_command env-file' -l output -s o -r -F -d 
 complete -c envsec -n '__envsec_using_command load' -l input -s i -r -F -d 'Input .env file'
 complete -c envsec -n '__envsec_using_command load' -l force -s f -d 'Overwrite existing secrets'
 complete -c envsec -n '__envsec_using_command load' -l batch -s b -d 'Batch mode'
+
+# rescue
+complete -c envsec -n '__envsec_using_command rescue' -x -a '(__fish_complete_directories)' -d 'Directory to scan'
+complete -c envsec -n '__envsec_using_command rescue' -l import -s i -d 'Import secrets into the keychain'
+complete -c envsec -n '__envsec_using_command rescue' -l force -s f -d 'Overwrite existing secrets'
+complete -c envsec -n '__envsec_using_command rescue' -l remove-plaintext -d 'Delete .env files once secured'
+complete -c envsec -n '__envsec_using_command rescue' -l no-gitignore -d 'Do not update .gitignore'
+complete -c envsec -n '__envsec_using_command rescue' -l depth -x -d 'Maximum scan depth'
 
 # audit
 complete -c envsec -n '__envsec_using_command audit' -l within -s w -x -d 'Duration window'
@@ -224,6 +233,7 @@ complete -c esec -n __envsec_needs_command -a run -d 'Execute command with secre
 complete -c esec -n __envsec_needs_command -a env -d 'Export secrets as env vars'
 complete -c esec -n __envsec_needs_command -a env-file -d 'Export secrets to .env file'
 complete -c esec -n __envsec_needs_command -a load -d 'Import from .env file'
+complete -c esec -n __envsec_needs_command -a rescue -d 'Find .env files and secure their secrets'
 complete -c esec -n __envsec_needs_command -a cmd -d 'Saved command management'
 complete -c esec -n __envsec_needs_command -a audit -d 'Check expired secrets'
 complete -c esec -n __envsec_needs_command -a share -d 'GPG-encrypted export'
@@ -254,6 +264,12 @@ complete -c esec -n '__envsec_using_command env-file' -l output -s o -r -F -d 'O
 complete -c esec -n '__envsec_using_command load' -l input -s i -r -F -d 'Input .env file'
 complete -c esec -n '__envsec_using_command load' -l force -s f -d 'Overwrite existing secrets'
 complete -c esec -n '__envsec_using_command load' -l batch -s b -d 'Batch mode'
+complete -c esec -n '__envsec_using_command rescue' -x -a '(__fish_complete_directories)' -d 'Directory to scan'
+complete -c esec -n '__envsec_using_command rescue' -l import -s i -d 'Import secrets into the keychain'
+complete -c esec -n '__envsec_using_command rescue' -l force -s f -d 'Overwrite existing secrets'
+complete -c esec -n '__envsec_using_command rescue' -l remove-plaintext -d 'Delete .env files once secured'
+complete -c esec -n '__envsec_using_command rescue' -l no-gitignore -d 'Do not update .gitignore'
+complete -c esec -n '__envsec_using_command rescue' -l depth -x -d 'Maximum scan depth'
 complete -c esec -n '__envsec_using_command audit' -l within -s w -x -d 'Duration window'
 complete -c esec -n '__envsec_using_command share' -l encrypt-to -x -d 'GPG recipient'
 complete -c esec -n '__envsec_using_command share' -l output -s o -r -F -d 'Output file'

@@ -14,6 +14,9 @@ export const Footer = () => (
         <Link className="hover:text-foreground transition-colors" href="/docs">
           Docs
         </Link>
+        <Link className="hover:text-foreground transition-colors" href="/blog">
+          Blog
+        </Link>
         <a
           className="hover:text-foreground transition-colors"
           href="https://github.com/davidnussio/envsec"

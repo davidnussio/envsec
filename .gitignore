@@ -41,6 +41,7 @@ build/Release
 dist
 packages/*/dist
 apps/*/dist
+packages/cli/release
 
 # Dependency directories
 node_modules/
