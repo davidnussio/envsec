@@ -65,6 +65,13 @@ export const Navbar = () => {
           >
             Docs
           </Link>
+          <Link
+            className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+            href="/blog"
+            onClick={() => trackEvent("nav_click", { link: "blog" })}
+          >
+            Blog
+          </Link>
           <a
             className={cn(
               buttonVariants({ size: "sm" }),
@@ -155,6 +162,16 @@ export const Navbar = () => {
               }}
             >
               Docs
+            </Link>
+            <Link
+              className="text-muted-foreground text-sm"
+              href="/blog"
+              onClick={() => {
+                trackEvent("nav_click", { link: "blog" });
+                setMobileOpen(false);
+              }}
+            >
+              Blog
             </Link>
           </div>
         </div>
