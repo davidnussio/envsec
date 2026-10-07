@@ -18,6 +18,7 @@ export interface DotenvEntry {
 const assignmentPattern =
   /^(?:export\s+)?(?<name>[A-Za-z_][A-Za-z0-9_.-]*)\s*=\s*(?<rest>.*)$/u;
 const inlineCommentPattern = /\s+#.*$/u;
+const byteOrderMark = /^\uFEFF/u;
 const quotes = new Set(['"', "'", "`"]);
 
 const doubleQuoteEscapes: Record<string, string> = {
@@ -77,7 +78,12 @@ const readQuoted = (
 };
 
 export const parseDotenv = (content: string): DotenvEntry[] => {
-  const lines = content.replaceAll("\r\n", "\n").split("\n");
+  // Editors on Windows often save UTF-8 with a BOM, which would otherwise
+  // end up in the first variable name.
+  const lines = content
+    .replace(byteOrderMark, "")
+    .replaceAll("\r\n", "\n")
+    .split("\n");
   const entries: DotenvEntry[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {

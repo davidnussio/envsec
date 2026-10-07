@@ -114,6 +114,9 @@ function Cleanup-Secrets {
     & node $CLI -c "test.e2e-copy-src" delete --all -y 2>$null | Out-Null
     & node $CLI -c "test.e2e-copy-dst" delete --all -y 2>$null | Out-Null
     & node $CLI -c "test.e2e-secret" delete --all -y 2>$null | Out-Null
+    foreach ($ctx in @("e2e-rescue-app.dev", "e2e-rescue-app.prod", "e2e-rescue-bom.dev", "e2e-rescue-git.dev", "e2e-rescue-git.prod", "e2e-rescue-dup.dev")) {
+        & node $CLI -c $ctx delete --all -y 2>$null | Out-Null
+    }
     & node $CLI cmd delete "test-echo" 2>$null | Out-Null
     & node $CLI cmd delete "test-multi" 2>$null | Out-Null
 }
@@ -997,6 +1000,126 @@ Assert-Eq "secret no-ctx: length 10" "10" "$($val.Length)"
 
 # Clean up
 Run-Ok @("-c", $CTX_SEC, "delete", "--all", "-y") | Out-Null
+
+# ─── 21b. RESCUE ──────────────────────────────────────────────────────────────
+Write-Host ""
+Write-Host "── 21b. RESCUE ──"
+
+function Write-EnvFile {
+    param([string]$Path, [string]$Content)
+    # UTF-8 without BOM, LF line endings: what most editors write.
+    [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
+}
+
+$RescueDir = Join-Path $TmpDir "rescue"
+$RescueApp = Join-Path $RescueDir "e2e-rescue-app"
+New-Item -ItemType Directory -Path (Join-Path $RescueApp "node_modules\dep") -Force | Out-Null
+Write-EnvFile (Join-Path $RescueApp ".env") "API_TOKEN=rescue_token_123`nPORT=3000`n"
+Write-EnvFile (Join-Path $RescueApp ".env.local") "PORT=4000`n"
+Write-EnvFile (Join-Path $RescueApp ".env.production") "DB_URL=`"postgres://prod`"`n"
+Write-EnvFile (Join-Path $RescueApp ".env.example") "API_TOKEN=`n"
+Write-EnvFile (Join-Path $RescueApp "node_modules\dep\.env") "IGNORED=yes`n"
+Write-EnvFile (Join-Path $RescueApp "package.json") "{}`n"
+
+function Get-RescueFiles {
+    $names = @(".env", ".env.local", ".env.production", ".env.example") |
+        Where-Object { Test-Path -LiteralPath (Join-Path $RescueApp $_) }
+    return ($names -join " ")
+}
+
+# Default: report only, changes nothing
+$out = Run-Ok @("rescue", $RescueDir)
+Assert-Contains "rescue report: dev context" "e2e-rescue-app.dev" $out
+Assert-Contains "rescue report: prod context" "e2e-rescue-app.prod" $out
+Assert-Contains "rescue report: totals" "3 secrets in 3 files" $out
+Assert-NotContains "rescue report: skips templates" ".env.example" $out
+Assert-Contains "rescue report: nothing changed" "Nothing changed" $out
+Assert-Contains "rescue report: suggests --import" "--import" $out
+$out = Run-Ok @("-c", "e2e-rescue-app.dev", "list")
+Assert-Contains "rescue report: nothing imported" "No secrets" $out
+
+$out = Run-Ok @("--json", "rescue", $RescueDir)
+Assert-Contains "rescue --json: secrets" '"secrets":3' $out
+Assert-Contains "rescue --json: changed" '"changed":false' $out
+
+# --remove-plaintext before --import: nothing is in the keychain, nothing deleted
+$out = Run-Ok @("rescue", $RescueDir, "--remove-plaintext", "--no-gitignore")
+Assert-Contains "rescue remove before import: none removed" "0 plaintext files removed" $out
+Assert-Contains "rescue remove before import: reason" "not in the keychain yet" $out
+Assert-Eq "rescue remove before import: files intact" ".env .env.local .env.production .env.example" (Get-RescueFiles)
+
+# --import keeps the plaintext files
+$out = Run-Ok @("rescue", $RescueDir, "--import", "--no-gitignore")
+Assert-Contains "rescue import: summary" "3 secrets secured" $out
+Assert-Contains "rescue import: files kept" "3 plaintext files left in place" $out
+$out = Run-Ok @("-c", "e2e-rescue-app.dev", "get", "-q", "api.token")
+Assert-Eq "rescue import: api.token" "rescue_token_123" $out.Trim()
+$out = Run-Ok @("-c", "e2e-rescue-app.dev", "get", "-q", "port")
+Assert-Eq "rescue import: .env.local overrides .env" "4000" $out.Trim()
+$out = Run-Ok @("-c", "e2e-rescue-app.prod", "get", "-q", "db.url")
+Assert-Eq "rescue import: quoted value" "postgres://prod" $out.Trim()
+Assert-Eq "rescue import: no file deleted" ".env .env.local .env.production .env.example" (Get-RescueFiles)
+
+# --remove-plaintext after the import deletes only fully secured files
+$out = Run-Ok @("rescue", $RescueDir, "--remove-plaintext", "--no-gitignore")
+Assert-Contains "rescue remove: removed" "2 plaintext files removed" $out
+Assert-Contains "rescue remove: kept reason" "overridden by .env.local" $out
+Assert-Eq "rescue remove: right files deleted" ".env .env.example" (Get-RescueFiles)
+
+# A value that differs from the keychain is a conflict unless --force
+Write-EnvFile (Join-Path $RescueApp ".env") "API_TOKEN=rotated_token_456`n"
+$out = Run-Ok @("rescue", $RescueDir, "--import", "--no-gitignore")
+Assert-Contains "rescue conflict: reported" "different value" $out
+$out = Run-Ok @("-c", "e2e-rescue-app.dev", "get", "-q", "api.token")
+Assert-Eq "rescue conflict: value kept" "rescue_token_123" $out.Trim()
+Run-Ok @("rescue", $RescueDir, "--import", "--force", "--no-gitignore") | Out-Null
+$out = Run-Ok @("-c", "e2e-rescue-app.dev", "get", "-q", "api.token")
+Assert-Eq "rescue --force: overwritten" "rotated_token_456" $out.Trim()
+
+# CRLF line endings and a UTF-8 BOM (Notepad, Windows PowerShell 5)
+$RescueBomDir = Join-Path $TmpDir "rescue-bom"
+$RescueBomApp = Join-Path $RescueBomDir "e2e-rescue-bom"
+New-Item -ItemType Directory -Path $RescueBomApp -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $RescueBomApp ".env"), "API_TOKEN=bom_token_789`r`nPORT=5000`r`n", [System.Text.UTF8Encoding]::new($true))
+Run-Ok @("rescue", $RescueBomDir, "--import", "--no-gitignore") | Out-Null
+$out = Run-Ok @("-c", "e2e-rescue-bom.dev", "get", "-q", "api.token")
+Assert-Eq "rescue bom/crlf: first key readable" "bom_token_789" $out.Trim()
+$out = Run-Ok @("-c", "e2e-rescue-bom.dev", "get", "-q", "port")
+Assert-Eq "rescue bom/crlf: no trailing CR" "5000" $out.Trim()
+
+# git integration: .gitignore, committed files, duplicates, invalid names
+$RescueGitDir = Join-Path $TmpDir "rescue-git"
+$RescueGitApp = Join-Path $RescueGitDir "e2e-rescue-git"
+$RescueDupApp = Join-Path $RescueGitDir "e2e-rescue-dup"
+New-Item -ItemType Directory -Path $RescueGitApp -Force | Out-Null
+New-Item -ItemType Directory -Path $RescueDupApp -Force | Out-Null
+git -C $RescueGitApp init -q 2>$null | Out-Null
+Write-EnvFile (Join-Path $RescueGitApp ".env") "SHARED_KEY=shared-value-123456`nBAD__NAME=x`n"
+Write-EnvFile (Join-Path $RescueGitApp ".env.production") "DB_URL=postgres://committed`n"
+git -C $RescueGitApp add .env.production 2>$null | Out-Null
+git -C $RescueGitApp -c user.name=e2e -c user.email=e2e@example.com commit -qm init 2>$null | Out-Null
+Write-EnvFile (Join-Path $RescueDupApp ".env") "SHARED_KEY=shared-value-123456`n"
+$RescueGitignore = Join-Path $RescueGitApp ".gitignore"
+
+$out = Run-Ok @("rescue", $RescueGitDir)
+Assert-Contains "rescue git: committed file flagged" "committed to git" $out
+Assert-Contains "rescue git: duplicate value" "appears in more than one place" $out
+Assert-NotContains "rescue git: duplicate value never printed" "shared-value-123456" $out
+Assert-Contains "rescue git: invalid name listed" "BAD__NAME" $out
+Assert-Eq "rescue git: report leaves .gitignore alone" "False" "$(Test-Path -LiteralPath $RescueGitignore)"
+
+$out = Run-Ok @("rescue", $RescueGitDir, "--import")
+Assert-Contains "rescue git: .gitignore updated" "added to" $out
+$lines = @(Get-Content -LiteralPath $RescueGitignore -ErrorAction SilentlyContinue)
+Assert-Eq "rescue git: .gitignore has .env" "1" "$(@($lines | Where-Object { $_ -eq '.env' }).Count)"
+Assert-Eq "rescue git: .gitignore has .env.production" "1" "$(@($lines | Where-Object { $_ -eq '.env.production' }).Count)"
+Run-Ok @("rescue", $RescueGitDir, "--import") | Out-Null
+$lines = @(Get-Content -LiteralPath $RescueGitignore -ErrorAction SilentlyContinue)
+Assert-Eq "rescue git: no duplicate .gitignore lines" "1" "$(@($lines | Where-Object { $_ -eq '.env' }).Count)"
+
+foreach ($ctx in @("e2e-rescue-app.dev", "e2e-rescue-app.prod", "e2e-rescue-bom.dev", "e2e-rescue-git.dev", "e2e-rescue-git.prod", "e2e-rescue-dup.dev")) {
+    Run-Ok @("-c", $ctx, "delete", "--all", "-y") | Out-Null
+}
 
 # ─── 22. CLEANUP & VERIFY ────────────────────────────────────────────────────
 Write-Host ""
