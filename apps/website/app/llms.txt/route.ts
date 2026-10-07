@@ -339,6 +339,10 @@ Built with TypeScript (strict mode), Effect for functional error handling and de
 | Linux   | Secret Service API (D-Bus)  | \`secret-tool\` (libsecret)        |
 | Windows | Credential Manager          | \`cmdkey\` + PowerShell (advapi32) |
 
+## Blog
+
+- [From 417 to 32 milliseconds: envsec on Effect 4 and Bun](https://envsec.dev/blog/effect-4-bun-performance): Startup, memory and install-size benchmarks from Effect 3 on Node to the standalone Bun binary (12.9× faster startup, 5.8× less memory)
+
 ## Optional
 
 - [GitHub Repository](https://github.com/davidnussio/envsec): Source code, issues, and contributions
