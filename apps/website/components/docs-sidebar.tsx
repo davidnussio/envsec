@@ -31,6 +31,7 @@ const SECTIONS = [
       { id: "env", label: "env" },
       { id: "shell", label: "shell" },
       { id: "load", label: "load" },
+      { id: "rescue", label: "rescue" },
       { id: "share", label: "share" },
       { id: "audit", label: "audit" },
       { id: "secret", label: "secret" },

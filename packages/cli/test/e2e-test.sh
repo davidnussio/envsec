@@ -27,7 +27,7 @@ cleanup_secrets() {
   for key in db.password api.token special.chars special.emoji special.utf8 stale.secret; do
     node "$CLI" -c "$CTX" delete -y "$key" >/dev/null 2>&1 || true
   done
-  for key in redis.host redis.port redis.password smtp.user smtp.pass db.password; do
+  for key in redis.host redis.port redis.password smtp.user smtp.pass smtp.host db.password; do
     node "$CLI" -c "$CTX2" delete -y "$key" >/dev/null 2>&1 || true
   done
   node "$CLI" -c "test.e2e-all" delete --all -y >/dev/null 2>&1 || true
@@ -38,6 +38,10 @@ cleanup_secrets() {
   node "$CLI" -c "test.e2e-copy-src" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "test.e2e-copy-dst" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" -c "test.e2e-secret" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-app.dev" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "test.e2e-roundtrip" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "test.e2e-roundtrip2" delete --all -y >/dev/null 2>&1 || true
+  node "$CLI" -c "e2e-rescue-app.prod" delete --all -y >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-echo" >/dev/null 2>&1 || true
   node "$CLI" cmd delete "test-multi" >/dev/null 2>&1 || true
 }
@@ -240,6 +244,7 @@ REDIS_PASSWORD=r3d1s_s3cr3t
 
 SMTP_USER=mailer@example.com
 SMTP_PASS="quoted value with spaces"
+export SMTP_HOST=smtp.example.com # inline comment
 ENVEOF
 
 out=$(run_ok -c "$CTX2" load -i "$LOAD_ENV")
@@ -260,6 +265,20 @@ assert_eq "load: smtp.user" "mailer@example.com" "$out"
 
 out=$(run_ok -c "$CTX2" get smtp.pass)
 assert_eq "load: smtp.pass (quoted)" "quoted value with spaces" "$out"
+
+out=$(run_ok -c "$CTX2" get smtp.host)
+assert_eq "load: export prefix and inline comment" "smtp.example.com" "$out"
+
+# env-file → load round trip keeps escapes and newlines intact
+ROUNDTRIP_VALUE=$'line1\nline2 "quoted" back\\slash'
+ROUNDTRIP_ENV="$TMPDIR_TEST/roundtrip.env"
+run_ok -c "test.e2e-roundtrip" add multi.line -v "$ROUNDTRIP_VALUE" >/dev/null
+run_ok -c "test.e2e-roundtrip" env-file -o "$ROUNDTRIP_ENV" >/dev/null
+run_ok -c "test.e2e-roundtrip2" load -i "$ROUNDTRIP_ENV" >/dev/null
+out=$(run_ok -c "test.e2e-roundtrip2" get -q multi.line)
+assert_eq "load: env-file round trip" "$ROUNDTRIP_VALUE" "$out"
+run_ok -c "test.e2e-roundtrip" delete --all -y >/dev/null || true
+run_ok -c "test.e2e-roundtrip2" delete --all -y >/dev/null || true
 
 # Without --force: should skip duplicates
 out=$(run_ok -c "$CTX2" load -i "$LOAD_ENV")
@@ -1181,6 +1200,79 @@ assert_eq "secret no-ctx: length 10" "10" "${#val}"
 # Clean up
 run_ok -c "$CTX_SEC" delete --all -y >/dev/null || true
 
+# ─── 23b. RESCUE ──────────────────────────────────────────────────────────────
+echo ""
+echo "── 23b. RESCUE ──"
+
+RESCUE_DIR="$TMPDIR_TEST/rescue"
+mkdir -p "$RESCUE_DIR/e2e-rescue-app" "$RESCUE_DIR/e2e-rescue-app/node_modules/dep"
+printf 'API_TOKEN=rescue_token_123\nPORT=3000\n' > "$RESCUE_DIR/e2e-rescue-app/.env"
+printf 'PORT=4000\n' > "$RESCUE_DIR/e2e-rescue-app/.env.local"
+printf 'DB_URL="postgres://prod"\n' > "$RESCUE_DIR/e2e-rescue-app/.env.production"
+printf 'API_TOKEN=\n' > "$RESCUE_DIR/e2e-rescue-app/.env.example"
+printf 'IGNORED=yes\n' > "$RESCUE_DIR/e2e-rescue-app/node_modules/dep/.env"
+echo '{}' > "$RESCUE_DIR/e2e-rescue-app/package.json"
+
+rescue_files_on_disk() {
+  local listing=""
+  for f in .env .env.local .env.production .env.example; do
+    [[ -f "$RESCUE_DIR/e2e-rescue-app/$f" ]] && listing="$listing $f"
+  done
+  echo "${listing# }"
+}
+
+# Default: report only, changes nothing
+out=$(run_ok rescue "$RESCUE_DIR")
+assert_contains "rescue report: dev context" "e2e-rescue-app.dev" "$out"
+assert_contains "rescue report: prod context" "e2e-rescue-app.prod" "$out"
+assert_contains "rescue report: totals" "3 secrets in 3 files" "$out"
+assert_not_contains "rescue report: skips templates" ".env.example" "$out"
+assert_contains "rescue report: nothing changed" "Nothing changed" "$out"
+assert_contains "rescue report: suggests --import" "--import" "$out"
+out=$(run_ok -c "e2e-rescue-app.dev" list || true)
+assert_contains "rescue report: nothing imported" "No secrets" "$out"
+
+out=$(run_ok --json rescue "$RESCUE_DIR")
+assert_contains "rescue --json: secrets" '"secrets":3' "$out"
+assert_contains "rescue --json: changed" '"changed":false' "$out"
+
+# --remove-plaintext before --import: nothing is in the keychain, nothing deleted
+out=$(run_ok rescue "$RESCUE_DIR" --remove-plaintext --no-gitignore)
+assert_contains "rescue remove before import: none removed" "0 plaintext files removed" "$out"
+assert_contains "rescue remove before import: reason" "not in the keychain yet" "$out"
+assert_eq "rescue remove before import: files intact" ".env .env.local .env.production .env.example" "$(rescue_files_on_disk)"
+
+# --import keeps the plaintext files
+out=$(run_ok rescue "$RESCUE_DIR" --import --no-gitignore)
+assert_contains "rescue import: summary" "3 secrets secured" "$out"
+assert_contains "rescue import: files kept" "3 plaintext files left in place" "$out"
+out=$(run_ok -c "e2e-rescue-app.dev" get -q api.token)
+assert_eq "rescue import: api.token" "rescue_token_123" "$out"
+out=$(run_ok -c "e2e-rescue-app.dev" get -q port)
+assert_eq "rescue import: .env.local overrides .env" "4000" "$out"
+out=$(run_ok -c "e2e-rescue-app.prod" get -q db.url)
+assert_eq "rescue import: quoted value" "postgres://prod" "$out"
+assert_eq "rescue import: no file deleted" ".env .env.local .env.production .env.example" "$(rescue_files_on_disk)"
+
+# --remove-plaintext after the import deletes only fully secured files
+out=$(run_ok rescue "$RESCUE_DIR" --remove-plaintext --no-gitignore)
+assert_contains "rescue remove: removed" "2 plaintext files removed" "$out"
+assert_contains "rescue remove: kept reason" "overridden by .env.local" "$out"
+assert_eq "rescue remove: right files deleted" ".env .env.example" "$(rescue_files_on_disk)"
+
+# A value that differs from the keychain is a conflict unless --force
+printf 'API_TOKEN=rotated_token_456\n' > "$RESCUE_DIR/e2e-rescue-app/.env"
+out=$(run_ok rescue "$RESCUE_DIR" --import --no-gitignore)
+assert_contains "rescue conflict: reported" "different value" "$out"
+out=$(run_ok -c "e2e-rescue-app.dev" get -q api.token)
+assert_eq "rescue conflict: value kept" "rescue_token_123" "$out"
+run_ok rescue "$RESCUE_DIR" --import --force --no-gitignore >/dev/null
+out=$(run_ok -c "e2e-rescue-app.dev" get -q api.token)
+assert_eq "rescue --force: overwritten" "rotated_token_456" "$out"
+
+run_ok -c "e2e-rescue-app.dev" delete --all -y >/dev/null || true
+run_ok -c "e2e-rescue-app.prod" delete --all -y >/dev/null || true
+
 # ─── 24. CLEANUP & VERIFY ────────────────────────────────────────────────────
 echo ""
 echo "── 24. CLEANUP ──"
@@ -1188,7 +1280,7 @@ echo "── 24. CLEANUP ──"
 for key in db.password api.token special.emoji special.utf8; do
   run_ok -c "$CTX" delete -y "$key" >/dev/null || true
 done
-for key in redis.host redis.port redis.password smtp.user smtp.pass; do
+for key in redis.host redis.port redis.password smtp.user smtp.pass smtp.host; do
   run_ok -c "$CTX2" delete -y "$key" >/dev/null || true
 done
 

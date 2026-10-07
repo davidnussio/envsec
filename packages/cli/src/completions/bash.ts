@@ -16,7 +16,7 @@ _envsec_completions() {
                 context_val="\${COMP_WORDS[i+1]}"
                 ((i++))
                 ;;
-            add|get|delete|del|search|list|run|env|env-file|load|cmd|audit|share|rename|move|copy|secret|shell|tui|doctor)
+            add|get|delete|del|search|list|run|env|env-file|load|rescue|cmd|audit|share|rename|move|copy|secret|shell|tui|doctor)
                 if [[ -z "$cmd" ]]; then
                     cmd="\${COMP_WORDS[i]}"
                 fi
@@ -72,7 +72,7 @@ _envsec_completions() {
     if [[ "$cur" == -* ]]; then
         case "$cmd" in
             "")
-                opts="-c -d -h --context --debug --json --db --completions --help --version add get delete del search list run env env-file load cmd audit share rename move copy secret shell tui doctor"
+                opts="-c -d -h --context --debug --json --db --completions --help --version add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor"
                 ;;
             add)
                 opts="-v -e -h --value --expires --help"
@@ -100,6 +100,9 @@ _envsec_completions() {
                 ;;
             load)
                 opts="-i -f -b -h --input --force --batch --help"
+                ;;
+            rescue)
+                opts="-i -f -h --import --force --remove-plaintext --no-gitignore --depth --help"
                 ;;
             cmd)
                 opts="-h --help run search list delete"
@@ -140,7 +143,7 @@ _envsec_completions() {
     case "$cmd" in
         "")
             # Top-level: complete subcommands
-            COMPREPLY=( $(compgen -W "add get delete del search list run env env-file load cmd audit share rename move copy secret shell tui doctor" -- "$cur") )
+            COMPREPLY=( $(compgen -W "add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor" -- "$cur") )
             ;;
         get|delete|del|add|secret)
             # Complete secret keys if context is known
@@ -174,6 +177,10 @@ _envsec_completions() {
         load)
             # Complete file paths
             COMPREPLY=( $(compgen -f -- "$cur") )
+            ;;
+        rescue)
+            # Complete directories
+            COMPREPLY=( $(compgen -d -- "$cur") )
             ;;
     esac
     return 0

@@ -199,6 +199,16 @@ envsec -c myapp.dev load --force             # overwrite existing
 
 Keys are converted from \`UPPER_SNAKE_CASE\` to \`dotted.lowercase\` (e.g. \`API_TOKEN\` → \`api.token\`).
 
+### Rescue every .env file in a directory tree
+
+\`\`\`bash
+envsec rescue ~/projects                     # report only, changes nothing
+envsec rescue ~/projects --import            # import into the keychain, update .gitignore
+envsec rescue ~/projects --remove-plaintext  # delete files whose secrets are verified in the keychain
+\`\`\`
+
+Groups files by project and proposes \`<project>.<mode>\` contexts (\`.env\` → \`.dev\`, \`.env.production\` → \`.prod\`). Plaintext files are never deleted without \`--remove-plaintext\`.
+
 ### Share secrets (GPG encrypted)
 
 \`\`\`bash

@@ -54,6 +54,7 @@ _envsec() {
                 'env:Export secrets as env vars'
                 'env-file:Export secrets to .env file'
                 'load:Import secrets from .env file'
+                'rescue:Find .env files and secure their secrets'
                 'cmd:Saved command management'
                 'audit:Check expired/expiring secrets'
                 'share:GPG-encrypted export'
@@ -112,6 +113,15 @@ _envsec() {
                         '(-i --input)'{-i,--input}'[Input .env file]:file:_files' \\
                         '(-f --force)'{-f,--force}'[Overwrite existing secrets]' \\
                         '(-b --batch)'{-b,--batch}'[Batch mode]'
+                    ;;
+                rescue)
+                    _arguments \\
+                        '(-i --import)'{-i,--import}'[Import secrets into the keychain]' \\
+                        '(-f --force)'{-f,--force}'[Overwrite existing secrets]' \\
+                        '--remove-plaintext[Delete .env files once secured]' \\
+                        '--no-gitignore[Do not update .gitignore]' \\
+                        '--depth[Maximum scan depth]:depth:' \\
+                        '1:directory:_files -/'
                     ;;
                 cmd)
                     local -a cmd_subcommands=(

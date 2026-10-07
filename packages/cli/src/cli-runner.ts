@@ -22,6 +22,7 @@ import { listCommand } from "./cli/list.js";
 import { loadCommand } from "./cli/load.js";
 import { moveCommand } from "./cli/move.js";
 import { renameCommand } from "./cli/rename.js";
+import { rescueCommand } from "./cli/rescue.js";
 import { rootCommand } from "./cli/root.js";
 import { runCommand } from "./cli/run.js";
 import { searchCommand } from "./cli/search.js";
@@ -50,6 +51,7 @@ const command = rootCommand.pipe(
     envFileCommand,
     envCommand,
     loadCommand,
+    rescueCommand,
     shareCommand,
     shellCommand,
     tuiCommand,
@@ -111,6 +113,7 @@ const MUTATING_COMMANDS = new Set([
   "delete",
   "del",
   "load",
+  "rescue",
   "cmd",
   "rename",
   "move",
