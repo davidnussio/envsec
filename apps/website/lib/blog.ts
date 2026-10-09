@@ -83,6 +83,15 @@ export interface BlogPost {
 /** Newest first. Posts sharing a date keep their order here. */
 export const POSTS: readonly BlogPost[] = [
   {
+    date: "2026-10-09",
+    description:
+      "envsec rescue scans a folder for plaintext .env files, reports reused and committed secrets, then moves them into the OS keychain.",
+    readingTime: "6 min read",
+    slug: "envsec-rescue-plaintext-env-files",
+    tags: ["security", "guides"],
+    title: "How many plaintext secrets are sitting in your projects folder?",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
