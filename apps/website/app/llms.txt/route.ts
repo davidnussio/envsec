@@ -1,3 +1,5 @@
+import { POSTS, postUrl, SITE_URL } from "@/lib/blog";
+
 const content = `# envsec
 
 > envsec is a cross-platform CLI tool and Node.js SDK for managing environment secrets using native OS credential stores (macOS Keychain, Linux Secret Service/GNOME Keyring, Windows Credential Manager). Secrets are not stored as plaintext on disk unless you explicitly export them with \`env-file\`.
@@ -358,7 +360,7 @@ Built with TypeScript (strict mode), Effect for functional error handling and de
 
 ## Blog
 
-- [From 417 to 32 milliseconds: envsec on Effect 4 and Bun](https://envsec.dev/blog/effect-4-bun-performance): Startup, memory and install-size benchmarks from Effect 3 on Node to the standalone Bun binary (12.9× faster startup, 5.8× less memory)
+${POSTS.map((post) => `- [${post.title}](${SITE_URL}${postUrl(post.slug)}): ${post.description}`).join("\n")}
 
 ## Optional
 
