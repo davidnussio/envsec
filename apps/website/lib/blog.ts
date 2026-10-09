@@ -155,6 +155,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Building a CLI with Effect 4",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec's end-to-end tests reach the real macOS Keychain, GNOME Keyring and Windows Credential Manager on GitHub Actions, and what broke along the way.",
+    readingTime: "7 min read",
+    slug: "testing-keychains-in-ci",
+    tags: ["shipping", "cross-platform"],
+    title: "Testing a keychain CLI on macOS, Linux and Windows in CI",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
