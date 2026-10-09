@@ -119,6 +119,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "From .env to the keychain in five minutes",
   },
   {
+    date: "2026-10-09",
+    description:
+      "An honest threat model for envsec: what the OS keychain protects, and what it doesn't: same-user processes, environment variables, argv, metadata, env-file.",
+    readingTime: "7 min read",
+    slug: "envsec-threat-model",
+    tags: ["security", "shell"],
+    title: "What envsec does not protect you from",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
