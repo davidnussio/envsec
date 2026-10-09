@@ -190,11 +190,14 @@ const ThreatModelPost = () => (
     <P>
       With <Mono>/bin/sh</Mono>, a value containing <Mono>;</Mono> or{" "}
       <Mono>$(…)</Mono> is expanded as data, not run. An unquoted reference is
-      still split on whitespace, so quote your placeholders. On Windows the
-      reference is <Mono>%VAR%</Mono>, and <Mono>cmd.exe</Mono> expands those
-      before it looks for <Mono>&amp;</Mono> and <Mono>|</Mono>, so this
-      protection does not carry over there. On Windows, prefer{" "}
-      <Mono>--inject</Mono> and read the variable in your program.
+      still split on whitespace, so quote your placeholders. On Windows, since
+      envsec 1.1.3, the reference is <Mono>!VAR!</Mono> and the command runs
+      under <Mono>cmd /v:on</Mono>: delayed expansion happens after{" "}
+      <Mono>cmd.exe</Mono> has parsed the line, so <Mono>&amp;</Mono> and{" "}
+      <Mono>|</Mono> in a value stay literal. Earlier versions used{" "}
+      <Mono>%VAR%</Mono>, which <Mono>cmd.exe</Mono> expands before it looks for
+      those operators; if you are on one of them, prefer <Mono>--inject</Mono>{" "}
+      and read the variable in your program.
     </P>
 
     <H3>The metadata database tells a story</H3>
@@ -205,7 +208,8 @@ const ThreatModelPost = () => (
       tell someone which services you use and where to look. A completion cache
       next to it lists contexts and keys too. envsec creates the directory with
       mode <Mono>0700</Mono> and both files with <Mono>0600</Mono>, and resets
-      the database permissions every time it opens it (
+      the permissions of the database file and of <Mono>~/.envsec</Mono> every
+      time it opens them (
       <Mono>packages/core/src/implementations/sqlite-metadata-store.ts</Mono>
       ). That keeps other local users out. It does nothing against processes
       running as you, or a backup tool that copies your home directory.
@@ -215,10 +219,12 @@ const ThreatModelPost = () => (
     <P>
       <Mono>env-file</Mono> writes a plaintext <Mono>.env</Mono>, which is what
       envsec exists to avoid; it is there as a bridge for tools that only read
-      files. It writes with the default permissions from your umask, typically{" "}
-      <Mono>0644</Mono>, which other local users can read. envsec records the
-      path, and <Mono>envsec audit</Mono> lists generated files and forgets the
-      ones you deleted. It cannot track copies.
+      files. Since envsec 1.1.3 it creates the file with mode <Mono>0600</Mono>{" "}
+      and tightens an existing file it overwrites; earlier versions used the
+      default permissions from your umask, typically <Mono>0644</Mono>, which
+      other local users can read. envsec records the path, and{" "}
+      <Mono>envsec audit</Mono> lists generated files and forgets the ones you
+      deleted. It cannot track copies.
     </P>
     <P>
       <Mono>share</Mono> encrypts with GPG using{" "}
