@@ -17,6 +17,7 @@ const VERSION_PATTERN = /envsec v\d/u;
 const COMPLETE_COMMAND_PATTERN = /__complete/u;
 const DESCRIBED_SUBCOMMAND_PATTERN = /^\s+\S.*\s{2,}\S/u;
 const DELETE_ALIAS_PATTERN = /delete, del/u;
+const ANSI_ESCAPE = "\u001B[";
 
 const runCli = (...args) =>
   spawnSync(process.execPath, [CLI_PATH, ...args], {
@@ -179,4 +180,25 @@ test("serves dynamic completions for --completions=<shell> too", () => {
     assert.equal(result.status, 0);
     assert.match(result.stdout, COMPLETE_COMMAND_PATTERN);
   }
+});
+
+test("FORCE_COLOR decides the colour of stderr notices", () => {
+  withDatabase((databasePath) => {
+    const runWithForceColor = (value) =>
+      spawnSync(
+        process.execPath,
+        [CLI_PATH, "--db", databasePath, "-c", "smoke.context", "env"],
+        {
+          encoding: "utf-8",
+          env: { ...process.env, FORCE_COLOR: value, NO_COLOR: "" },
+        }
+      );
+
+    const plain = runWithForceColor("0");
+    assert.match(plain.stderr, NO_SECRETS_PATTERN);
+    assert.ok(!plain.stderr.includes(ANSI_ESCAPE));
+
+    const coloured = runWithForceColor("1");
+    assert.ok(coloured.stderr.includes(ANSI_ESCAPE));
+  });
 });

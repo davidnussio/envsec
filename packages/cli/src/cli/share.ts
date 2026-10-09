@@ -2,12 +2,10 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 
 import {
-  badge,
-  bold,
   FileAccessError,
   GPGEncryptionError,
-  icons,
   SecretStore,
+  stderrUi,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag as Options } from "effect/cli";
@@ -67,7 +65,7 @@ export const shareCommand = Command.make(
 
       if (secrets.length === 0) {
         yield* Console.error(
-          `${icons.empty} No secrets found for context ${bold(`"${ctx}"`)}`
+          `${stderrUi.icons.empty} No secrets found for context ${stderrUi.bold(`"${ctx}"`)}`
         );
         return;
       }
@@ -104,7 +102,7 @@ export const shareCommand = Command.make(
 
       if (skipped.length > 0) {
         yield* Console.error(
-          `${icons.warning} Skipped ${badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
+          `${stderrUi.icons.warning} Skipped ${stderrUi.badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
         );
       }
 
@@ -134,7 +132,7 @@ export const shareCommand = Command.make(
           try: () => writeFileSync(output.value, encrypted, "utf-8"),
         });
         yield* Console.error(
-          `${icons.shield} Encrypted ${badge(entries.length, "secret")} from ${bold(`"${ctx}"`)} for ${bold(encryptTo)} ${icons.arrow} ${bold(output.value)}`
+          `${stderrUi.icons.shield} Encrypted ${stderrUi.badge(entries.length, "secret")} from ${stderrUi.bold(`"${ctx}"`)} for ${stderrUi.bold(encryptTo)} ${stderrUi.icons.arrow} ${stderrUi.bold(output.value)}`
         );
       } else {
         yield* Console.log(encrypted);

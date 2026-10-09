@@ -1,10 +1,4 @@
-import {
-  bold,
-  formatTimeDistance,
-  icons,
-  SecretStore,
-  yellow,
-} from "@envsec/core";
+import { formatTimeDistance, SecretStore, stderrUi } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
 
@@ -33,9 +27,11 @@ export const getCommand = Command.make(
           Effect.catchTag("SecretNotFoundError", (err) =>
             Effect.gen(function* reportMissing() {
               if (err.message.includes("missing from the OS keychain")) {
-                yield* Console.error(`${icons.warning} ${err.message}`);
                 yield* Console.error(
-                  `${icons.info} To clean up stale metadata, run: ${yellow(`envsec delete -c ${ctx} ${key}`)}`
+                  `${stderrUi.icons.warning} ${err.message}`
+                );
+                yield* Console.error(
+                  `${stderrUi.icons.info} To clean up stale metadata, run: ${stderrUi.yellow(`envsec delete -c ${ctx} ${key}`)}`
                 );
               }
               return yield* Effect.fail(err);
@@ -52,10 +48,10 @@ export const getCommand = Command.make(
           Effect.gen(function* reportMissing() {
             if (err.message.includes("missing from the OS keychain")) {
               yield* Console.error(
-                `${icons.warning} Secret ${bold(`"${key}"`)} has metadata but is missing from the OS keychain.`
+                `${stderrUi.icons.warning} Secret ${stderrUi.bold(`"${key}"`)} has metadata but is missing from the OS keychain.`
               );
               yield* Console.error(
-                `${icons.info} To clean up stale metadata, run: ${yellow(`envsec delete -c ${ctx} ${key}`)}`
+                `${stderrUi.icons.info} To clean up stale metadata, run: ${stderrUi.yellow(`envsec delete -c ${ctx} ${key}`)}`
               );
             }
             return yield* Effect.fail(err);
@@ -81,13 +77,13 @@ export const getCommand = Command.make(
           const now = Date.now();
           if (expiresMs <= now) {
             yield* Console.error(
-              `${icons.expired} Warning: this secret expired ${formatTimeDistance(meta.expires_at)}`
+              `${stderrUi.icons.expired} Warning: this secret expired ${formatTimeDistance(meta.expires_at)}`
             );
           } else {
             const oneDayMs = 24 * 60 * 60 * 1000;
             if (expiresMs - now < oneDayMs) {
               yield* Console.error(
-                `${icons.clock} Heads up: this secret expires ${formatTimeDistance(meta.expires_at)}`
+                `${stderrUi.icons.clock} Heads up: this secret expires ${formatTimeDistance(meta.expires_at)}`
               );
             }
           }

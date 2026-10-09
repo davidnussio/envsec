@@ -1,4 +1,11 @@
-import { bold, ContextName, dim, icons, SecretStore } from "@envsec/core";
+import {
+  bold,
+  ContextName,
+  dim,
+  icons,
+  SecretStore,
+  stderrUi,
+} from "@envsec/core";
 import { Console, Effect, Option, Schema } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
 
@@ -50,7 +57,7 @@ const cmdRunCommand = Command.make(
 
       if (!quiet && ctx !== saved.context) {
         yield* Console.error(
-          `${icons.warning} Running ${bold(`"${name}"`)} in context ${bold(`"${ctx}"`)} (saved: ${dim(`"${saved.context}"`)})`
+          `${stderrUi.icons.warning} Running ${stderrUi.bold(`"${name}"`)} in context ${stderrUi.bold(`"${ctx}"`)} (saved: ${stderrUi.dim(`"${saved.context}"`)})`
         );
       }
 

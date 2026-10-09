@@ -3,6 +3,7 @@
  * Raw ANSI escape sequences — zero dependencies.
  */
 
+import { isColorEnabled } from "@envsec/core";
 import { Effect } from "effect";
 
 // ── ANSI escape sequences ───────────────────────────────────────────
@@ -30,15 +31,7 @@ export const screen = {
 
 // ── Colors (reuse project conventions) ──────────────────────────────
 
-const useColor = (() => {
-  if (process.env.NO_COLOR) {
-    return false;
-  }
-  if (process.env.FORCE_COLOR) {
-    return true;
-  }
-  return process.stdout.isTTY ?? false;
-})();
+const useColor = isColorEnabled(process.stdout);
 
 const ansi = (code: string) => (text: string) =>
   useColor ? `\u001B[${code}m${text}\u001B[0m` : text;

@@ -1,4 +1,4 @@
-import { icons } from "@envsec/core";
+import { stderrUi } from "@envsec/core";
 import { Cause, Console, Effect, Option, Runtime } from "effect";
 
 /** Marks a failure whose message was already printed, so `runMain` only
@@ -36,8 +36,8 @@ export const reportErrors = <A, E, R>(
       }
       const failure = Cause.findErrorOption(cause);
       const output = Option.isSome(failure)
-        ? `${icons.error} ${messageOf(failure.value)}`
-        : `${icons.error} Unexpected error:\n${Cause.pretty(cause)}`;
+        ? `${stderrUi.icons.error} ${messageOf(failure.value)}`
+        : `${stderrUi.icons.error} Unexpected error:\n${Cause.pretty(cause)}`;
       return Console.error(output).pipe(
         Effect.andThen(
           Effect.fail(

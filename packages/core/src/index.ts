@@ -67,10 +67,12 @@ export {
   green,
   icons,
   indent,
+  isColorEnabled,
   label,
   magenta,
   red,
   separator,
+  stderrUi,
   white,
   yellow,
 } from "./ui.js";
