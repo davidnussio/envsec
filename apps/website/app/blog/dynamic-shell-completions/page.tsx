@@ -38,7 +38,7 @@ const HOMEBREW_FORMULA = `def install
   generate_completions_from_executable(bin/"envsec", "--completions", shells: [:bash, :zsh, :fish])
 end`;
 
-const MANUAL_INSTALL = `# bash 4.4 or newer: add to ~/.bashrc
+const MANUAL_INSTALL = `# bash: add to ~/.bashrc
 eval "$(envsec --completions bash)"
 # fish: add to ~/.config/fish/config.fish
 envsec --completions fish | source
@@ -156,8 +156,11 @@ const ZSH_ARGUMENTS = `_envsec() {
                         '1:key:_envsec_keys'
                     ;;`;
 
-const ZSH_FIX = `# after the outer _arguments, before "case $state in"
-local _envsec_ctx="\${opt_args[-c]:-\${opt_args[--context]}}"
+const ZSH_FIX = `# in _envsec: declare the copy, then fill it after the outer _arguments,
+# before "case $state in"
+local _envsec_ctx
+# ...
+_envsec_ctx="\${(Q)\${opt_args[-c]:-\${opt_args[--context]}}}"
 
 # in _envsec_keys
 local ctx="\${_envsec_ctx:-$ENVSEC_CONTEXT}"`;
@@ -241,11 +244,17 @@ const SUPPORT_COLUMNS = [
 const SUPPORT_ROWS = [
   ["Contexts after -c / --context", "yes", "yes", "yes"],
   ["Contexts after --to (move, copy)", "yes", "yes", "yes"],
-  ["Keys from -c on the command line", "yes", "no (bug)", "yes"],
+  ["Keys from -c on the command line", "yes", "fixed in 1.1.3", "yes"],
   ["Keys from exported ENVSEC_CONTEXT", "yes", "yes", "yes"],
-  ["Keys with --context=value", "no", "no", "no"],
-  ["Saved commands for cmd run", "no (bug)", "yes", "yes"],
-  ["Saved commands for cmd delete", "no (bug)", "yes", "mixed with keys"],
+  ["Keys with --context=value", "fixed in 1.1.3", "fixed in 1.1.3", "no"],
+  ["Saved commands for cmd run", "fixed in 1.1.3", "yes", "yes"],
+  ["Saved commands for cmd delete", "fixed in 1.1.3", "yes", "fixed in 1.1.3"],
+  [
+    "Values from the --db database",
+    "fixed in 1.1.3",
+    "fixed in 1.1.3",
+    "fixed in 1.1.3",
+  ],
 ] as const;
 
 const DynamicShellCompletionsPost = () => (
@@ -267,7 +276,9 @@ const DynamicShellCompletionsPost = () => (
       in a SQLite metadata database on your machine, so the completion script
       has to ask envsec for them on every Tab press. This post walks through how
       that works in bash, zsh and fish, what each shell makes awkward, and the
-      bugs I found while testing the scripts for this article.
+      bugs I found while testing the scripts for this article. They are fixed in
+      envsec 1.1.3; the snippets below show the scripts as they were when I
+      found them.
     </P>
 
     <H2>One hidden subcommand</H2>
@@ -317,11 +328,12 @@ const DynamicShellCompletionsPost = () => (
       <Link className={LINK_CLASS} href="/docs">
         docs
       </Link>{" "}
-      currently say <Mono>eval &quot;$(envsec --completions zsh)&quot;</Mono>.
-      That does not work. The zsh script is written as an autoloadable{" "}
-      <Mono>#compdef</Mono> file that ends by calling <Mono>_envsec</Mono>, so
-      evaluating it in <Mono>.zshrc</Mono> runs <Mono>_arguments</Mono> outside
-      a completion and prints{" "}
+      used to say <Mono>eval &quot;$(envsec --completions zsh)&quot;</Mono>.
+      That does not work, and they now describe the <Mono>fpath</Mono> setup.
+      The zsh script is written as an autoloadable <Mono>#compdef</Mono> file
+      that ends by calling <Mono>_envsec</Mono>, so evaluating it in{" "}
+      <Mono>.zshrc</Mono> runs <Mono>_arguments</Mono> outside a completion and
+      prints{" "}
       <Mono>
         _arguments:comparguments:327: can only be called from completion
         function
@@ -371,8 +383,9 @@ const DynamicShellCompletionsPost = () => (
       <li>
         <Strong>bash version.</Strong> <Mono>-o nosort</Mono> needs bash 4.4 or
         newer. The <Mono>/bin/bash</Mono> that ships with macOS is 3.2, rejects
-        the option and leaves envsec with no completion at all. Use a current
-        bash from Homebrew.
+        the option, and until 1.1.3 that left envsec with no completion at all.
+        The script now retries without <Mono>nosort</Mono>, so bash 3.2 gets
+        completions in alphabetical order instead.
       </li>
     </List>
     <P>
@@ -381,10 +394,11 @@ const DynamicShellCompletionsPost = () => (
     </P>
     <CodeBlock code={COMP_WORDS_DEMO} language="text" />
     <P>
-      With <Mono>--context=myapp.dev</Mono> the loop reads <Mono>=</Mono> as the
-      context, asks for the keys of a context called <Mono>=</Mono>, gets
-      nothing back and falls through to file names. Only the space-separated
-      form completes keys.
+      With <Mono>--context=myapp.dev</Mono> the loop read <Mono>=</Mono> as the
+      context, asked for the keys of a context called <Mono>=</Mono>, got
+      nothing back and fell through to file names. Since 1.1.3 the loop skips
+      the <Mono>=</Mono> word, and also handles bash 3.2, which keeps{" "}
+      <Mono>--context=myapp.dev</Mono> as a single word.
     </P>
     <P>
       The same loop hides a real bug. <Mono>run</Mono>, <Mono>list</Mono>,{" "}
@@ -393,7 +407,8 @@ const DynamicShellCompletionsPost = () => (
       first matching branch. <Mono>subcmd</Mono> is never set, and{" "}
       <Mono>envsec cmd run &lt;Tab&gt;</Mono> offers{" "}
       <Mono>run search list delete</Mono> again instead of your saved commands.
-      I found this while writing the post; it&apos;s on the fix list.
+      I found this while writing the post. 1.1.3 looks for the <Mono>cmd</Mono>{" "}
+      subcommand in a separate step, after the top-level one is known.
     </P>
 
     <H2>zsh: _arguments, _describe and a lost flag</H2>
@@ -430,15 +445,18 @@ const DynamicShellCompletionsPost = () => (
       completion.
     </P>
     <P>
-      The fix is two lines: copy the context out of <Mono>opt_args</Mono> before
-      the nested call and read the copy, which works because zsh functions see
-      the locals of their callers. I tested it on a copy of the script and it
-      completes the right keys:
+      The fix, in 1.1.3, is to copy the context out of <Mono>opt_args</Mono>{" "}
+      before the nested call and read the copy, which works because zsh
+      functions see the locals of their callers. <Mono>(Q)</Mono> removes any
+      quoting the user typed around the name:
     </P>
     <CodeBlock code={ZSH_FIX} language="zsh" />
     <P>
-      Until that ships, key completion in zsh works only with an exported{" "}
-      <Mono>ENVSEC_CONTEXT</Mono>.
+      Before 1.1.3, key completion in zsh worked only with an exported{" "}
+      <Mono>ENVSEC_CONTEXT</Mono>. The same release also declares the{" "}
+      <Mono>--context</Mono> and <Mono>--db</Mono> specs as{" "}
+      <Mono>--context=</Mono> and <Mono>--db=</Mono>, so <Mono>_arguments</Mono>{" "}
+      accepts <Mono>--context=myapp.dev</Mono> as well as the two-word form.
     </P>
 
     <H2>fish: complete -a with a command substitution</H2>
@@ -456,12 +474,13 @@ const DynamicShellCompletionsPost = () => (
       <Mono>-x</Mono> (short for <Mono>-r -f</Mono>) turns off file-name
       completion for that argument, and <Mono>-d</Mono> adds the grey
       description fish shows next to each candidate. In my tests fish handled
-      the most cases correctly. It shares the <Mono>--context=value</Mono> blind
-      spot, since the loop compares whole tokens. It also has its own small bug:{" "}
-      <Mono>envsec cmd delete &lt;Tab&gt;</Mono> mixes secret keys into the
-      saved command names, because the condition for the top-level{" "}
-      <Mono>delete</Mono> command also matches when <Mono>delete</Mono> comes
-      after <Mono>cmd</Mono>.
+      the most cases correctly. It still has the <Mono>--context=value</Mono>{" "}
+      blind spot, since the loop compares whole tokens. It also had its own
+      small bug: <Mono>envsec cmd delete &lt;Tab&gt;</Mono> mixed secret keys
+      into the saved command names, because the condition for the top-level{" "}
+      <Mono>delete</Mono> command also matched when <Mono>delete</Mono> came
+      after <Mono>cmd</Mono>. Since 1.1.3 the condition compares against the
+      first subcommand on the line only, skipping the values of global options.
     </P>
 
     <H2>The latency budget</H2>
@@ -494,8 +513,9 @@ const DynamicShellCompletionsPost = () => (
       It is rebuilt after every command that can change names (<Mono>add</Mono>,{" "}
       <Mono>delete</Mono>, <Mono>load</Mono>, <Mono>rescue</Mono>,{" "}
       <Mono>cmd</Mono>, <Mono>rename</Mono>, <Mono>move</Mono>,{" "}
-      <Mono>copy</Mono>, <Mono>secret</Mono>), and after any completion that
-      misses it. Here is what the two paths cost:
+      <Mono>copy</Mono>, <Mono>secret</Mono> and, since 1.1.3, <Mono>tui</Mono>
+      ), and after any completion that misses it. Here is what the two paths
+      cost:
     </P>
     <DataTable
       caption="Median of 40 runs (hyperfine -N, 5 warm-ups; the no-cache run deletes the cache before each run). Homebrew binary envsec 1.1.2 on an Apple M4 Pro, sandbox database with 2 contexts and 5 keys."
@@ -512,14 +532,17 @@ const DynamicShellCompletionsPost = () => (
     <List>
       <li>
         <Strong>Staleness.</Strong> Only CLI commands refresh the cache. Secrets
-        added from <Mono>envsec tui</Mono> or the SDK in an existing context may
-        not show up in completions until the 60-minute TTL expires or you run a
-        CLI command that refreshes it.
+        added from the SDK in an existing context may not show up in completions
+        until the 60-minute TTL expires or you run a CLI command that refreshes
+        it. Before 1.1.3 the same was true of <Mono>envsec tui</Mono>, which now
+        refreshes the cache when it exits.
       </li>
       <li>
-        <Strong>--db is not forwarded.</Strong> The scripts call{" "}
-        <Mono>envsec __complete</Mono> without your <Mono>--db</Mono> flag. An
-        exported <Mono>ENVSEC_DB</Mono> works, because the child process
+        <Strong>--db.</Strong> Before 1.1.3 the scripts called{" "}
+        <Mono>envsec __complete</Mono> without your <Mono>--db</Mono> flag, so
+        completions came from the default database. They now pass it along, in
+        both the <Mono>--db path</Mono> and <Mono>--db=path</Mono> forms. An
+        exported <Mono>ENVSEC_DB</Mono> always worked, because the child process
         inherits it.
       </li>
       <li>
@@ -532,12 +555,15 @@ const DynamicShellCompletionsPost = () => (
     <H2>What works today</H2>
     <P>
       I tested each case in bash 5.3, zsh 5.9 and fish 4.9 inside a sandbox,
-      logging every call to <Mono>envsec</Mono>:
+      logging every call to <Mono>envsec</Mono>, then again after the fixes
+      (adding macOS&apos;s bash 3.2):
     </P>
     <DataTable columns={SUPPORT_COLUMNS} rows={SUPPORT_ROWS} />
     <P>
-      All three scripts also register completions for <Mono>esec</Mono>, a name
-      envsec doesn&apos;t install, so that only helps if you define it yourself.
+      The scripts also used to register completions for <Mono>esec</Mono>, a
+      name envsec doesn&apos;t install. 1.1.3 drops it. The bash and fish
+      scripts now have tests that source them in a real shell against a stub{" "}
+      <Mono>envsec</Mono>, so the bugs above stay fixed.
     </P>
 
     <H2>In short</H2>

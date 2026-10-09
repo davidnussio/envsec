@@ -108,6 +108,20 @@ const setR = await exec("secret-tool", [
 // secret-tool store reads from stdin — we can't easily pipe here,
 // so just check if the tool is callable`;
 
+const DOCTOR_FIX = `// 1.1.3: stdin is always closed, and a probe can't run forever
+const running = execFileAsync(cmd, args, { timeout: EXEC_TIMEOUT_MS });
+running.child.stdin?.on("error", ignoreStreamError);
+running.child.stdin?.end(stdin);
+
+// Linux branch: store, read back, clear
+const setR = await exec(
+  "secret-tool",
+  ["store", "--label", "envsec doctor probe", ...attributes],
+  testValue
+);
+const getR = await exec("secret-tool", ["lookup", ...attributes]);
+await exec("secret-tool", ["clear", ...attributes]);`;
+
 const SETUP_ACTION = `# .github/actions/setup-and-build/action.yml (trimmed)
 inputs:
   node-version:
@@ -325,19 +339,30 @@ const TestingKeychainsInCiPost = () => (
     </P>
     <CodeBlock code={DOCTOR_SKIP} language="bash" />
     <P>
-      That is a skip, not a fix, and it is still there. Rereading the code for
-      this post, I think I know the cause. The Linux branch of the read/write
-      probe runs <Mono>secret-tool store</Mono>, which reads the secret from
-      stdin when stdin isn&apos;t a terminal, but never writes to stdin or
-      closes it:
+      That was a skip, not a fix. Rereading the code for this post, I found the
+      cause. The Linux branch of the read/write probe ran{" "}
+      <Mono>secret-tool store</Mono>, which reads the secret from stdin when
+      stdin isn&apos;t a terminal, but never wrote to stdin or closed it:
     </P>
     <CodeBlock code={DOCTOR_PROBE} language="ts" />
     <P>
       Node&apos;s <Mono>execFile</Mono> gives the child an open stdin pipe, so a
       program that reads until end of file waits forever. The real Linux adapter
       does write the value and close stdin, which is why the rest of the Linux
-      suite doesn&apos;t hang. If this is right, the hang isn&apos;t specific to
-      CI, and the honest fix is in <Mono>doctor</Mono>, not in the test script.
+      suite never hung. So the hang wasn&apos;t specific to CI, and the honest
+      fix was in <Mono>doctor</Mono>, not in the test script. In envsec 1.1.3
+      the probe writes its value, closes stdin, reads the value back and clears
+      the item, like the macOS branch always did:
+    </P>
+    <CodeBlock code={DOCTOR_FIX} language="ts" />
+    <P>
+      The skip is gone, and the Linux job now checks that doctor reports a full
+      write, read and delete. The <Mono>error</Mono> handler matters too: if the
+      child exits before reading stdin, writing to the pipe raises{" "}
+      <Mono>EPIPE</Mono>, and without a listener that crashes Node instead of
+      failing the check. While I was there, the Windows check stopped looking
+      for <Mono>cmdkey</Mono>, which the adapter no longer uses, and checks for
+      the PowerShell <Mono>Add-Type</Mono> that its P/Invoke code needs.
     </P>
     <P>
       The broader lesson is about timeouts. Neither workflow sets{" "}
@@ -405,8 +430,8 @@ const TestingKeychainsInCiPost = () => (
         dialog, so prompts and locked-keychain errors are not covered by CI.
       </li>
       <li>
-        <Mono>doctor</Mono> is untested on Linux, and <Mono>share</Mono> is
-        untested on Windows.
+        <Mono>share</Mono> is untested on Windows, and <Mono>doctor</Mono> was
+        untested on Linux until 1.1.3.
       </li>
     </List>
 

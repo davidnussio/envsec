@@ -45,6 +45,10 @@ while (remaining.length > 0) {
     return yield* new InvalidDurationError({ input, message: "…" });
   }
   total = Duration.sum(total, UNIT_TO_DURATION[unit](Number(amount)));
+  if (Duration.isGreaterThan(total, MAX_DURATION)) {
+    // MAX_DURATION is 1000 years
+    return yield* new InvalidDurationError({ input, message: "…" });
+  }
   remaining = rest ?? "";
 }`;
 
@@ -78,6 +82,7 @@ const INPUT_ROWS = [
   ["1 d", "error"],
   ["-1d", "error"],
   ["30", "error (no unit)"],
+  ["1001y", "error (more than 1000y)"],
 ] as const;
 
 const EXPIRES_AT_CODE = `export const expiresAtFromNow = (duration: Duration.Duration): string => {
@@ -240,6 +245,15 @@ const DurationsAndSecretsPost = () => (
       <Mono>0d</Mono> is accepted, and it is useful:{" "}
       <Mono>audit --within 0d</Mono> means &quot;only what has already
       expired&quot;.
+    </P>
+    <P>
+      There is also an upper limit of <Mono>1000y</Mono>, added in envsec 1.1.3.
+      Before it, <Mono>--expires 99999999999999y</Mono> parsed without complaint
+      and then crashed with <Mono>RangeError: Invalid time value</Mono> when
+      envsec computed the expiry date: a JavaScript <Mono>Date</Mono> ends in
+      the year 275760, and that duration goes far past it. A thousand years is
+      generous, and it keeps every expiry a four-digit year, which the text
+      comparison in the next section relies on.
     </P>
 
     <H2>A month is 30 days</H2>
