@@ -92,6 +92,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "How many plaintext secrets are sitting in your projects folder?",
   },
   {
+    date: "2026-10-09",
+    description:
+      "Coding agents read files and run commands as you. How a plaintext .env gets exposed, what moving it to the OS keychain fixes, and what it can't.",
+    readingTime: "6 min read",
+    slug: "ai-coding-agents-read-your-env",
+    tags: ["ai", "security"],
+    title: "Your coding agent can read your .env",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
