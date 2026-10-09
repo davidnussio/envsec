@@ -92,7 +92,16 @@ export const POSTS: readonly BlogPost[] = [
     title: "How many plaintext secrets are sitting in your projects folder?",
   },
   {
-    date: "2026-10-09",
+    date: "2026-10-07",
+    description:
+      "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
+    readingTime: "6 min read",
+    slug: "effect-4-bun-performance",
+    tags: ["performance", "effect", "bun"],
+    title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
+  },
+  {
+    date: "2026-10-02",
     description:
       "Coding agents read files and run commands as you. How a plaintext .env gets exposed, what moving it to the OS keychain fixes, and what it can't.",
     readingTime: "6 min read",
@@ -101,7 +110,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Your coding agent can read your .env",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-29",
     description:
       "Where dotenv, direnv, 1Password CLI and envsec keep secrets, how they get them into a process, and when each one is the better choice.",
     readingTime: "7 min read",
@@ -110,7 +119,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "envsec vs dotenv vs 1Password CLI vs direnv: which one, when",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-25",
     description:
       "A step-by-step migration of a Node or Next.js project from a dotenv file to the OS keychain with envsec load, run, cmd and shell.",
     readingTime: "6 min read",
@@ -119,7 +128,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "From .env to the keychain in five minutes",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-22",
     description:
       "An honest threat model for envsec: what the OS keychain protects, and what it doesn't: same-user processes, environment variables, argv, metadata, env-file.",
     readingTime: "7 min read",
@@ -128,7 +137,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "What envsec does not protect you from",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-18",
     description:
       "How envsec stores secrets through macOS security, Linux secret-tool and Windows CredWrite behind one Effect service, and why every value is base64.",
     readingTime: "8 min read",
@@ -137,7 +146,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "One CLI, three keychains",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-15",
     description:
       "envsec keeps secret values in the OS keychain and names, expiry and export records in SQLite: why, what that reveals, and what happens when one write fails.",
     readingTime: "7 min read",
@@ -146,7 +155,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Why secret values live in the keychain and metadata in SQLite",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-11",
     description:
       "How envsec is built on effect/cli in Effect 4: commands, flags, shared options, services and layers, typed errors with exit codes, and tests.",
     readingTime: "7 min read",
@@ -155,7 +164,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Building a CLI with Effect 4",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-08",
     description:
       "How envsec's end-to-end tests reach the real macOS Keychain, GNOME Keyring and Windows Credential Manager on GitHub Actions, and what broke along the way.",
     readingTime: "7 min read",
@@ -164,7 +173,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Testing a keychain CLI on macOS, Linux and Windows in CI",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-04",
     description:
       "One release tag, seven Bun targets, npm, Homebrew and mise: how the envsec release workflow ships a TypeScript CLI, and what it still does not do.",
     readingTime: "6 min read",
@@ -173,7 +182,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Shipping one CLI to Homebrew, npm, mise and a standalone binary",
   },
   {
-    date: "2026-10-09",
+    date: "2026-09-01",
     description:
       "How envsec completes contexts, keys and saved commands at Tab time in bash, zsh and fish, what each shell makes awkward, and the latency budget.",
     readingTime: "7 min read",
@@ -182,7 +191,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Dynamic tab completion in bash, zsh and fish",
   },
   {
-    date: "2026-10-09",
+    date: "2026-08-28",
     description:
       "How envsec parses expiry durations like 1y6mo (and why a month is 30 days), and how its secret command avoids modulo bias. With the entropy math.",
     readingTime: "7 min read",
@@ -191,7 +200,7 @@ export const POSTS: readonly BlogPost[] = [
     title: "Parsing 1y6mo and generating secrets you can't guess",
   },
   {
-    date: "2026-10-09",
+    date: "2026-08-25",
     description:
       "How envsec share encrypts a context with GPG, how the receiver imports it with envsec load, and what GPG does and doesn't protect.",
     readingTime: "6 min read",
@@ -200,22 +209,13 @@ export const POSTS: readonly BlogPost[] = [
     title: "Sharing secrets with a teammate, the GPG way",
   },
   {
-    date: "2026-10-09",
+    date: "2026-08-21",
     description:
       "Why emoji break column alignment in terminals (wcwidth, East Asian Width, VS16, ZWJ) and the 27 geometric icons envsec uses instead.",
     readingTime: "4 min read",
     slug: "no-emoji-in-the-terminal",
     tags: ["cli-design"],
     title: "Why there are no emoji in envsec's output",
-  },
-  {
-    date: "2026-10-07",
-    description:
-      "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
-    readingTime: "6 min read",
-    slug: "effect-4-bun-performance",
-    tags: ["performance", "effect", "bun"],
-    title: "From 417 to 32 milliseconds: envsec on Effect 4 and Bun",
   },
 ];
 
