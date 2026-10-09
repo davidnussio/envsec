@@ -10,3 +10,6 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - "@effect/platform-node-shared@4.0.0"
   - "effect@4.0.0"
+overrides:
+  "@effect/platform-node-shared": "4.0.0"
+  effect: "4.0.0"

@@ -1,7 +1,5 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
 export const alt =
   "envsec — Cross-platform CLI for managing environment secrets";
 export const size = { height: 630, width: 1200 };

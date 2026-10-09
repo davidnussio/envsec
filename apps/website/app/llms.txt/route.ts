@@ -362,6 +362,8 @@ Built with TypeScript (strict mode), Effect for functional error handling and de
 - [npm: @envsec/tui](https://www.npmjs.com/package/@envsec/tui): TUI package on npm
 `;
 
+export const dynamic = "force-static";
+
 export const GET = () =>
   new Response(content, {
     headers: {
