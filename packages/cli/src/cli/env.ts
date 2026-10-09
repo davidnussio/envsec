@@ -2,9 +2,9 @@ import { badge, bold, icons, SecretStore } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
+import { formatExport, formatUnset } from "../shell-export.js";
+import type { Shell } from "../shell-export.js";
 import { requireContext } from "./root.js";
-
-type Shell = "bash" | "zsh" | "fish" | "powershell";
 
 const shellOption = Options.Literals("shell", [
   "bash",
@@ -25,37 +25,6 @@ const unsetOption = Options.Boolean("unset").pipe(
 
 const toEnvKey = (key: string): string =>
   key.toUpperCase().replaceAll(".", "_");
-
-const formatExport = (key: string, value: string, sh: Shell): string => {
-  switch (sh) {
-    case "fish": {
-      const escaped = value.replaceAll("\\", "\\\\").replaceAll("'", "\\'");
-      return `set -gx ${key} '${escaped}'`;
-    }
-    case "powershell": {
-      const escaped = value.replaceAll("'", "''");
-      return `$env:${key} = '${escaped}'`;
-    }
-    default: {
-      const escaped = value.replaceAll("\\", "\\\\").replaceAll("'", "'\\''");
-      return `export ${key}='${escaped}'`;
-    }
-  }
-};
-
-const formatUnset = (key: string, sh: Shell): string => {
-  switch (sh) {
-    case "fish": {
-      return `set -e ${key}`;
-    }
-    case "powershell": {
-      return `Remove-Item Env:\\${key}`;
-    }
-    default: {
-      return `unset ${key}`;
-    }
-  }
-};
 
 export const envCommand = Command.make(
   "env",
