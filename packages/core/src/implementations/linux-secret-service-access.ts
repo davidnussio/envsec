@@ -17,6 +17,8 @@ import { KeychainAccess } from "../services/keychain-access.js";
  *   - Arch:          sudo pacman -S libsecret
  */
 
+const ignoreStreamError = (): void => undefined;
+
 const run = (args: string[], stdin?: string) =>
   Effect.callback<
     { exitCode: number; stdout: string; stderr: string },
@@ -59,8 +61,11 @@ const run = (args: string[], stdin?: string) =>
 
     // secret-tool store reads the password from stdin
     if (stdin !== undefined) {
-      child.stdin?.write(stdin);
-      child.stdin?.end();
+      // A child that exits without reading stdin (D-Bus error, locked
+      // keyring, …) raises EPIPE here, which would crash the process with
+      // no listener. Its exit status and stderr already report the failure.
+      child.stdin?.on("error", ignoreStreamError);
+      child.stdin?.end(stdin);
     }
   }).pipe(
     // Never log the stdin: it contains the secret value.
