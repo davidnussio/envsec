@@ -9,7 +9,7 @@ import {
   MetadataStoreError,
   SecretNotFoundError,
 } from "../errors.js";
-import { DatabaseConfig } from "../services/database-config.js";
+import { DatabaseConfig, DEFAULT_DB_DIR } from "../services/database-config.js";
 import { MetadataStore } from "../services/metadata-store.js";
 import type {
   CommandMetadata,
@@ -92,8 +92,13 @@ const loadSqlite = async (): Promise<{
 
 const initDb = async (dbPath: string): Promise<DatabaseSync> => {
   const dbDir = nodePath.dirname(dbPath);
-  mkdirSync(dbDir, { mode: DIR_PERMISSIONS, recursive: true });
-  chmodSync(dbDir, DIR_PERMISSIONS);
+  // Only directories envsec creates (or owns, like ~/.envsec) are locked
+  // down: a custom --db can live in the current directory or a shared
+  // folder whose permissions are not ours to change.
+  const created = mkdirSync(dbDir, { mode: DIR_PERMISSIONS, recursive: true });
+  if (created !== undefined || dbDir === DEFAULT_DB_DIR) {
+    chmodSync(dbDir, DIR_PERMISSIONS);
+  }
   // Create the file ourselves so it never exists with the default umask
   // permissions; SQLite gives its journal files the same mode.
   closeSync(openSync(dbPath, "a", FILE_PERMISSIONS));
