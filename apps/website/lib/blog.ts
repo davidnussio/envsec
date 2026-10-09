@@ -182,6 +182,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Dynamic tab completion in bash, zsh and fish",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec parses expiry durations like 1y6mo (and why a month is 30 days), and how its secret command avoids modulo bias. With the entropy math.",
+    readingTime: "7 min read",
+    slug: "parsing-durations-and-generating-secrets",
+    tags: ["cli-design", "security"],
+    title: "Parsing 1y6mo and generating secrets you can't guess",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
