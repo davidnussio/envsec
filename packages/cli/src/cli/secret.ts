@@ -55,7 +55,7 @@ const specialOption = Options.Boolean("special").pipe(
 const allCharsOption = Options.Boolean("all-chars").pipe(
   Options.withAlias("A"),
   Options.withDescription(
-    "Use all printable ASCII characters for maximum entropy"
+    "Use 93 printable ASCII characters (all except space and backslash)"
   ),
   Options.withDefault(false)
 );

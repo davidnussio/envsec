@@ -195,7 +195,7 @@ _envsec() {
                         '(-e --expires)'{-e,--expires}'[Expiry duration]:duration:' \\
                         '(-a --alphanumeric)'{-a,--alphanumeric}'[Alphanumeric only]' \\
                         '(-s --special)'{-s,--special}'[Include special characters]' \\
-                        '(-A --all-chars)'{-A,--all-chars}'[All printable ASCII]' \\
+                        '(-A --all-chars)'{-A,--all-chars}'[Printable ASCII except space and backslash]' \\
                         '1:key:_envsec_keys'
                     ;;
                 shell)

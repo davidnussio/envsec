@@ -449,7 +449,7 @@ envsec --json doctor
 The `doctor` command verifies your envsec installation is working correctly. It checks:
 
 - Platform support and Node.js version
-- Credential store availability (macOS Keychain, Linux secret-tool, Windows cmdkey)
+- Credential store availability (macOS Keychain, Linux secret-tool, Windows PowerShell)
 - Keychain read/write access
 - Database path, permissions, and schema integrity
 - Orphaned secrets (metadata without keychain entry)
