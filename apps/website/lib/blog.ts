@@ -110,6 +110,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "envsec vs dotenv vs 1Password CLI vs direnv: which one, when",
   },
   {
+    date: "2026-10-09",
+    description:
+      "A step-by-step migration of a Node or Next.js project from a dotenv file to the OS keychain with envsec load, run, cmd and shell.",
+    readingTime: "6 min read",
+    slug: "migrate-from-dotenv-to-keychain",
+    tags: ["guides", "shell"],
+    title: "From .env to the keychain in five minutes",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
