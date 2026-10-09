@@ -1,7 +1,13 @@
-import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { badge, bold, FileAccessError, icons, SecretStore } from "@envsec/core";
+import {
+  badge,
+  bold,
+  FileAccessError,
+  icons,
+  SecretStore,
+  writePrivateFile,
+} from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
@@ -77,7 +83,7 @@ export const envFileCommand = Command.make(
             message: `Failed to write env file: ${error}`,
             path: output,
           }),
-        try: () => writeFileSync(output, `${lines.join("\n")}\n`, "utf-8"),
+        try: () => writePrivateFile(output, `${lines.join("\n")}\n`),
       });
 
       const absolutePath = path.resolve(output);

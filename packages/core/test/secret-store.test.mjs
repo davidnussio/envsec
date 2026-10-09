@@ -109,13 +109,17 @@ test("a failed metadata write restores the previous secret value", async () => {
   const entries = new Map([["envsec.app.db/password", "old-raw-value"]]);
   const failingMetadata = Layer.succeed(MetadataStore, {
     get: (env, key) =>
-      Effect.succeed({
-        created_at: "",
-        env,
-        expires_at: null,
-        key,
-        updated_at: "",
-      }),
+      env === "app" && key === "db.password"
+        ? Effect.succeed({
+            created_at: "",
+            env,
+            expires_at: null,
+            key,
+            updated_at: "",
+          })
+        : Effect.fail(
+            new SecretNotFoundError({ context: env, key, message: "not found" })
+          ),
     upsert: () =>
       Effect.fail(
         new MetadataStoreError({ message: "disk full", operation: "upsert" })
@@ -194,4 +198,69 @@ test("rejects malformed metadata rows with a MetadataStoreError", () =>
       )
     );
     assert.equal(error._tag, "MetadataStoreError");
+  }));
+
+test("refuses a key that would share a keychain item with another context", () =>
+  withTempDb(async (databasePath) => {
+    const entries = new Map();
+    const layer = storeLayer(databasePath, memoryKeychain(entries));
+    await Effect.runPromise(
+      SecretStore.set("collide", "b.c", "first").pipe(Effect.provide(layer))
+    );
+
+    const error = await Effect.runPromise(
+      SecretStore.set("collide.b", "c", "second").pipe(
+        Effect.provide(layer),
+        Effect.flip
+      )
+    );
+    assert.equal(error._tag, "InvalidKeyError");
+    assert.match(
+      error.message,
+      /share its keychain item with "b\.c" in context "collide"/u
+    );
+
+    const value = await Effect.runPromise(
+      SecretStore.get("collide", "b.c").pipe(Effect.provide(layer))
+    );
+    assert.equal(value, "first");
+    assert.equal(entries.size, 1);
+  }));
+
+test("removing one of two colliding secrets keeps the shared keychain item", () =>
+  withTempDb(async (databasePath) => {
+    const entries = new Map();
+    const layer = storeLayer(databasePath, memoryKeychain(entries));
+    // Simulate a collision created before set() refused it: two metadata
+    // rows pointing at the same keychain item.
+    await Effect.runPromise(
+      Effect.gen(function* seedCollision() {
+        yield* SecretStore.set("old", "x.y", "shared");
+        const metadata = yield* MetadataStore;
+        yield* metadata.upsert("old.x", "y", null);
+      }).pipe(
+        Effect.provide(
+          Layer.merge(
+            layer,
+            SqliteMetadataStoreLive.pipe(
+              Layer.provide(DatabaseConfigFrom(databasePath))
+            )
+          )
+        )
+      )
+    );
+
+    await Effect.runPromise(
+      SecretStore.remove("old.x", "y").pipe(Effect.provide(layer))
+    );
+    assert.equal(entries.get("envsec.old.x/y"), "envsec:b64:c2hhcmVk");
+    const value = await Effect.runPromise(
+      SecretStore.get("old", "x.y").pipe(Effect.provide(layer))
+    );
+    assert.equal(value, "shared");
+
+    await Effect.runPromise(
+      SecretStore.remove("old", "x.y").pipe(Effect.provide(layer))
+    );
+    assert.equal(entries.size, 0);
   }));

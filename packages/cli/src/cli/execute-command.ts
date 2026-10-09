@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 import { constants } from "node:os";
 
 import { CommandExecutionError } from "@envsec/core";
@@ -62,18 +62,50 @@ const toCommandExecutionError = (
   });
 };
 
+/**
+ * Run `command` with cmd.exe and delayed expansion enabled (/v:on), so the
+ * !VAR! placeholder references expand after the line has been parsed and
+ * metacharacters inside secret values stay literal. Mirrors the
+ * `/d /s /c "<command>"` invocation Node uses for `shell: "cmd.exe"`.
+ */
+const runWithDelayedExpansion = (
+  command: string,
+  env: NodeJS.ProcessEnv
+): Effect.Effect<void, CommandExecutionError> =>
+  Effect.suspend(() => {
+    const result = spawnSync(
+      process.env.ComSpec ?? "cmd.exe",
+      ["/d", "/v:on", "/s", "/c", `"${command}"`],
+      { env, stdio: "inherit", windowsVerbatimArguments: true }
+    );
+    if (result.error) {
+      return Effect.fail(toCommandExecutionError(command, result.error));
+    }
+    if (result.status === 0) {
+      return Effect.void;
+    }
+    return Effect.fail(toCommandExecutionError(command, result));
+  });
+
 /** Run a resolved command in a shell, with its output on the terminal. */
 export const executeCommand = (
   resolved: ResolvedCommand,
   injectedEnv: Record<string, string> = {}
-): Effect.Effect<void, CommandExecutionError> =>
-  Effect.try({
+): Effect.Effect<void, CommandExecutionError> => {
+  const env = { ...process.env, ...injectedEnv, ...resolved.env };
+  // Delayed expansion only when placeholders were resolved: it also gives
+  // ! and ^ a meaning in the command text, which plain commands keep out of.
+  if (process.platform === "win32" && Object.keys(resolved.env).length > 0) {
+    return runWithDelayedExpansion(resolved.command, env);
+  }
+  return Effect.try({
     catch: (error) => toCommandExecutionError(resolved.command, error),
     try: () => {
       execSync(resolved.command, {
-        env: { ...process.env, ...injectedEnv, ...resolved.env },
+        env,
         shell: process.platform === "win32" ? "cmd.exe" : "/bin/sh",
         stdio: "inherit",
       });
     },
   });
+};

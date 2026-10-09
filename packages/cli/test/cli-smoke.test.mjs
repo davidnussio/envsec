@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -17,6 +24,9 @@ const VERSION_PATTERN = /envsec v\d/u;
 const COMPLETE_COMMAND_PATTERN = /__complete/u;
 const DESCRIBED_SUBCOMMAND_PATTERN = /^\s+\S.*\s{2,}\S/u;
 const DELETE_ALIAS_PATTERN = /delete, del/u;
+
+/** Permission bits as an octal string, e.g. "700". */
+const modeOf = (file) => statSync(file).mode.toString(8).slice(-3);
 
 const runCli = (...args) =>
   spawnSync(process.execPath, [CLI_PATH, ...args], {
@@ -180,3 +190,33 @@ test("serves dynamic completions for --completions=<shell> too", () => {
     assert.match(result.stdout, COMPLETE_COMMAND_PATTERN);
   }
 });
+
+test(
+  "locks down only the database directories it creates",
+  {
+    skip: process.platform === "win32",
+  },
+  () => {
+    const root = mkdtempSync(path.join(tmpdir(), "envsec-db-dir-"));
+    try {
+      const shared = path.join(root, "shared");
+      mkdirSync(shared);
+      chmodSync(shared, 0o755);
+      assert.equal(
+        runCli("--db", path.join(shared, "store.sqlite"), "list").status,
+        0
+      );
+      assert.equal(modeOf(shared), "755");
+      assert.equal(modeOf(path.join(shared, "store.sqlite")), "600");
+
+      const created = path.join(root, "new", "nested");
+      assert.equal(
+        runCli("--db", path.join(created, "store.sqlite"), "list").status,
+        0
+      );
+      assert.equal(modeOf(created), "700");
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  }
+);

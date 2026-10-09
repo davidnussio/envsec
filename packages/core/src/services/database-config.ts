@@ -12,7 +12,8 @@ export class DatabaseConfig extends Context.Service<
   DatabaseConfigShape
 >()("envsec/DatabaseConfig") {}
 
-const defaultDbPath = nodePath.join(homedir(), ".envsec", "store.sqlite");
+export const DEFAULT_DB_DIR = nodePath.join(homedir(), ".envsec");
+const defaultDbPath = nodePath.join(DEFAULT_DB_DIR, "store.sqlite");
 
 export const DatabaseConfigDefault = Layer.succeed(DatabaseConfig, {
   path: defaultDbPath,
