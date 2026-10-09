@@ -146,6 +146,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Why secret values live in the keychain and metadata in SQLite",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec is built on effect/cli in Effect 4: commands, flags, shared options, services and layers, typed errors with exit codes, and tests.",
+    readingTime: "7 min read",
+    slug: "building-a-cli-with-effect-4",
+    tags: ["effect", "cli-design", "guides"],
+    title: "Building a CLI with Effect 4",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
