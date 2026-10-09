@@ -173,6 +173,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Shipping one CLI to Homebrew, npm, mise and a standalone binary",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec completes contexts, keys and saved commands at Tab time in bash, zsh and fish, what each shell makes awkward, and the latency budget.",
+    readingTime: "7 min read",
+    slug: "dynamic-shell-completions",
+    tags: ["shell", "cli-design"],
+    title: "Dynamic tab completion in bash, zsh and fish",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
