@@ -178,3 +178,38 @@ test(
     ]);
   }
 );
+
+const ESEC_PATTERN = /\besec\b/u;
+
+for (const shell of ["bash", "zsh", "fish"]) {
+  test(`${shell} completions register envsec only (no esec alias)`, () => {
+    assert.doesNotMatch(generateCompletions(shell, "envsec"), ESEC_PATTERN);
+  });
+}
+
+test("bash: --db is forwarded to __complete", bashOptions, () => {
+  for (const words of [
+    ["envsec", "--db", "/tmp/x.sqlite", "-c", ""],
+    ["envsec", "--db", "=", "/tmp/x.sqlite", "-c", ""],
+    ["envsec", "--db=/tmp/x.sqlite", "-c", ""],
+  ]) {
+    const { calls, replies } = completeBash(words);
+    assert.deepEqual(replies, ["alpha", "beta"]);
+    assert.equal(calls, "__complete contexts --db /tmp/x.sqlite\n");
+  }
+  assert.equal(
+    completeBash(["envsec", "-c", "alpha", "get", ""]).calls,
+    "__complete keys alpha\n"
+  );
+});
+
+test("fish: --db is forwarded to __complete", fishOptions, () => {
+  for (const line of [
+    "envsec --db /tmp/x.sqlite -c alpha get ",
+    "envsec --db=/tmp/x.sqlite -c alpha get ",
+  ]) {
+    const { calls, replies } = completeFish(line);
+    assert.deepEqual(replies, ["api.key", "db.pass"]);
+    assert.match(calls, /^__complete keys alpha --db \/tmp\/x\.sqlite$/mu);
+  }
+});

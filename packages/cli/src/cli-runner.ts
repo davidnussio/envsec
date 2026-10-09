@@ -119,6 +119,8 @@ const MUTATING_COMMANDS = new Set([
   "move",
   "copy",
   "secret",
+  // The TUI can add, edit and delete secrets.
+  "tui",
 ]);
 
 const isMutatingCommand = (): boolean => {

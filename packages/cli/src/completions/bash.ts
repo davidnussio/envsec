@@ -1,13 +1,24 @@
 export const bashCompletions = (bin: string): string =>
   `
+# Query envsec for dynamic values, against the database given with --db.
+# db_val is a local of _envsec_completions.
+_envsec_complete() {
+    if [[ -n "$db_val" ]]; then
+        ${bin} __complete "$@" --db "\${db_val/#\\~/$HOME}" 2>/dev/null
+    else
+        ${bin} __complete "$@" 2>/dev/null
+    fi
+}
+
 _envsec_completions() {
-    local i word cur prev opts cmd subcmd context_val reply_prefix
+    local i word cur prev opts cmd subcmd context_val db_val reply_prefix
     COMPREPLY=()
     cur="\${COMP_WORDS[COMP_CWORD]}"
     prev="\${COMP_WORDS[COMP_CWORD-1]}"
     cmd=""
     subcmd=""
     context_val=""
+    db_val=""
     reply_prefix=""
 
     # --opt=value: bash >= 4 splits it into "--opt" "=" "value" when "=" is
@@ -25,20 +36,28 @@ _envsec_completions() {
         fi
     fi
 
-    # Detect current subcommand and --context value
+    # Detect current subcommand, --context and --db values
     for ((i=1; i < COMP_CWORD; i++)); do
         word="\${COMP_WORDS[i]}"
         case "$word" in
-            -c|--context)
+            -c|--context|--db)
                 if [[ "\${COMP_WORDS[i+1]}" == "=" ]]; then
                     ((i++))
                 fi
-                context_val="\${COMP_WORDS[i+1]}"
+                if [[ "$word" == "--db" ]]; then
+                    db_val="\${COMP_WORDS[i+1]}"
+                else
+                    context_val="\${COMP_WORDS[i+1]}"
+                fi
                 ((i++))
                 continue
                 ;;
             --context=*)
                 context_val="\${word#--context=}"
+                continue
+                ;;
+            --db=*)
+                db_val="\${word#--db=}"
                 continue
                 ;;
         esac
@@ -65,7 +84,7 @@ _envsec_completions() {
     # Complete --context / -c values with dynamic contexts
     if [[ "$prev" == "-c" || "$prev" == "--context" ]]; then
         local contexts
-        contexts="$(${bin} __complete contexts 2>/dev/null)"
+        contexts="$(_envsec_complete contexts)"
         COMPREPLY=( $(compgen -P "$reply_prefix" -W "$contexts" -- "$cur") )
         return 0
     fi
@@ -73,7 +92,7 @@ _envsec_completions() {
     # Complete --to / -t values with dynamic contexts (move/copy)
     if [[ "$prev" == "-t" || "$prev" == "--to" ]]; then
         local contexts
-        contexts="$(${bin} __complete contexts 2>/dev/null)"
+        contexts="$(_envsec_complete contexts)"
         COMPREPLY=( $(compgen -P "$reply_prefix" -W "$contexts" -- "$cur") )
         return 0
     fi
@@ -177,7 +196,7 @@ _envsec_completions() {
             # Complete secret keys if context is known
             if [[ -n "$context_val" ]]; then
                 local keys
-                keys="$(${bin} __complete keys "$context_val" 2>/dev/null)"
+                keys="$(_envsec_complete keys "$context_val")"
                 COMPREPLY=( $(compgen -W "$keys" -- "$cur") )
             fi
             ;;
@@ -185,7 +204,7 @@ _envsec_completions() {
             # Complete secret keys if context is known
             if [[ -n "$context_val" ]]; then
                 local keys
-                keys="$(${bin} __complete keys "$context_val" 2>/dev/null)"
+                keys="$(_envsec_complete keys "$context_val")"
                 COMPREPLY=( $(compgen -W "$keys" -- "$cur") )
             fi
             ;;
@@ -194,7 +213,7 @@ _envsec_completions() {
                 COMPREPLY=( $(compgen -W "run search list delete" -- "$cur") )
             elif [[ "$subcmd" == "run" || "$subcmd" == "delete" ]]; then
                 local cmds
-                cmds="$(${bin} __complete commands 2>/dev/null)"
+                cmds="$(_envsec_complete commands)"
                 COMPREPLY=( $(compgen -W "$cmds" -- "$cur") )
             fi
             ;;
@@ -217,6 +236,4 @@ _envsec_completions() {
 # -o nosort needs bash >= 4.4; macOS still ships bash 3.2 as /bin/bash.
 complete -F _envsec_completions -o nosort -o bashdefault -o default envsec 2>/dev/null ||
     complete -F _envsec_completions -o bashdefault -o default envsec
-complete -F _envsec_completions -o nosort -o bashdefault -o default esec 2>/dev/null ||
-    complete -F _envsec_completions -o bashdefault -o default esec
 `.trimStart();
