@@ -101,6 +101,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Your coding agent can read your .env",
   },
   {
+    date: "2026-10-09",
+    description:
+      "Where dotenv, direnv, 1Password CLI and envsec keep secrets, how they get them into a process, and when each one is the better choice.",
+    readingTime: "7 min read",
+    slug: "envsec-vs-dotenv-1password-direnv",
+    tags: ["comparisons", "security"],
+    title: "envsec vs dotenv vs 1Password CLI vs direnv: which one, when",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
