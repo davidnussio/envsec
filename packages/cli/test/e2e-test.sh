@@ -1001,8 +1001,6 @@ echo "── 20. DOCTOR ──"
 # Doctor probes the native credential store directly and cannot use the injected fixture.
 if [[ "$ENVSEC_E2E_ISOLATED" == "1" ]]; then
   echo "  ⚠ Skipping doctor tests with the isolated credential-store fixture"
-elif [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "${CI:-}" ]]; then
-  echo "  ⚠ Skipping doctor tests on Linux CI (known to hang in GitHub Actions)"
 else
   # Basic doctor run should succeed
   ec=0
@@ -1012,6 +1010,7 @@ else
   assert_contains "doctor: shows platform" "Platform" "$out"
   assert_contains "doctor: shows node" "Node.js" "$out"
   assert_contains "doctor: shows credential store" "Credential store" "$out"
+  assert_contains "doctor: keychain round-trip" "Write/read/delete OK" "$out"
   assert_contains "doctor: shows database" "Database" "$out"
   assert_contains "doctor: shows integrity" "integrity" "$out"
   assert_contains "doctor: shows orphaned" "Orphaned" "$out"

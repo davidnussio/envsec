@@ -1,45 +1,60 @@
 export const zshCompletions = (bin: string): string =>
   `
-#compdef envsec esec
+#compdef envsec
 
 autoload -U is-at-least
 
+# _envsec_ctx and _envsec_db are locals of _envsec, captured from the
+# top-level options before the nested _arguments calls reset opt_args.
+_envsec_complete() {
+    local db="\${_envsec_db:-\${(Q)opt_args[--db]}}"
+    local -a db_args
+    if [[ -n "$db" ]]; then
+        db_args=(--db "\${db/#\\~/$HOME}")
+    fi
+    ${bin} __complete "$@" "\${db_args[@]}" 2>/dev/null
+}
+
 _envsec_contexts() {
     local -a contexts
-    contexts=("\${(@f)$(${bin} __complete contexts 2>/dev/null)}")
+    contexts=("\${(@f)$(_envsec_complete contexts)}")
     _describe 'context' contexts
 }
 
 _envsec_keys() {
-    local ctx="\${opt_args[-c]:-\${opt_args[--context]:-$ENVSEC_CONTEXT}}"
+    local ctx="\${_envsec_ctx:-$ENVSEC_CONTEXT}"
     if [[ -n "$ctx" ]]; then
         local -a keys
-        keys=("\${(@f)$(${bin} __complete keys "$ctx" 2>/dev/null)}")
+        keys=("\${(@f)$(_envsec_complete keys "$ctx")}")
         _describe 'key' keys
     fi
 }
 
 _envsec_commands() {
     local -a cmds
-    cmds=("\${(@f)$(${bin} __complete commands 2>/dev/null)}")
+    cmds=("\${(@f)$(_envsec_complete commands)}")
     _describe 'command name' cmds
 }
 
 _envsec() {
     local context curcontext="$curcontext" state line
+    local _envsec_ctx _envsec_db
     typeset -A opt_args
 
     _arguments -C \\
-        '(-c --context)'{-c,--context}'[Context name]:context:_envsec_contexts' \\
+        '(-c --context)'{-c,--context=}'[Context name]:context:_envsec_contexts' \\
         '(-d --debug)'{-d,--debug}'[Enable debug logging]' \\
         '--json[Output in JSON format]' \\
-        '--db[Path to SQLite database]:file:_files' \\
+        '--db=[Path to SQLite database]:file:_files' \\
         '--completions[Generate completion script]:shell:(bash zsh fish)' \\
         '(-h --help)'{-h,--help}'[Show help]' \\
         '--version[Show version]' \\
         '1: :->command' \\
         '*:: :->args' \\
         && return 0
+
+    _envsec_ctx="\${(Q)\${opt_args[-c]:-\${opt_args[--context]}}}"
+    _envsec_db="\${(Q)opt_args[--db]}"
 
     case $state in
         command)

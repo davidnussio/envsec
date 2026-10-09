@@ -2,11 +2,33 @@ export const fishCompletions = (bin: string): string =>
   `
 # Disable file completions by default
 complete -c envsec -f
-complete -c esec -f
 
 # Helper functions
+
+# Query envsec for dynamic values, against the database given with --db.
+function __envsec_complete
+    set -l db
+    set -l args (commandline -opc)
+    for i in (seq (count $args))
+        switch $args[$i]
+            case --db
+                set -l next (math $i + 1)
+                if test $next -le (count $args)
+                    set db $args[$next]
+                end
+            case '--db=*'
+                set db (string replace -- --db= '' $args[$i])
+        end
+    end
+    if test -n "$db"
+        ${bin} __complete $argv --db (string replace -r -- '^~' $HOME $db) 2>/dev/null
+    else
+        ${bin} __complete $argv 2>/dev/null
+    end
+end
+
 function __envsec_contexts
-    ${bin} __complete contexts 2>/dev/null
+    __envsec_complete contexts
 end
 
 function __envsec_keys
@@ -24,33 +46,42 @@ function __envsec_keys
         set ctx $ENVSEC_CONTEXT
     end
     if test -n "$ctx"
-        ${bin} __complete keys $ctx 2>/dev/null
+        __envsec_complete keys $ctx
     end
 end
 
 function __envsec_commands
-    ${bin} __complete commands 2>/dev/null
+    __envsec_complete commands
 end
 
-function __envsec_needs_command
+# Print the top-level subcommand, skipping global option values: the
+# "delete" in "envsec cmd delete" is a cmd subcommand, not envsec delete.
+function __envsec_command
     set -l args (commandline -opc)
+    set -l skip_value 0
     for arg in $args[2..]
-        switch $arg
-            case add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor
-                return 1
+        if test $skip_value -eq 1
+            set skip_value 0
+            continue
         end
-    end
-    return 0
-end
-
-function __envsec_using_command
-    set -l cmd (commandline -opc)
-    for arg in $cmd[2..]
-        if test "$arg" = "$argv[1]"
-            return 0
+        switch $arg
+            case -c --context --db --completions
+                set skip_value 1
+            case add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor
+                echo $arg
+                return 0
         end
     end
     return 1
+end
+
+function __envsec_needs_command
+    not __envsec_command >/dev/null
+end
+
+function __envsec_using_command
+    set -l cmd (__envsec_command)
+    and test "$cmd" = "$argv[1]"
 end
 
 function __envsec_cmd_needs_sub
@@ -214,95 +245,4 @@ complete -c envsec -n '__envsec_cmd_using_sub delete' -x -a '(__envsec_commands)
 # cmd search
 complete -c envsec -n '__envsec_cmd_using_sub search' -l name -s n -d 'Search names only'
 complete -c envsec -n '__envsec_cmd_using_sub search' -l command -s m -d 'Search commands only'
-
-# Duplicate all completions for esec alias
-complete -c esec -l context -s c -x -a '(__envsec_contexts)' -d 'Context name'
-complete -c esec -l debug -s d -d 'Enable debug logging'
-complete -c esec -l json -d 'Output in JSON format'
-complete -c esec -l db -r -F -d 'Path to SQLite database'
-complete -c esec -l completions -x -a 'bash zsh fish' -d 'Generate completion script'
-complete -c esec -l help -s h -d 'Show help'
-complete -c esec -l version -d 'Show version'
-complete -c esec -n __envsec_needs_command -a add -d 'Store a secret'
-complete -c esec -n __envsec_needs_command -a get -d 'Retrieve a secret'
-complete -c esec -n __envsec_needs_command -a delete -d 'Remove a secret'
-complete -c esec -n __envsec_needs_command -a del -d 'Remove a secret (alias)'
-complete -c esec -n __envsec_needs_command -a search -d 'Search contexts or secrets'
-complete -c esec -n __envsec_needs_command -a list -d 'List secrets or contexts'
-complete -c esec -n __envsec_needs_command -a run -d 'Execute command with secrets'
-complete -c esec -n __envsec_needs_command -a env -d 'Export secrets as env vars'
-complete -c esec -n __envsec_needs_command -a env-file -d 'Export secrets to .env file'
-complete -c esec -n __envsec_needs_command -a load -d 'Import from .env file'
-complete -c esec -n __envsec_needs_command -a rescue -d 'Find .env files and secure their secrets'
-complete -c esec -n __envsec_needs_command -a cmd -d 'Saved command management'
-complete -c esec -n __envsec_needs_command -a audit -d 'Check expired secrets'
-complete -c esec -n __envsec_needs_command -a share -d 'GPG-encrypted export'
-complete -c esec -n __envsec_needs_command -a rename -d 'Rename a secret key'
-complete -c esec -n __envsec_needs_command -a move -d 'Move secrets between contexts'
-complete -c esec -n __envsec_needs_command -a copy -d 'Copy secrets between contexts'
-complete -c esec -n __envsec_needs_command -a secret -d 'Generate a random secret'
-complete -c esec -n __envsec_needs_command -a shell -d 'Spawn shell with secrets'
-complete -c esec -n __envsec_needs_command -a tui -d 'Interactive terminal UI'
-complete -c esec -n __envsec_needs_command -a doctor -d 'Run health checks'
-complete -c esec -n '__envsec_using_command add' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command add' -l value -s v -x -d 'Value to store'
-complete -c esec -n '__envsec_using_command add' -l expires -s e -x -d 'Expiry duration'
-complete -c esec -n '__envsec_using_command get' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command get' -l quiet -s q -d 'Print only the value'
-complete -c esec -n '__envsec_using_command delete' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command delete' -l yes -s y -d 'Skip confirmation'
-complete -c esec -n '__envsec_using_command delete' -l all -d 'Delete all secrets'
-complete -c esec -n '__envsec_using_command del' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command del' -l yes -s y -d 'Skip confirmation'
-complete -c esec -n '__envsec_using_command del' -l all -d 'Delete all secrets'
-complete -c esec -n '__envsec_using_command run' -l save -s s -d 'Save command'
-complete -c esec -n '__envsec_using_command run' -l name -s n -x -d 'Command name'
-complete -c esec -n '__envsec_using_command run' -l inject -s i -d 'Inject all secrets as env vars'
-complete -c esec -n '__envsec_using_command env' -l shell -s s -x -a 'bash zsh fish powershell' -d 'Target shell'
-complete -c esec -n '__envsec_using_command env' -l unset -s u -d 'Output unset commands'
-complete -c esec -n '__envsec_using_command env-file' -l output -s o -r -F -d 'Output file'
-complete -c esec -n '__envsec_using_command load' -l input -s i -r -F -d 'Input .env file'
-complete -c esec -n '__envsec_using_command load' -l force -s f -d 'Overwrite existing secrets'
-complete -c esec -n '__envsec_using_command load' -l batch -s b -d 'Batch mode'
-complete -c esec -n '__envsec_using_command rescue' -x -a '(__fish_complete_directories)' -d 'Directory to scan'
-complete -c esec -n '__envsec_using_command rescue' -l import -s i -d 'Import secrets into the keychain'
-complete -c esec -n '__envsec_using_command rescue' -l force -s f -d 'Overwrite existing secrets'
-complete -c esec -n '__envsec_using_command rescue' -l remove-plaintext -d 'Delete .env files once secured'
-complete -c esec -n '__envsec_using_command rescue' -l no-gitignore -d 'Do not update .gitignore'
-complete -c esec -n '__envsec_using_command rescue' -l depth -x -d 'Maximum scan depth'
-complete -c esec -n '__envsec_using_command audit' -l within -s w -x -d 'Duration window'
-complete -c esec -n '__envsec_using_command share' -l encrypt-to -x -d 'GPG recipient'
-complete -c esec -n '__envsec_using_command share' -l output -s o -r -F -d 'Output file'
-complete -c esec -n '__envsec_using_command rename' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command rename' -l force -s f -d 'Overwrite target if exists'
-complete -c esec -n '__envsec_using_command move' -x -a '(__envsec_keys)' -d 'Secret key pattern'
-complete -c esec -n '__envsec_using_command move' -l to -s t -x -a '(__envsec_contexts)' -d 'Target context'
-complete -c esec -n '__envsec_using_command move' -l force -s f -d 'Overwrite existing secrets'
-complete -c esec -n '__envsec_using_command move' -l yes -s y -d 'Skip confirmation'
-complete -c esec -n '__envsec_using_command move' -l all -d 'Move all secrets'
-complete -c esec -n '__envsec_using_command copy' -x -a '(__envsec_keys)' -d 'Secret key pattern'
-complete -c esec -n '__envsec_using_command copy' -l to -s t -x -a '(__envsec_contexts)' -d 'Target context'
-complete -c esec -n '__envsec_using_command copy' -l force -s f -d 'Overwrite existing secrets'
-complete -c esec -n '__envsec_using_command copy' -l yes -s y -d 'Skip confirmation'
-complete -c esec -n '__envsec_using_command copy' -l all -d 'Copy all secrets'
-complete -c esec -n '__envsec_using_command secret' -x -a '(__envsec_keys)' -d 'Secret key'
-complete -c esec -n '__envsec_using_command secret' -l length -s l -x -d 'Secret length'
-complete -c esec -n '__envsec_using_command secret' -l prefix -s p -x -d 'Prefix'
-complete -c esec -n '__envsec_using_command secret' -l expires -s e -x -d 'Expiry duration'
-complete -c esec -n '__envsec_using_command secret' -l alphanumeric -s a -d 'Alphanumeric only'
-complete -c esec -n '__envsec_using_command secret' -l special -s s -d 'Include special characters'
-complete -c esec -n '__envsec_using_command secret' -l all-chars -s A -d 'Printable ASCII except space and backslash'
-complete -c esec -n '__envsec_using_command shell' -l shell -s s -x -a 'bash zsh fish powershell' -d 'Shell to spawn'
-complete -c esec -n '__envsec_using_command shell' -l no-inherit -d 'Do not inherit parent env'
-complete -c esec -n '__envsec_using_command shell' -l quiet -s q -d 'Suppress banner'
-complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a run -d 'Run a saved command'
-complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a search -d 'Search saved commands'
-complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a list -d 'List saved commands'
-complete -c esec -n '__envsec_using_command cmd; and __envsec_cmd_needs_sub' -a delete -d 'Delete a saved command'
-complete -c esec -n '__envsec_cmd_using_sub run' -x -a '(__envsec_commands)' -d 'Saved command'
-complete -c esec -n '__envsec_cmd_using_sub run' -l quiet -s q -d 'Suppress output'
-complete -c esec -n '__envsec_cmd_using_sub run' -l inject -s i -d 'Inject all secrets as env vars'
-complete -c esec -n '__envsec_cmd_using_sub delete' -x -a '(__envsec_commands)' -d 'Saved command'
-complete -c esec -n '__envsec_cmd_using_sub search' -l name -s n -d 'Search names only'
-complete -c esec -n '__envsec_cmd_using_sub search' -l command -s m -d 'Search commands only'
 `.trimStart();

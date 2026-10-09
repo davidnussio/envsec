@@ -11,6 +11,7 @@ import {
   indent,
   SecretStore,
   separator,
+  stderrUi,
 } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Argument as Args, Command, Flag as Options } from "effect/cli";
@@ -365,7 +366,7 @@ const removeFile = (file: RescueFile) =>
   }).pipe(
     Effect.matchEffect({
       onFailure: (failure) =>
-        Console.error(`${icons.error} ${failure.message}`).pipe(
+        Console.error(`${stderrUi.icons.error} ${failure.message}`).pipe(
           Effect.as(false)
         ),
       onSuccess: () => Effect.succeed(true),
@@ -400,7 +401,7 @@ const updateGitignores = (
     }).pipe(
       Effect.matchEffect({
         onFailure: (failure) =>
-          Console.error(`${icons.warning} ${failure.message}`).pipe(
+          Console.error(`${stderrUi.icons.warning} ${failure.message}`).pipe(
             Effect.as({ added: [] as string[], topLevel })
           ),
         onSuccess: Effect.succeed,

@@ -45,17 +45,32 @@ const fail = (name: string, message: string, detail?: string): CheckResult => ({
 
 const execFileAsync = promisify(execFile);
 
-/** Run a shell command and return stdout/stderr/exitCode. Never rejects. */
+const ignoreStreamError = (): void => undefined;
+
+/** A probe that hangs (e.g. a keyring unlock prompt) must not hang doctor. */
+const EXEC_TIMEOUT_MS = 10_000;
+
+/**
+ * Run a command and return stdout/stderr/exitCode. Never rejects.
+ * `stdin` is written to the child and stdin is always closed: tools such as
+ * `secret-tool store` read until EOF and would otherwise wait forever.
+ */
 const exec = async (
   cmd: string,
-  args: string[]
+  args: string[],
+  stdin = ""
 ): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
 }> => {
+  const running = execFileAsync(cmd, args, { timeout: EXEC_TIMEOUT_MS });
+  // A child that exits without reading stdin raises EPIPE here; its exit
+  // status already reports the failure, so the stream error is ignored.
+  running.child.stdin?.on("error", ignoreStreamError);
+  running.child.stdin?.end(stdin);
   try {
-    const { stdout, stderr } = await execFileAsync(cmd, args);
+    const { stdout, stderr } = await running;
     return { exitCode: 0, stderr, stdout };
   } catch (error) {
     // The rejection carries the same error the callback API would receive,
@@ -146,16 +161,19 @@ const checkCredentialStore = async (): Promise<CheckResult> => {
       );
     }
     case "win32": {
+      // The adapter calls CredWriteW/CredReadW/CredDeleteW through
+      // PowerShell's Add-Type (P/Invoke), not cmdkey.
       const r = await exec("powershell.exe", [
         "-NoProfile",
+        "-NonInteractive",
         "-Command",
-        "Get-Command cmdkey | Out-Null; echo ok",
+        "Get-Command Add-Type | Out-Null; echo ok",
       ]);
       if (r.stdout.trim() === "ok") {
         return pass(
           "Credential store",
           "Windows Credential Manager",
-          "cmdkey + PowerShell available"
+          "PowerShell + Add-Type (P/Invoke) available"
         );
       }
       return fail(
@@ -213,32 +231,32 @@ const checkKeychainReadWrite = async (): Promise<CheckResult> => {
     }
 
     if (os === "linux") {
-      const setR = await exec("secret-tool", [
-        "store",
-        "--label",
-        "envsec doctor probe",
-        "service",
-        testService,
-        "account",
-        testAccount,
-      ]);
-      // secret-tool store reads from stdin — we can't easily pipe here,
-      // so just check if the tool is callable
+      const attributes = ["service", testService, "account", testAccount];
+      // secret-tool store reads the secret from stdin until EOF.
+      const setR = await exec(
+        "secret-tool",
+        ["store", "--label", "envsec doctor probe", ...attributes],
+        testValue
+      );
       if (setR.exitCode === -1) {
         return fail("Keychain read/write", "secret-tool not found");
       }
-      return pass(
-        "Keychain read/write",
-        "secret-tool callable",
-        "Full write test skipped (requires stdin pipe)"
-      );
+      if (setR.exitCode !== 0) {
+        return fail("Keychain read/write", "Write failed", setR.stderr.trim());
+      }
+      const getR = await exec("secret-tool", ["lookup", ...attributes]);
+      await exec("secret-tool", ["clear", ...attributes]);
+      if (getR.exitCode !== 0 || getR.stdout.trim() !== testValue) {
+        return fail("Keychain read/write", "Read-back mismatch");
+      }
+      return pass("Keychain read/write", "Write/read/delete OK");
     }
 
     if (os === "win32") {
       return pass(
         "Keychain read/write",
         "Skipped on Windows",
-        "Credential Manager access verified via cmdkey check"
+        "Credential Manager availability checked via PowerShell"
       );
     }
 

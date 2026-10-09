@@ -2,7 +2,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { accessSync, constants } from "node:fs";
 import path from "node:path";
 
-import { badge, bold, dim, icons, ShellNotFoundError } from "@envsec/core";
+import { ShellNotFoundError, stderrUi } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
@@ -118,7 +118,7 @@ export const shellCommand = Command.make(
       const existingCtx = process.env.ENVSEC_CONTEXT;
       if (existingCtx) {
         yield* Console.error(
-          `${icons.warning} Already inside an envsec shell (context: ${bold(existingCtx)}). Nesting is allowed but may cause confusion.`
+          `${stderrUi.icons.warning} Already inside an envsec shell (context: ${stderrUi.bold(existingCtx)}). Nesting is allowed but may cause confusion.`
         );
       }
 
@@ -134,10 +134,10 @@ export const shellCommand = Command.make(
       const count = Object.keys(secretEnv).length;
       if (!quiet) {
         yield* Console.error(
-          `${icons.shell} envsec shell ${dim("—")} context: ${bold(ctx)} (${badge(count, "secret")} loaded)`
+          `${stderrUi.icons.shell} envsec shell ${stderrUi.dim("—")} context: ${stderrUi.bold(ctx)} (${stderrUi.badge(count, "secret")} loaded)`
         );
         yield* Console.error(
-          `${dim("Type 'exit' or press Ctrl+D to leave the session.")}`
+          `${stderrUi.dim("Type 'exit' or press Ctrl+D to leave the session.")}`
         );
       }
 
@@ -154,7 +154,7 @@ export const shellCommand = Command.make(
         child.on("close", (code, signal) => {
           if (!quiet) {
             process.stderr.write(
-              `${icons.arrow} Exiting envsec shell ${dim("—")} secrets cleared.\n`
+              `${stderrUi.icons.arrow} Exiting envsec shell ${stderrUi.dim("—")} secrets cleared.\n`
             );
           }
           process.exitCode = code ?? exitCodeForSignal(signal);

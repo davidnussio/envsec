@@ -29,6 +29,15 @@ const UNIT_TO_DURATION: Record<string, (n: number) => Duration.Duration> = {
 
 const SEGMENT_PATTERN = /^(?<amount>\d+)(?<unit>mo|[mhdwy])(?<rest>.*)$/u;
 
+/**
+ * Upper bound for a parsed duration. Expiry dates are stored as
+ * "YYYY-MM-DD HH:mm:ss" text, so `now + duration` must stay a 4-digit year
+ * (and far inside the range of a JS Date, which throws a RangeError past
+ * year 275760).
+ */
+const MAX_YEARS = 1000;
+const MAX_DURATION = Duration.days(MAX_YEARS * 365);
+
 export const parseDuration = Effect.fn("parseDuration")(function* parseDuration(
   input: string
 ) {
@@ -67,6 +76,12 @@ export const parseDuration = Effect.fn("parseDuration")(function* parseDuration(
     }
 
     total = Duration.sum(total, toDuration(value));
+    if (Duration.isGreaterThan(total, MAX_DURATION)) {
+      return yield* new InvalidDurationError({
+        input,
+        message: `Invalid duration "${input}" — the maximum is ${MAX_YEARS}y`,
+      });
+    }
     matched = true;
     remaining = rest ?? "";
   }

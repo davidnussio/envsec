@@ -87,23 +87,31 @@ const ICON_ROWS = [
   ["warning", "▲", "U+25B2", "yellow", "A", "warning, confirm"],
 ] as const;
 
-const COLOR_CODE = `const isColorSupported = (): boolean => {
-  if (process.env.NO_COLOR) {
+const COLOR_CODE = `export const isColorEnabled = (
+  stream: { readonly isTTY?: boolean },
+  env: NodeJS.ProcessEnv = process.env
+): boolean => {
+  if (env.NO_COLOR) {
     return false;
   }
-  if (process.env.FORCE_COLOR) {
-    return true;
+  const force = env.FORCE_COLOR;
+  if (force !== undefined) {
+    return force !== "0" && force !== "false";
   }
-  return process.stdout.isTTY ?? false;
+  return stream.isTTY ?? false;
 };
 
-const useColor = isColorSupported();
+const createUi = (useColor: boolean) => {
+  const ansi = (code: string) => (text: string) =>
+    useColor ? \`\\u001B[\${code}m\${text}\\u001B[0m\` : text;
+  // ... colours, icons and helpers built from ansi()
+};
 
-const ansi = (code: string) => (text: string) =>
-  useColor ? \`\\u001B[\${code}m\${text}\\u001B[0m\` : text;
-
-export const green = ansi("32");
-export const red = ansi("31");`;
+// stdout for command output, stderr for warnings and errors
+export const { green, red, icons /* ... */ } = createUi(
+  isColorEnabled(process.stdout)
+);
+export const stderrUi = createUi(isColorEnabled(process.stderr));`;
 
 const PIPED_OUTPUT = `▸ myapp.dev  (3 secrets)
 ▸ myapp.prod  (2 secrets)`;
@@ -225,8 +233,8 @@ const NoEmojiPost = () => (
 
     <H2>Colour, NO_COLOR and pipes</H2>
     <P>
-      Colour is plain ANSI SGR escapes, decided once when <Mono>ui.ts</Mono>{" "}
-      loads:
+      Colour is plain ANSI SGR escapes, decided once per output stream when{" "}
+      <Mono>ui.ts</Mono> loads:
     </P>
     <CodeBlock code={COLOR_CODE} language="ts" />
     <P>That gives three rules, in this order:</P>
@@ -240,9 +248,14 @@ const NoEmojiPost = () => (
         asks. An empty <Mono>NO_COLOR=</Mono> is ignored, which also matches it.
       </li>
       <li>
-        <Mono>FORCE_COLOR</Mono> set to any non-empty value turns it on.
+        <Mono>FORCE_COLOR</Mono> turns it on, unless it is <Mono>0</Mono> or{" "}
+        <Mono>false</Mono>, which turn it off. That is how Node.js itself reads
+        the variable.
       </li>
-      <li>Otherwise colour is on only when stdout is a TTY.</li>
+      <li>
+        Otherwise colour is on only when the stream being written is a TTY:
+        stdout for command output, stderr for warnings and errors.
+      </li>
     </List>
     <P>
       Piping drops the escapes but keeps the glyphs, so the output of{" "}
@@ -250,17 +263,19 @@ const NoEmojiPost = () => (
     </P>
     <CodeBlock code={PIPED_OUTPUT} language="text" />
     <P>
-      Two rough edges I found while checking this. <Mono>FORCE_COLOR=0</Mono>{" "}
-      currently forces colour on, because the check only tests for a non-empty
-      string, while libraries such as{" "}
+      Two rough edges I found while checking this, both fixed in envsec 1.1.3.{" "}
+      <Mono>FORCE_COLOR=0</Mono> used to force colour on, because the check only
+      tested for a non-empty string, while libraries such as{" "}
       <ExternalLink href="https://github.com/chalk/supports-color">
         supports-color
       </ExternalLink>{" "}
-      treat <Mono>0</Mono> as off. And the TTY test looks only at stdout, even
+      treat <Mono>0</Mono> as off. And there was one TTY test, on stdout, even
       for errors written to stderr: run envsec in a terminal with{" "}
-      <Mono>2&gt; err.log</Mono> and the log file gets escape codes. Both are
-      small fixes. Scripts that want clean bytes can set <Mono>NO_COLOR=1</Mono>{" "}
-      or use <Mono>--json</Mono> where a command supports it.
+      <Mono>2&gt; err.log</Mono> and the log file got escape codes, while{" "}
+      <Mono>envsec env | …</Mono> printed its warnings to the terminal without
+      colour. Each stream now gets its own palette. Scripts that want clean
+      bytes can still set <Mono>NO_COLOR=1</Mono> or use <Mono>--json</Mono>{" "}
+      where a command supports it.
     </P>
 
     <H2>In short</H2>

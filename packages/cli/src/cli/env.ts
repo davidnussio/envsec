@@ -1,4 +1,4 @@
-import { badge, bold, icons, SecretStore } from "@envsec/core";
+import { SecretStore, stderrUi } from "@envsec/core";
 import { Console, Effect } from "effect";
 import { Command, Flag as Options } from "effect/cli";
 
@@ -36,7 +36,7 @@ export const envCommand = Command.make(
 
       if (secrets.length === 0) {
         yield* Console.error(
-          `${icons.empty} No secrets found for context ${bold(`"${ctx}"`)}`
+          `${stderrUi.icons.empty} No secrets found for context ${stderrUi.bold(`"${ctx}"`)}`
         );
         return;
       }
@@ -81,7 +81,7 @@ export const envCommand = Command.make(
 
       if (skipped.length > 0) {
         yield* Console.error(
-          `${icons.warning} Skipped ${badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
+          `${stderrUi.icons.warning} Skipped ${stderrUi.badge(skipped.length, "secret")} no longer in keychain: ${skipped.join(", ")}`
         );
       }
     })

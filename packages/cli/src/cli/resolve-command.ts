@@ -4,6 +4,7 @@ import {
   indent,
   MissingSecretsError,
   SecretStore,
+  stderrUi,
 } from "@envsec/core";
 import type { SecretNotFoundError } from "@envsec/core";
 import { Console, Effect } from "effect";
@@ -64,7 +65,7 @@ export const resolveCommand = Effect.fn("resolveCommand")(
     if (missing.length > 0) {
       const keyList = missing.map((k) => indent(`- ${k}`)).join("\n");
       const message = `Missing secrets in context "${ctx}":\n${keyList}\n\nAdd them with: envsec -c ${ctx} add <key>`;
-      yield* Console.error(`${icons.error} ${message}`);
+      yield* Console.error(`${stderrUi.icons.error} ${message}`);
       return yield* new MissingSecretsError({
         context: ctx,
         keys: missing,
