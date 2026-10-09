@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
 
 import {
   FileAccessError,
   GPGEncryptionError,
   SecretStore,
   stderrUi,
+  writePrivateFile,
 } from "@envsec/core";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag as Options } from "effect/cli";
@@ -129,7 +129,7 @@ export const shareCommand = Command.make(
               message: `Failed to write share file: ${error}`,
               path: output.value,
             }),
-          try: () => writeFileSync(output.value, encrypted, "utf-8"),
+          try: () => writePrivateFile(output.value, encrypted),
         });
         yield* Console.error(
           `${stderrUi.icons.shield} Encrypted ${stderrUi.badge(entries.length, "secret")} from ${stderrUi.bold(`"${ctx}"`)} for ${stderrUi.bold(encryptTo)} ${stderrUi.icons.arrow} ${stderrUi.bold(output.value)}`

@@ -53,3 +53,11 @@ jobs:
           "$BIN" cmd list | grep -q hello
           "$BIN" cmd delete hello
           test "$(stat -c %a "$HOME/.envsec/store.sqlite")" = 600
+          # .env and bunfig.toml in the cwd must not be autoloaded.
+          WORK="$(mktemp -d)"
+          echo "ENVSEC_LEAK=from-dotenv" > "$WORK/.env"
+          printf 'preload = ["./evil.ts"]\n' > "$WORK/bunfig.toml"
+          echo 'console.log("PRELOADED")' > "$WORK/evil.ts"
+          OUT="$(cd "$WORK" && "$BIN" -c ci run 'echo "leak=$ENVSEC_LEAK"')"
+          echo "$OUT"
+          test "$OUT" = "leak="

@@ -36,6 +36,7 @@ export {
 } from "./errors.js";
 export { LinuxSecretServiceAccessLive } from "./implementations/linux-secret-service-access.js";
 export { MacOsKeychainAccessLive } from "./implementations/mac-os-keychain-access.js";
+export { writePrivateFile } from "./private-file.js";
 // ── Implementations ─────────────────────────────────────────────────
 export { PlatformKeychainAccessLive } from "./implementations/platform-keychain-access.js";
 export { SqliteMetadataStoreLive } from "./implementations/sqlite-metadata-store.js";

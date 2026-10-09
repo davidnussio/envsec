@@ -51,8 +51,11 @@ export const resolveCommand = Effect.fn("resolveCommand")(
       if (result.found) {
         const envVar = toEnvVarName(key, index);
         env[envVar] = result.value;
+        // On Windows the reference uses delayed expansion (!VAR!, see
+        // executeCommand): %VAR% is expanded before cmd.exe parses the line,
+        // so a value containing & | < > would run as extra commands.
         const shellRef =
-          process.platform === "win32" ? `%${envVar}%` : `$${envVar}`;
+          process.platform === "win32" ? `!${envVar}!` : `$${envVar}`;
         resolved = resolved.replaceAll(`{${key}}`, shellRef);
       } else {
         missing.push(result.key);

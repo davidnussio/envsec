@@ -55,7 +55,7 @@ const faqJsonLd = {
       "@type": "Question",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Use 'envsec -c context run' with {key} placeholders. Secrets are injected as environment variables of the child process, never appearing in ps output or shell history. Switch contexts with -c to run the same command against different secret sets.",
+        text: "Use 'envsec -c context run' with {key} placeholders. Each placeholder is passed to the child process as an environment variable reference, so secret values never appear in the command string or your shell history. Switch contexts with -c to run the same command against different secret sets.",
       },
       name: "How do I run my app with secrets without exposing them in shell history?",
     },
@@ -95,7 +95,7 @@ const faqJsonLd = {
       "@type": "Question",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Run 'eval $(envsec -c context env)' for bash/zsh. envsec also supports fish ('envsec env --shell fish') and PowerShell ('envsec env --shell powershell'). Keys are converted to UPPER_SNAKE_CASE automatically.",
+        text: "Run 'eval \"$(envsec -c context env)\"' for bash/zsh. envsec also supports fish ('envsec env --shell fish') and PowerShell ('envsec env --shell powershell'). Keys are converted to UPPER_SNAKE_CASE automatically.",
       },
       name: "How do I export secrets as environment variables in my current shell?",
     },
@@ -103,7 +103,7 @@ const faqJsonLd = {
       "@type": "Question",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Use 'envsec -c context secret key-name --length 64 --prefix sk_' to generate a cryptographically secure random secret and store it in one step. Choose character sets with --alphanumeric (default), --special, or --all-chars. Add --expires for automatic rotation tracking.",
+        text: "Use 'envsec -c context secret key-name --length 64 --prefix sk_' to generate a cryptographically secure random secret and store it in one step. Choose character sets with --alphanumeric (default), --special, or --all-chars. Add --expires to track when it is due for rotation with 'envsec audit'.",
       },
       name: "How do I generate secure API keys or passwords from the terminal?",
     },

@@ -13,7 +13,7 @@ import { WindowsCredentialManagerAccessLive } from "./windows-credential-manager
  *
  * - macOS:   uses `security` CLI (Keychain)
  * - Linux:   uses `secret-tool` (libsecret / Secret Service API)
- * - Windows: uses PowerShell + Credential Manager (advapi32 CredRead/cmdkey)
+ * - Windows: uses PowerShell P/Invoke of Credential Manager (advapi32 CredWriteW/CredReadW/CredDeleteW)
  */
 export const PlatformKeychainAccessLive: Layer.Layer<
   KeychainAccess,

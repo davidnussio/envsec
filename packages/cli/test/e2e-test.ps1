@@ -100,7 +100,7 @@ function Run-All {
 }
 
 function Cleanup-Secrets {
-    foreach ($key in @("db.password", "api.token", "special.chars", "special.emoji", "special.utf8", "stale.secret")) {
+    foreach ($key in @("db.password", "api.token", "special.chars", "special.emoji", "special.utf8", "special.amp", "stale.secret")) {
         & node $CLI -c $CTX delete -y $key 2>$null | Out-Null
     }
     foreach ($key in @("redis.host", "redis.port", "redis.password", "smtp.user", "smtp.pass")) {
@@ -345,6 +345,13 @@ Assert-Contains "run: no secrets" "hello-no-secrets" $out
 
 $out = Run-Ok @("-c", $CTX, "run", "echo {db.password}")
 Assert-Contains "run: interpolation" "newpassword" $out
+
+# cmd.exe metacharacters inside a placeholder value must stay literal
+Run-Ok @("-c", $CTX, "add", "special.amp", "-v", "a&echo INJECTED|more") | Out-Null
+$out = Run-Ok @("-c", $CTX, "run", "echo {special.amp}")
+Assert-Contains "run: & | in value not interpreted" "a&echo INJECTED|more" $out
+$out = Run-Ok @("-c", $CTX, "run", "echo plain!")
+Assert-Contains "run: ! kept without placeholders" "plain!" $out
 
 # Missing secret
 $out = Run-All @("-c", $CTX, "run", "echo {nonexistent.key}")

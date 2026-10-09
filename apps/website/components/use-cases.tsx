@@ -298,7 +298,7 @@ const USE_CASES = [
       },
       {
         prompt: true,
-        text: "eval $(envsec -c my-poc env)",
+        text: 'eval "$(envsec -c my-poc env)"',
       },
     ],
     problem:
@@ -329,7 +329,7 @@ const USE_CASES = [
       { prompt: true, text: "envsec -c my-nextjs-app shell" },
       {
         prompt: false,
-        text: "● envsec shell — context: my-nextjs-app (8 secrets loaded)",
+        text: "▶ envsec shell — context: my-nextjs-app (8 secrets loaded)",
       },
       {
         prompt: false,
@@ -431,7 +431,7 @@ const USE_CASES = [
   {
     id: "export-secrets-to-shell",
     lines: [
-      { prompt: true, text: "eval $(envsec -c myapp.dev env)" },
+      { prompt: true, text: 'eval "$(envsec -c myapp.dev env)"' },
       { prompt: false, text: "✔ Exported API_KEY, DB_PASSWORD, API_URL" },
       { prompt: true, text: "echo $API_KEY" },
       { prompt: false, text: "sk-abc123" },

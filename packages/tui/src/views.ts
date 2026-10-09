@@ -3,7 +3,7 @@
  * All views consume SecretStore via Effect dependency injection.
  */
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import nodePath from "node:path";
 
 import {
@@ -13,6 +13,7 @@ import {
   icons,
   parseDuration,
   SecretStore,
+  writePrivateFile,
 } from "@envsec/core";
 import type { EnvFileExport, SecretMetadata } from "@envsec/core";
 import { Effect, Option } from "effect";
@@ -934,7 +935,7 @@ const exportView = Effect.fn("tui.exportView")(function* exportView(
               message: `Failed to write: ${path}`,
               path,
             }),
-          try: () => writeFileSync(path, `${lines.join("\n")}\n`, "utf-8"),
+          try: () => writePrivateFile(path, `${lines.join("\n")}\n`),
         }).pipe(
           Effect.tap(() =>
             SecretStore.trackEnvFileExport(

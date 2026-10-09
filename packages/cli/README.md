@@ -18,7 +18,7 @@ Secure environment secrets management using native OS credential stores.
 - Run commands with secret interpolation
 - Save and rerun commands with `cmd` (search, list, run, delete)
 - Export secrets to `.env` files (with generation tracking via `audit`)
-- Export secrets as shell environment variables (`eval $(envsec env)`)
+- Export secrets as shell environment variables (`eval "$(envsec env)"`)
 - Load secrets from `.env` files (with conflict detection)
 - Rescue every plaintext `.env` file in a directory tree into the keychain (`envsec rescue ~/projects --import`)
 - Share secrets encrypted with GPG for team members
@@ -50,7 +50,7 @@ A running D-Bus session and a keyring daemon (e.g. `gnome-keyring-daemon`) must 
 
 ### Windows
 
-No extra dependencies. Uses the built-in Windows Credential Manager via `cmdkey` and PowerShell.
+No extra dependencies. Uses the built-in Windows Credential Manager, calling the Win32 `CredWriteW` / `CredReadW` / `CredDeleteW` APIs from PowerShell (P/Invoke).
 
 ## Installation
 
@@ -113,7 +113,8 @@ envsec -c myapp.dev add api.key
 # Set an expiry duration with --expires (-e)
 envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 
-# Supported duration units: m (minutes), h (hours), d (days), w (weeks), mo (months), y (years)
+# Supported duration units: m (minutes), h (hours), d (days), w (weeks),
+# mo (months, counted as 30 days), y (years, counted as 365 days)
 # Combinable: 1y6mo, 2w3d, 1d12h
 envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 ```
@@ -136,7 +137,7 @@ envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
 # Character set options:
 # --alphanumeric (-a)  Only [a-zA-Z0-9] (default)
 # --special (-s)       Alphanumeric + !@#$%^&*
-# --all-chars          All printable ASCII for maximum entropy
+# --all-chars (-A)    Printable ASCII except space and backslash (93 chars)
 envsec -c myapp.dev secret db.password --special --length 64
 envsec -c myapp.dev secret master.key --all-chars --length 128
 
@@ -152,7 +153,7 @@ envsec secret --special --length 64
 envsec secret --all-chars --length 128 --prefix "pk_"
 ```
 
-When both `--context` and a key name are provided, the generated value is stored and printed. Without either, it prints the raw value to stdout — perfect for piping or clipboard.
+When both `--context` and a key name are provided, the generated value is stored and printed. If either one is missing, nothing is stored: it prints the raw value to stdout with no warning — perfect for piping or clipboard, but double-check both are set when you mean to store it.
 
 ### Get a secret
 
@@ -329,14 +330,14 @@ Keys are converted to `UPPER_SNAKE_CASE` (e.g. `api.token` → `API_TOKEN`).
 
 ```bash
 # Output export statements for eval (bash/zsh)
-eval $(envsec -c myapp.dev env)
+eval "$(envsec -c myapp.dev env)"
 
 # Specify target shell syntax
 envsec -c myapp.dev env --shell fish
 envsec -c myapp.dev env --shell powershell
 
 # Output unset commands to clean up exported variables
-eval $(envsec -c myapp.dev env --unset)
+eval "$(envsec -c myapp.dev env --unset)"
 
 # Combine shell and unset
 envsec -c myapp.dev env --unset --shell fish
@@ -410,7 +411,7 @@ envsec -c myapp.dev share --encrypt-to alice@example.com -o secrets.enc
 envsec -c myapp.dev --json share --encrypt-to alice@example.com -o secrets.enc
 ```
 
-The recipient can decrypt with `gpg --decrypt secrets.enc` and pipe the result into `envsec load`. By default the encrypted payload uses `.env` format (`KEY="value"`); with `--json` it uses a structured JSON object. Requires GPG to be installed and the recipient's public key to be in your keyring.
+The recipient can decrypt with `gpg --decrypt secrets.enc`. `load` reads a file path (`--input`), not stdin, so a plain pipe does not work: on macOS and Linux import the default `.env` payload with process substitution, `envsec -c myapp.dev load --input <(gpg --decrypt secrets.enc)`; on Windows decrypt to a file, load it, then delete it. By default the encrypted payload uses `.env` format (`KEY="value"`); with `--json` it uses a structured JSON object. Requires GPG to be installed and the recipient's public key to be in your keyring.
 
 ### Audit secrets for expiry
 
@@ -448,7 +449,7 @@ envsec --json doctor
 The `doctor` command verifies your envsec installation is working correctly. It checks:
 
 - Platform support and Node.js version
-- Credential store availability (macOS Keychain, Linux secret-tool, Windows cmdkey)
+- Credential store availability (macOS Keychain, Linux secret-tool, Windows PowerShell)
 - Keychain read/write access
 - Database path, permissions, and schema integrity
 - Orphaned secrets (metadata without keychain entry)
@@ -464,17 +465,24 @@ envsec supports dynamic tab completion for bash, zsh, and fish. Completions are 
 # Bash (add to ~/.bashrc)
 eval "$(envsec --completions bash)"
 
-# Zsh (add to ~/.zshrc)
-eval "$(envsec --completions zsh)"
+# Zsh: save the script in a directory on your fpath
+mkdir -p ~/.zfunc
+envsec --completions zsh > ~/.zfunc/_envsec
+# then add this to ~/.zshrc, before compinit runs:
+#   fpath=(~/.zfunc $fpath)
+#   autoload -Uz compinit && compinit
 
 # Fish (add to ~/.config/fish/config.fish)
 envsec --completions fish | source
 ```
 
+Homebrew installs the completion scripts for all three shells automatically.
+
 What gets completed dynamically:
 
 - `--context` / `-c` — lists all your contexts
-- Secret key arguments (`get`, `add`, `delete`) — lists keys for the current context
+- Secret key arguments (`get`, `add`, `delete`, `rename`, `secret`) and the key/pattern argument of `move` and `copy` — lists keys for the current context
+- `move` / `copy` `--to` — lists contexts
 - `cmd run` / `cmd delete` — lists saved command names
 - Subcommands, flags, and static choices (shells, etc.) are also completed
 
@@ -482,13 +490,13 @@ What gets completed dynamically:
 
 Secrets are stored in the native OS credential store. The backend is selected automatically based on the platform:
 
-| OS      | Backend                    | Tool / API                       |
-| ------- | -------------------------- | -------------------------------- |
-| macOS   | Keychain                   | `security` CLI                   |
-| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
-| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
+| OS | Backend | Tool / API |
+| --- | --- | --- |
+| macOS | Keychain | `security` CLI |
+| Linux | Secret Service API (D-Bus) | `secret-tool` (libsecret) |
+| Windows | Credential Manager | PowerShell P/Invoke (advapi32 `CredWriteW` / `CredReadW` / `CredDeleteW`) |
 
-Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
+Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys are one or more dot-separated segments (e.g. `token`, `api.key`, `db.prod.password`), up to 256 characters. Each segment starts with a letter or digit and may contain letters, digits, hyphens and underscores. The last segment becomes the credential store's account; the context and any earlier segments form the service.
 
 ## Security
 
@@ -500,11 +508,11 @@ envsec is built around a simple principle: your secrets belong in your OS, not i
 
 **Full Unicode support.** Secret values can contain any Unicode characters, including emoji and accented letters. Values are base64-encoded before being stored in the OS credential store, avoiding platform-specific encoding quirks (e.g. macOS `security` CLI hex-encoding non-ASCII output). Legacy plaintext secrets are read transparently for backward compatibility.
 
-**Secrets never touch disk as plaintext.** Values go straight from your terminal into the OS credential store. They are never written to config files, logs, or intermediate storage.
+**Secrets don't touch disk as plaintext.** Values go straight from your terminal into the OS credential store. envsec never writes them to config files, logs, or intermediate storage; the only exception is `env-file`, which writes a `.env` file because you asked for one.
 
 **No secrets in terminal output.** The `list` and `search` commands display key names only — values are never printed. This keeps secrets out of scrollback buffers, screen recordings, and shoulder-surfing range.
 
-**Safe command execution.** The `run` command injects secrets as environment variables of the child process rather than interpolating them into the command string. This means secret values don't appear in `ps` output or shell history. If any referenced secret is missing, the command is blocked entirely — no partial execution with incomplete credentials.
+**Safe command execution.** The `run` command passes secrets as environment variables of the child process: each `{key}` placeholder becomes a reference to such a variable, never the literal value. Secret values therefore stay out of the command string and your shell history. If any referenced secret is missing, the command is blocked entirely — no partial execution with incomplete credentials.
 
 **Input validation and injection prevention.** Context names are validated against a strict allowlist (alphanumeric, dots, hyphens, underscores) with path traversal and prototype pollution checks. All SQLite queries use prepared statements with bind parameters, preventing SQL injection. PowerShell arguments on Windows are escaped to guard against command injection.
 
@@ -523,6 +531,16 @@ We believe in being upfront about what envsec does not yet cover. These are real
 **No cross-context access control.** Any process running as your OS user can read all secrets across all contexts. envsec relies on OS-level user isolation — it does not add its own authorization layer between contexts.
 
 **Linux headless environments.** On Linux, envsec depends on an active D-Bus session and a keyring daemon (e.g. `gnome-keyring-daemon`). In containers or headless servers without a graphical session, the keyring may be unavailable or may store secrets with weaker protection.
+
+**Values briefly appear in the process list on macOS and Windows.** Storing a secret runs `security` (macOS) or `powershell.exe` (Windows) with the base64-encoded value as a command-line argument, so it is visible in `ps` or Task Manager for as long as that write runs. On Linux the value goes to `secret-tool` on stdin instead. Separately, a `{key}` placeholder used as a program argument (e.g. `curl {api.url}`) is expanded by the shell into that program's arguments, which `ps` shows.
+
+**Child processes inherit secrets.** Secrets injected by `run`, `cmd run` and `shell` are environment variables, so every process the child starts inherits them too.
+
+**`env-file` uses the default file mode.** The file is created with your umask (usually `0644`), so other local users may be able to read it. Restrict it with `chmod 600` if that matters.
+
+**Expiry is advisory.** `get`, `list` and `audit` warn about expired secrets, but envsec still returns and uses them. Rotate a secret yourself when it expires.
+
+**`share` trusts any matching key.** GPG is called with `--trust-model always`, so `share` encrypts to whatever key in your keyring matches `--encrypt-to` without checking its trust level. Verify the recipient's fingerprint before sharing.
 
 **Encryption depends on your OS.** envsec adds no additional at-rest encryption beyond what the native credential store provides. On systems without full-disk encryption, an attacker with physical access could potentially extract secrets from the keychain. We recommend enabling full-disk encryption (FileVault, LUKS, BitLocker) for the strongest protection.
 
