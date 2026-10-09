@@ -137,6 +137,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "One CLI, three keychains",
   },
   {
+    date: "2026-10-09",
+    description:
+      "envsec keeps secret values in the OS keychain and names, expiry and export records in SQLite: why, what that reveals, and what happens when one write fails.",
+    readingTime: "7 min read",
+    slug: "keychain-for-values-sqlite-for-metadata",
+    tags: ["internals", "performance"],
+    title: "Why secret values live in the keychain and metadata in SQLite",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
