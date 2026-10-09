@@ -200,6 +200,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Sharing secrets with a teammate, the GPG way",
   },
   {
+    date: "2026-10-09",
+    description:
+      "Why emoji break column alignment in terminals (wcwidth, East Asian Width, VS16, ZWJ) and the 27 geometric icons envsec uses instead.",
+    readingTime: "4 min read",
+    slug: "no-emoji-in-the-terminal",
+    tags: ["cli-design"],
+    title: "Why there are no emoji in envsec's output",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
