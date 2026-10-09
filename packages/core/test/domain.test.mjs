@@ -9,10 +9,13 @@ import { Duration, Effect, Schema } from "effect";
 import {
   ContextName,
   DatabaseConfigFrom,
+  expiresAtFromNow,
   parseDuration,
   parseSecretKey,
   SecretStore,
 } from "../dist/index.js";
+
+const EXPIRY_FORMAT = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/u;
 
 test("accepts valid context names and rejects unsafe names", () => {
   const decodeContextName = Schema.decodeUnknownSync(ContextName);
@@ -44,6 +47,20 @@ test("parses combined durations", async () => {
   const duration = await Effect.runPromise(parseDuration("1d12h"));
 
   assert.equal(Duration.toMillis(duration), 129_600_000);
+});
+
+test("rejects durations too large to become an expiry date", async () => {
+  const errors = await Promise.all(
+    ["99999999999999y", "1001y", `${"9".repeat(400)}m`].map((input) =>
+      Effect.runPromise(Effect.flip(parseDuration(input)))
+    )
+  );
+
+  for (const error of errors) {
+    assert.equal(error._tag, "InvalidDurationError");
+  }
+  const max = await Effect.runPromise(parseDuration("1000y"));
+  assert.match(expiresAtFromNow(max), EXPIRY_FORMAT);
 });
 
 test("uses the database path supplied to the SecretStore layer", async () => {
