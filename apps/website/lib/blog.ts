@@ -164,6 +164,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Testing a keychain CLI on macOS, Linux and Windows in CI",
   },
   {
+    date: "2026-10-09",
+    description:
+      "One release tag, seven Bun targets, npm, Homebrew and mise: how the envsec release workflow ships a TypeScript CLI, and what it still does not do.",
+    readingTime: "6 min read",
+    slug: "shipping-a-bun-binary",
+    tags: ["shipping", "bun"],
+    title: "Shipping one CLI to Homebrew, npm, mise and a standalone binary",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
