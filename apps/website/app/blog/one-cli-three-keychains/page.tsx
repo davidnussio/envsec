@@ -268,8 +268,11 @@ const OneCliThreeKeychainsPost = () => (
       keys can contain dots, so context <Mono>myapp</Mono> with key{" "}
       <Mono>dev.api.token</Mono> and context <Mono>myapp.dev</Mono> with key{" "}
       <Mono>api.token</Mono> land on the same item. It takes an unusual naming
-      scheme to hit this, but if you do, the second write silently replaces the
-      first.
+      scheme to hit this, and up to 1.1.2 the second write silently replaced the
+      first. Since 1.1.3 envsec looks for such an alias in the metadata before
+      writing and refuses the second key with an error, and deleting one of two
+      secrets that already collide keeps the shared item. The naming itself is
+      unchanged, so existing secrets keep working.
     </P>
 
     <H2>macOS: the security CLI</H2>

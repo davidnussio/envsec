@@ -71,8 +71,13 @@ envsec --db ~/scratch/envsec/store.sqlite -c myapp.dev list
 # for a whole shell session or a CI job
 export ENVSEC_DB=/tmp/ci-envsec/store.sqlite`;
 
-const INIT_DB = `mkdirSync(dbDir, { mode: DIR_PERMISSIONS, recursive: true }); // 0o700
-chmodSync(dbDir, DIR_PERMISSIONS);
+const INIT_DB = `// Only directories envsec creates (or owns, like ~/.envsec) are locked
+// down: a custom --db can live in the current directory or a shared
+// folder whose permissions are not ours to change.
+const created = mkdirSync(dbDir, { mode: DIR_PERMISSIONS, recursive: true }); // 0o700
+if (created !== undefined || dbDir === DEFAULT_DB_DIR) {
+  chmodSync(dbDir, DIR_PERMISSIONS);
+}
 // Create the file ourselves so it never exists with the default umask
 // permissions; SQLite gives its journal files the same mode.
 closeSync(openSync(dbPath, "a", FILE_PERMISSIONS)); // 0o600
@@ -264,14 +269,17 @@ const KeychainForValuesPost = () => (
     </P>
     <TerminalBlock code={DB_PATH} />
     <P>
-      Every time the store opens, it sets the directory to <Mono>0700</Mono> and
-      creates the file with <Mono>0600</Mono> before SQLite touches it:
+      Every time the store opens, it creates the file with <Mono>0600</Mono>{" "}
+      before SQLite touches it, and sets the directory to <Mono>0700</Mono> if
+      envsec created it or it is the default <Mono>~/.envsec</Mono>:
     </P>
     <CodeBlock code={INIT_DB} language="ts" />
     <P>
-      One consequence: the directory that holds the database is set to{" "}
-      <Mono>0700</Mono> on every run, whatever it is. Point <Mono>--db</Mono> at
-      a dedicated directory, not at a project root or a shared folder.
+      Up to 1.1.2 the directory was set to <Mono>0700</Mono> on every run,
+      whatever it was, so a <Mono>--db</Mono> in a project root or a shared
+      folder locked that folder down. Since 1.1.3 an existing directory you
+      point <Mono>--db</Mono> at keeps its permissions; only the database file
+      is forced to <Mono>0600</Mono>.
     </P>
     <P>
       Next to the database sits <Mono>completions.cache</Mono>, a JSON file with
