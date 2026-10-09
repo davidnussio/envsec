@@ -1,8 +1,8 @@
 const content = `# envsec
 
-> envsec is a cross-platform CLI tool and Node.js SDK for managing environment secrets using native OS credential stores (macOS Keychain, Linux Secret Service/GNOME Keyring, Windows Credential Manager). Secrets are never stored as plaintext on disk.
+> envsec is a cross-platform CLI tool and Node.js SDK for managing environment secrets using native OS credential stores (macOS Keychain, Linux Secret Service/GNOME Keyring, Windows Credential Manager). Secrets are not stored as plaintext on disk unless you explicitly export them with \`env-file\`.
 
-envsec stores secret values directly in the OS native credential store and tracks metadata (key names, timestamps) in a local SQLite database. It is published on npm as \`envsec\` (CLI) and \`@envsec/sdk\` (SDK). Requires Node.js >= 22.13.
+envsec stores secret values directly in the OS native credential store and tracks metadata (key names, timestamps) in a local SQLite database. It is published on npm as \`envsec\` (CLI) and \`@envsec/sdk\` (SDK). The npm package requires Node.js >= 22.13; the Homebrew formula and standalone release binaries embed their own runtime.
 
 Key capabilities:
 - Store, retrieve, delete, rename, move, and copy secrets organized by context (e.g. \`myapp.dev\`, \`stripe-api.prod\`)
@@ -11,7 +11,7 @@ Key capabilities:
 - Export secrets to \`.env\` files or as shell environment variables (bash, zsh, fish, powershell)
 - Run commands with secret interpolation via environment variables
 - Save and rerun named commands (\`cmd\` subcommand)
-- Audit secrets for expiry and rotation status
+- Audit secrets for expiry (expired and soon-to-expire secrets, tracked \`.env\` exports)
 - Load secrets from \`.env\` files with conflict detection
 - Share secrets encrypted with GPG for team members
 - Interactive terminal UI (\`envsec tui\`)
@@ -43,7 +43,7 @@ mise use -g npm:envsec
 
 - macOS: no extra dependencies (uses built-in Keychain via \`security\` CLI)
 - Linux: requires \`libsecret-tools\` (\`secret-tool\`) and an active D-Bus session with a keyring daemon
-- Windows: no extra dependencies (uses Credential Manager via \`cmdkey\` + PowerShell)
+- Windows: no extra dependencies (uses Credential Manager via PowerShell P/Invoke of the Win32 \`CredWriteW\` / \`CredReadW\` / \`CredDeleteW\` APIs)
 
 ## Core Concepts
 
@@ -53,7 +53,7 @@ Secrets are organized by context — a free-form label like \`myapp.dev\`, \`str
 
 ### Secret Keys
 
-Keys must contain at least one dot separator (e.g. \`api.key\`, \`db.connection_string\`). The dot maps to the credential store's service/account structure. When exported to environment variables, keys are converted to \`UPPER_SNAKE_CASE\` (e.g. \`api.token\` → \`API_TOKEN\`).
+Keys are one or more dot-separated segments (e.g. \`token\`, \`api.key\`, \`db.connection_string\`), up to 256 characters. Each segment starts with a letter or digit and may contain letters, digits, hyphens and underscores. The last segment becomes the credential store account; the context and any earlier segments form the service. When exported to environment variables, keys are converted to \`UPPER_SNAKE_CASE\` (e.g. \`api.token\` → \`API_TOKEN\`).
 
 ### Metadata Database
 
@@ -69,7 +69,7 @@ envsec -c myapp.dev add api.key                        # interactive masked prom
 envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 \`\`\`
 
-Supported duration units: \`m\` (minutes), \`h\` (hours), \`d\` (days), \`w\` (weeks), \`mo\` (months), \`y\` (years). Combinable: \`1y6mo\`, \`2w3d\`, \`1d12h\`.
+Supported duration units: \`m\` (minutes), \`h\` (hours), \`d\` (days), \`w\` (weeks), \`mo\` (months, counted as 30 days), \`y\` (years, counted as 365 days). Combinable: \`1y6mo\`, \`2w3d\`, \`1d12h\`.
 
 ### Generate a secret
 
@@ -78,13 +78,13 @@ envsec -c myapp.dev secret api.key                              # 32-char alphan
 envsec -c myapp.dev secret api.key --length 64                  # custom length
 envsec -c myapp.dev secret api.key --prefix "sk_" --length 48   # with prefix
 envsec -c myapp.dev secret db.password --special --length 64    # alphanumeric + !@#$%^&*
-envsec -c myapp.dev secret master.key --all-chars --length 128  # all printable ASCII
+envsec -c myapp.dev secret master.key --all-chars --length 128  # 93 printable ASCII chars
 envsec -c myapp.dev secret api.key --prefix "sk_" -l 48 --expires 90d  # with expiry
 envsec secret --length 32                                       # standalone password generator
 envsec secret --special --length 64 --prefix "pk_"              # standalone with options
 \`\`\`
 
-Character set options: \`--alphanumeric\` / \`-a\` (default, \`[a-zA-Z0-9]\`), \`--special\` / \`-s\` (adds \`!@#$%^&*\`), \`--all-chars\` / \`-A\` (all printable ASCII). The \`--prefix\` / \`-p\` flag prepends a fixed string (e.g. \`sk_\`, \`whsec_\`). Total stored length = prefix + \`--length\`. Uses \`crypto.randomBytes\` with rejection sampling to avoid modulo bias. When both \`--context\` and a key name are provided, the value is stored and printed. Without either, the raw value is printed to stdout — works as a standalone password generator.
+Character set options: \`--alphanumeric\` / \`-a\` (default, \`[a-zA-Z0-9]\`), \`--special\` / \`-s\` (adds \`!@#$%^&*\`), \`--all-chars\` / \`-A\` (93 printable ASCII characters: letters, digits and all punctuation except backslash; no space). The \`--prefix\` / \`-p\` flag prepends a fixed string (e.g. \`sk_\`, \`whsec_\`). Total stored length = prefix + \`--length\`. Uses \`crypto.randomBytes\` with rejection sampling to avoid modulo bias. When both \`--context\` and a key name are provided, the value is stored and printed. If either is missing, nothing is stored and the raw value is printed to stdout without a warning — works as a standalone password generator.
 
 ### Get a secret
 
@@ -148,14 +148,14 @@ envsec -c myapp.dev run --inject 'curl {api.url} -H "Authorization: Bearer $API_
 envsec -c myapp.dev run --save --name deploy 'kubectl apply -f - <<< {k8s.manifest}'
 \`\`\`
 
-Placeholders \`{key}\` are resolved to secret values. Secrets are injected as environment variables (not interpolated into the command string), so they don't appear in \`ps\` output or shell history. With \`--inject\` (\`-i\`), all context secrets are exported as UPPER_SNAKE_CASE env vars (e.g. \`db.password\` → \`DB_PASSWORD\`). Explicit \`{key}\` placeholders take precedence over injected variables.
+Placeholders \`{key}\` are resolved to secret values. Each placeholder is replaced by a reference to an environment variable of the child process (not by the value itself), so values stay out of the command string and shell history. The shell still expands those references, so a placeholder used as a program argument (e.g. \`curl {api.url}\`) ends up in that program's argv, which is visible in \`ps\`. With \`--inject\` (\`-i\`), all context secrets are exported as UPPER_SNAKE_CASE env vars (e.g. \`db.password\` → \`DB_PASSWORD\`). Explicit \`{key}\` placeholders take precedence over injected variables.
 
 ### Saved commands
 
 \`\`\`bash
 envsec cmd list                              # list all saved commands
 envsec cmd run deploy                        # run a saved command
-envsec cmd run deploy -o myapp.prod          # override context
+envsec -c myapp.prod cmd run deploy          # override the saved context
 envsec cmd run deploy --quiet                # suppress info output
 envsec cmd run deploy --inject               # inject all context secrets as env vars
 envsec cmd run deploy -i                     # short form
@@ -174,10 +174,10 @@ envsec -c myapp.dev env-file --output .env.local
 ### Export as environment variables
 
 \`\`\`bash
-eval $(envsec -c myapp.dev env)              # bash/zsh
+eval "$(envsec -c myapp.dev env)"            # bash/zsh
 envsec -c myapp.dev env --shell fish         # fish syntax
 envsec -c myapp.dev env --shell powershell   # powershell syntax
-eval $(envsec -c myapp.dev env --unset)      # unset variables
+eval "$(envsec -c myapp.dev env --unset)"    # unset variables
 \`\`\`
 
 ### Secrets-scoped shell session
@@ -217,6 +217,8 @@ envsec -c myapp.dev share --encrypt-to alice@example.com -o secrets.enc
 envsec -c myapp.dev --json share --encrypt-to alice@example.com -o secrets.enc
 \`\`\`
 
+To import a shared file, decrypt it and pass the result to \`load\` as a file path: \`load\` reads \`--input\`, not stdin, so a plain pipe does not work. On macOS and Linux use process substitution: \`envsec -c myapp.dev load --input <(gpg --decrypt secrets.enc)\`. On Windows, decrypt to a file first and remove it afterwards.
+
 ### Audit
 
 \`\`\`bash
@@ -239,7 +241,7 @@ Checks platform support, credential store availability, keychain access, databas
 
 \`\`\`bash
 eval "$(envsec --completions bash)"          # bash
-eval "$(envsec --completions zsh)"           # zsh
+envsec --completions zsh > ~/.zfunc/_envsec  # zsh: add fpath=(~/.zfunc $fpath) to ~/.zshrc before compinit
 envsec --completions fish | source           # fish
 \`\`\`
 
@@ -317,7 +319,7 @@ await client.close();
 
 - Secret values are stored in the OS native credential store (macOS Keychain, GNOME Keyring, Windows Credential Manager) — never in config files, logs, or intermediate storage
 - Full Unicode support via base64 encoding before storage
-- The \`run\` command injects secrets as child process environment variables, not into the command string
+- The \`run\` command passes secrets as child process environment variables, not as literal values in the command string
 - Context names are validated against a strict allowlist with path traversal and prototype pollution checks
 - All SQLite queries use prepared statements (no SQL injection)
 - PowerShell arguments on Windows are escaped against command injection
@@ -331,6 +333,11 @@ await client.close();
 - No cross-context access control beyond OS user isolation
 - Linux headless environments may lack a keyring daemon
 - At-rest encryption depends on the OS credential store and full-disk encryption
+- On macOS and Windows, storing a secret passes its base64-encoded value as a command-line argument to \`security\` / \`powershell.exe\`, so it is briefly visible in the process list (\`ps\`, Task Manager) while the write runs (Linux sends it to \`secret-tool\` on stdin)
+- Secrets injected by \`run\`, \`cmd run\` and \`shell\` are inherited by every process that child starts
+- \`env-file\` writes with the default file mode (usually \`0644\` after umask), so other local users may be able to read it
+- Expiry is advisory: \`get\`, \`list\` and \`audit\` warn about expired secrets, but they are still returned and used
+- \`share\` calls GPG with \`--trust-model always\`, so it encrypts to any matching key in your keyring without checking its trust level; verify the recipient's fingerprint first
 
 ## Architecture
 
@@ -347,7 +354,7 @@ Built with TypeScript (strict mode), Effect for functional error handling and de
 |---------|-----------------------------|----------------------------------|
 | macOS   | Keychain                    | \`security\` CLI                   |
 | Linux   | Secret Service API (D-Bus)  | \`secret-tool\` (libsecret)        |
-| Windows | Credential Manager          | \`cmdkey\` + PowerShell (advapi32) |
+| Windows | Credential Manager          | PowerShell P/Invoke (advapi32 \`CredWriteW\` / \`CredReadW\` / \`CredDeleteW\`) |
 
 ## Blog
 

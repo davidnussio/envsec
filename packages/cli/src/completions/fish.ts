@@ -192,7 +192,7 @@ complete -c envsec -n '__envsec_using_command secret' -l prefix -s p -x -d 'Pref
 complete -c envsec -n '__envsec_using_command secret' -l expires -s e -x -d 'Expiry duration'
 complete -c envsec -n '__envsec_using_command secret' -l alphanumeric -s a -d 'Alphanumeric only'
 complete -c envsec -n '__envsec_using_command secret' -l special -s s -d 'Include special characters'
-complete -c envsec -n '__envsec_using_command secret' -l all-chars -s A -d 'All printable ASCII'
+complete -c envsec -n '__envsec_using_command secret' -l all-chars -s A -d 'Printable ASCII except space and backslash'
 
 # shell
 complete -c envsec -n '__envsec_using_command shell' -l shell -s s -x -a 'bash zsh fish powershell' -d 'Shell to spawn'
@@ -291,7 +291,7 @@ complete -c esec -n '__envsec_using_command secret' -l prefix -s p -x -d 'Prefix
 complete -c esec -n '__envsec_using_command secret' -l expires -s e -x -d 'Expiry duration'
 complete -c esec -n '__envsec_using_command secret' -l alphanumeric -s a -d 'Alphanumeric only'
 complete -c esec -n '__envsec_using_command secret' -l special -s s -d 'Include special characters'
-complete -c esec -n '__envsec_using_command secret' -l all-chars -s A -d 'All printable ASCII'
+complete -c esec -n '__envsec_using_command secret' -l all-chars -s A -d 'Printable ASCII except space and backslash'
 complete -c esec -n '__envsec_using_command shell' -l shell -s s -x -a 'bash zsh fish powershell' -d 'Shell to spawn'
 complete -c esec -n '__envsec_using_command shell' -l no-inherit -d 'Do not inherit parent env'
 complete -c esec -n '__envsec_using_command shell' -l quiet -s q -d 'Suppress banner'

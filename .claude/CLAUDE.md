@@ -106,13 +106,13 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 
 ## CLI Icons
 
-All CLI output icons are centralized in `src/ui.ts` via the `icons` object. When adding or modifying CLI output:
+All CLI output icons are centralized in `packages/core/src/ui.ts` via the `icons` object. When adding or modifying CLI output:
 
-- Import icons from `src/ui.ts` — never hardcode symbols or emoji inline
+- Import icons from `packages/core/src/ui.ts` — never hardcode symbols or emoji inline
 - Use clean geometric Unicode glyphs (▸ ◆ ● ◎ etc.) — no emoji (🔑 📁 🔒 etc.)
 - Emoji render inconsistently across terminals and break monospace alignment
 - Each icon must be wrapped with its semantic color function (e.g. `green("✔")`, `red("✖")`)
-- When adding a new icon, add it to the `icons` object in `src/ui.ts` with a comment noting the Unicode codepoint
+- When adding a new icon, add it to the `icons` object in `packages/core/src/ui.ts` with a comment noting the Unicode codepoint
 
 # Ultracite Code Standards
 
@@ -243,13 +243,13 @@ Most formatting and common issues are automatically fixed by Oxlint and Oxfmt. R
 
 ## CLI Icons
 
-All CLI output icons are centralized in `src/ui.ts` via the `icons` object. When adding or modifying CLI output:
+All CLI output icons are centralized in `packages/core/src/ui.ts` via the `icons` object. When adding or modifying CLI output:
 
-- Import icons from `src/ui.ts` — never hardcode symbols or emoji inline
+- Import icons from `packages/core/src/ui.ts` — never hardcode symbols or emoji inline
 - Use clean geometric Unicode glyphs (▸ ◆ ● ◎ etc.) — no emoji (🔑 📁 🔒 etc.)
 - Emoji render inconsistently across terminals and break monospace alignment
 - Each icon must be wrapped with its semantic color function (e.g. `green("✔")`, `red("✖")`)
-- When adding a new icon, add it to the `icons` object in `src/ui.ts` with a comment noting the Unicode codepoint
+- When adding a new icon, add it to the `icons` object in `packages/core/src/ui.ts` with a comment noting the Unicode codepoint
 
 ## Effect libraries
 

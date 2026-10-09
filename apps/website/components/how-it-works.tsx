@@ -10,7 +10,7 @@ const PLATFORMS = [
     backend: "Credential Manager",
     emoji: "🪟",
     os: "Windows",
-    tool: "cmdkey + PowerShell",
+    tool: "PowerShell + Win32 Cred* APIs",
   },
 ] as const;
 

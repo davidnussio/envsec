@@ -39,7 +39,7 @@ const FEATURES = [
   },
   {
     description:
-      "Run commands with {key} placeholders. Secrets are injected as env vars — never in ps output.",
+      "Run commands with {key} placeholders. Secrets are passed as env vars — never in the command string or shell history.",
     icon: Play,
     title: "Secret Interpolation",
   },
