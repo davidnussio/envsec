@@ -191,6 +191,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "Parsing 1y6mo and generating secrets you can't guess",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec share encrypts a context with GPG, how the receiver imports it with envsec load, and what GPG does and doesn't protect.",
+    readingTime: "6 min read",
+    slug: "sharing-secrets-with-gpg",
+    tags: ["security", "comparisons"],
+    title: "Sharing secrets with a teammate, the GPG way",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
