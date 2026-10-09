@@ -32,25 +32,34 @@ function __envsec_commands
     ${bin} __complete commands 2>/dev/null
 end
 
-function __envsec_needs_command
+# Print the top-level subcommand, skipping global option values: the
+# "delete" in "envsec cmd delete" is a cmd subcommand, not envsec delete.
+function __envsec_command
     set -l args (commandline -opc)
+    set -l skip_value 0
     for arg in $args[2..]
-        switch $arg
-            case add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor
-                return 1
+        if test $skip_value -eq 1
+            set skip_value 0
+            continue
         end
-    end
-    return 0
-end
-
-function __envsec_using_command
-    set -l cmd (commandline -opc)
-    for arg in $cmd[2..]
-        if test "$arg" = "$argv[1]"
-            return 0
+        switch $arg
+            case -c --context --db --completions
+                set skip_value 1
+            case add get delete del search list run env env-file load rescue cmd audit share rename move copy secret shell tui doctor
+                echo $arg
+                return 0
         end
     end
     return 1
+end
+
+function __envsec_needs_command
+    not __envsec_command >/dev/null
+end
+
+function __envsec_using_command
+    set -l cmd (__envsec_command)
+    and test "$cmd" = "$argv[1]"
 end
 
 function __envsec_cmd_needs_sub

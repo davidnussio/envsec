@@ -140,3 +140,41 @@ test("bash: completes the value of --context=", bashOptions, () => {
     ["--context=alpha"]
   );
 });
+
+/** Candidates fish offers for `line`, via `complete -C`. */
+const completeFish = (line) => {
+  const stub = makeStubBin();
+  const script = path.join(stub.dir, "envsec.fish");
+  writeFileSync(script, generateCompletions("fish", "envsec"));
+  const { stdout } = spawnSync(
+    "fish",
+    [
+      "--no-config",
+      "-c",
+      `source ${shellQuote(script)}; complete -C ${shellQuote(line)}`,
+    ],
+    { encoding: "utf-8", env: stub.env }
+  );
+  const replies = stdout
+    .split("\n")
+    .filter(Boolean)
+    .map((candidate) => candidate.split("\t")[0]);
+  return { calls: stub.calls(), replies };
+};
+
+const fishOptions = { skip: !hasShell("fish") && "fish not installed" };
+
+test(
+  "fish: cmd delete offers saved commands only, not secret keys",
+  fishOptions,
+  () => {
+    assert.deepEqual(completeFish("envsec -c alpha cmd delete ").replies, [
+      "deploy",
+      "migrate",
+    ]);
+    assert.deepEqual(completeFish("envsec -c alpha delete ").replies, [
+      "api.key",
+      "db.pass",
+    ]);
+  }
+);
