@@ -128,6 +128,15 @@ export const POSTS: readonly BlogPost[] = [
     title: "What envsec does not protect you from",
   },
   {
+    date: "2026-10-09",
+    description:
+      "How envsec stores secrets through macOS security, Linux secret-tool and Windows CredWrite behind one Effect service, and why every value is base64.",
+    readingTime: "8 min read",
+    slug: "one-cli-three-keychains",
+    tags: ["internals", "cross-platform"],
+    title: "One CLI, three keychains",
+  },
+  {
     date: "2026-10-07",
     description:
       "Measuring every step from Effect 3 on Node to a standalone Bun binary: 12.9× faster startup and 5.8× less memory for the envsec CLI.",
