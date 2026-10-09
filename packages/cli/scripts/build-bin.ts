@@ -49,11 +49,20 @@ const defines = [
   `--define=EFFECT_VERSION=${JSON.stringify(effectPkg.version)}`,
 ];
 
+// A compiled binary would otherwise read .env and bunfig.toml from the
+// current directory at startup: plaintext secrets would leak into the
+// environment of `run` children, and a bunfig `preload` would execute
+// arbitrary code inside a process that can read the keychain.
+const sandbox = [
+  "--no-compile-autoload-dotenv",
+  "--no-compile-autoload-bunfig",
+];
+
 const build = async (target?: string): Promise<void> => {
   const name = target ? `envsec-${target.replace(BUN_PREFIX, "")}` : "envsec";
   const outfile = path.join(outDir, name);
   const targetFlag = target ? [`--target=${target}`] : [];
-  await Bun.$`bun build ${entry} --compile --minify --sourcemap ${targetFlag} ${defines} --outfile ${outfile}`;
+  await Bun.$`bun build ${entry} --compile --minify --sourcemap ${sandbox} ${targetFlag} ${defines} --outfile ${outfile}`;
 };
 
 await (requested.length === 0
