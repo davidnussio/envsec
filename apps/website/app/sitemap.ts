@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { POSTS } from "@/lib/blog";
-
-const siteUrl = "https://envsec.dev";
+import { POSTS, SITE_URL as siteUrl, tagUrl, usedTags } from "@/lib/blog";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -35,6 +33,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(`${post.date}T00:00:00Z`),
       priority: 0.6,
       url: `${siteUrl}/blog/${post.slug}`,
+    })),
+    ...usedTags().map(({ slug }) => ({
+      changeFrequency: "weekly" as const,
+      lastModified: new Date(),
+      priority: 0.4,
+      url: `${siteUrl}${tagUrl(slug)}`,
     })),
     {
       changeFrequency: "weekly",
