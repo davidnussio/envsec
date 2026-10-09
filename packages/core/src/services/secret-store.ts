@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Option } from "effect";
 
 import { parse as parseSecretKey } from "../domain/secret-key.js";
-import { SecretNotFoundError } from "../errors.js";
+import { InvalidKeyError, SecretNotFoundError } from "../errors.js";
 import type { MetadataStoreError } from "../errors.js";
 import { PlatformKeychainAccessLive } from "../implementations/platform-keychain-access.js";
 import { SqliteMetadataStoreLive } from "../implementations/sqlite-metadata-store.js";
@@ -20,6 +20,30 @@ const B64_PREFIX = "envsec:b64:";
 const encodeValue = (value: string): string =>
   `${B64_PREFIX}${Buffer.from(value, "utf-8").toString("base64")}`;
 
+const DOT = /\./gu;
+
+interface ContextKey {
+  readonly context: string;
+  readonly key: string;
+}
+
+/**
+ * Other (context, key) pairs stored under the same keychain item. The item
+ * name joins context and key with dots (see SecretKey.parse), so every other
+ * way of splitting `<context>.<key>` at a dot lands on the same item:
+ * context "a" + key "b.c" and context "a.b" + key "c" both map to service
+ * "envsec.a.b", account "c".
+ */
+const keychainAliases = (context: string, key: string): ContextKey[] => {
+  const qualified = `${context}.${key}`;
+  return [...qualified.matchAll(DOT)]
+    .map(({ index }) => ({
+      context: qualified.slice(0, index),
+      key: qualified.slice(index + 1),
+    }))
+    .filter((alias) => alias.context !== context);
+};
+
 const decodeValue = (raw: string): string => {
   if (raw.startsWith(B64_PREFIX)) {
     return Buffer.from(raw.slice(B64_PREFIX.length), "base64").toString(
@@ -37,6 +61,24 @@ export class SecretStore extends Context.Service<SecretStore>()(
       const keychain = yield* KeychainAccess;
       const metadata = yield* MetadataStore;
 
+      /** A secret that already exists under the same keychain item, if any. */
+      const findKeychainAlias = Effect.fn("SecretStore.findKeychainAlias")(
+        function* findKeychainAlias(context: string, key: string) {
+          for (const alias of keychainAliases(context, key)) {
+            const exists = yield* metadata.get(alias.context, alias.key).pipe(
+              Effect.as(true),
+              Effect.catchTag("SecretNotFoundError", () =>
+                Effect.succeed(false)
+              )
+            );
+            if (exists) {
+              return Option.some(alias);
+            }
+          }
+          return Option.none<ContextKey>();
+        }
+      );
+
       const set = Effect.fn("SecretStore.set")(function* set(
         context: string,
         key: string,
@@ -45,6 +87,14 @@ export class SecretStore extends Context.Service<SecretStore>()(
       ) {
         yield* Effect.logDebug(`Storing secret ${context}/${key}`);
         const parsed = yield* parseSecretKey(key, context);
+        // Writing would silently overwrite the other secret's value.
+        const alias = yield* findKeychainAlias(context, key);
+        if (Option.isSome(alias)) {
+          return yield* new InvalidKeyError({
+            key,
+            message: `Key "${key}" in context "${context}" would share its keychain item with "${alias.value.key}" in context "${alias.value.context}". Use a different key or context name.`,
+          });
+        }
         // When overwriting, keep the previous value so a failed metadata write
         // can restore it instead of deleting the user's existing secret.
         const exists = yield* metadata.get(context, key).pipe(
@@ -103,9 +153,14 @@ export class SecretStore extends Context.Service<SecretStore>()(
         key: string
       ) {
         const parsed = yield* parseSecretKey(key, context);
-        yield* keychain
-          .remove(parsed.service, parsed.account)
-          .pipe(Effect.catchTag("KeychainError", () => Effect.void));
+        // Secrets that collided before set() refused it share one item:
+        // keep it for the alias that is still there.
+        const alias = yield* findKeychainAlias(context, key);
+        if (Option.isNone(alias)) {
+          yield* keychain
+            .remove(parsed.service, parsed.account)
+            .pipe(Effect.catchTag("KeychainError", () => Effect.void));
+        }
         yield* metadata.remove(context, key);
       });
 
