@@ -142,8 +142,9 @@ sudo pacman -S libsecret`}
       />
       <H3>Windows</H3>
       <P>
-        No extra dependencies. Uses the built-in Windows Credential Manager via
-        cmdkey and PowerShell.
+        No extra dependencies. Uses the built-in Windows Credential Manager,
+        calling the Win32 CredWriteW / CredReadW / CredDeleteW APIs from
+        PowerShell.
       </P>
     </Section>
 
@@ -178,7 +179,7 @@ envsec -c myapp.dev add api.key
 envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 
 # Supported units: m (minutes), h (hours), d (days),
-# w (weeks), mo (months), y (years)
+# w (weeks), mo (months = 30 days), y (years = 365 days)
 # Combinable: 1y6mo, 2w3d, 1d12h
 envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo`}
       />
@@ -546,7 +547,7 @@ envsec -c myapp.dev env-file --output .env.local`}
       />
       <TerminalBlock
         code={`# bash/zsh
-eval $(envsec -c myapp.dev env)
+eval "$(envsec -c myapp.dev env)"
 
 # fish
 envsec -c myapp.dev env --shell fish
@@ -555,7 +556,7 @@ envsec -c myapp.dev env --shell fish
 envsec -c myapp.dev env --shell powershell
 
 # Unset exported variables
-eval $(envsec -c myapp.dev env --unset)`}
+eval "$(envsec -c myapp.dev env --unset)"`}
       />
       <P>
         Keys are converted to UPPER_SNAKE_CASE (e.g. <Mono>api.token</Mono> →{" "}
@@ -755,8 +756,14 @@ envsec -c myapp.dev share --encrypt-to [email] -o secrets.enc
 envsec -c myapp.dev --json share --encrypt-to [email] -o secrets.enc`}
       />
       <P>
-        The recipient decrypts with <Mono>gpg --decrypt secrets.enc</Mono> and
-        pipes the result into <Mono>envsec load</Mono>.
+        The recipient decrypts with <Mono>gpg --decrypt secrets.enc</Mono>.{" "}
+        <Mono>load</Mono> reads a file path, not stdin, so a plain pipe does not
+        work: to import the default <Mono>.env</Mono> payload, decrypt it to a
+        file and pass it to <Mono>envsec load --input</Mono>, or on macOS and
+        Linux use process substitution:{" "}
+        <Mono>
+          {"envsec -c myapp.dev load --input <(gpg --decrypt secrets.enc)"}
+        </Mono>
       </P>
     </Section>
 
@@ -831,7 +838,7 @@ envsec -c myapp.dev audit --json`}
           },
           {
             description:
-              "Use all printable ASCII characters for maximum entropy",
+              "Use 93 printable ASCII characters: letters, digits and all punctuation except backslash (no space)",
             name: "--all-chars, -A",
           },
         ]}
@@ -846,7 +853,7 @@ envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
 # Character sets:
 #   --alphanumeric (-a)  [a-zA-Z0-9] (default)
 #   --special (-s)       [a-zA-Z0-9] + !@#$%^&*
-#   --all-chars (-A)     all printable ASCII
+#   --all-chars (-A)     printable ASCII except space and backslash (93 chars)
 envsec -c myapp.dev secret db.password --special --length 64
 
 # With expiry
@@ -858,8 +865,10 @@ envsec secret --special --length 64 --prefix "pk_"`}
       />
       <P>
         When both context and key are present, the value is stored and printed.
-        Without either, the raw value goes to stdout — perfect for piping to{" "}
-        <Mono>pbcopy</Mono>, <Mono>xclip</Mono>, or any other tool.
+        If either one is missing, nothing is stored: the raw value goes to
+        stdout with no warning — perfect for piping to <Mono>pbcopy</Mono>,{" "}
+        <Mono>xclip</Mono>, or any other tool, but check that you passed both
+        when you meant to store it.
       </P>
     </Section>
 
@@ -1109,9 +1118,12 @@ envsec -c myapp.dev tui`}
         with <Mono>--context</Mono> (or <Mono>-c</Mono>).
       </P>
       <P>
-        Keys must contain at least one dot separator (e.g.{" "}
-        <Mono>service.account</Mono>) which maps to the credential store&apos;s
-        service/account structure.
+        Keys are one or more dot-separated segments (e.g. <Mono>token</Mono>,{" "}
+        <Mono>api.key</Mono>, <Mono>db.prod.password</Mono>), up to 256
+        characters. Each segment starts with a letter or digit and may contain
+        letters, digits, hyphens and underscores. The last segment becomes the
+        credential store&apos;s account; the context and any earlier segments
+        form the service.
       </P>
     </Section>
 
@@ -1134,7 +1146,7 @@ envsec -c myapp.dev list`}
 
     <Section id="shell-completions">
       <H2>Shell Completions</H2>
-      <P>Tab completion for bash, zsh, fish, and sh.</P>
+      <P>Tab completion for bash, zsh, and fish.</P>
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
         <span aria-hidden="true" className="shrink-0 text-emerald-400">
           ℹ
@@ -1148,8 +1160,11 @@ envsec -c myapp.dev list`}
         code={`# Bash (add to ~/.bashrc)
 eval "$(envsec --completions bash)"
 
-# Zsh (add to ~/.zshrc)
-eval "$(envsec --completions zsh)"
+# Zsh: save the script on your fpath, then in ~/.zshrc add
+#   fpath=(~/.zfunc $fpath)
+# before compinit runs
+mkdir -p ~/.zfunc
+envsec --completions zsh > ~/.zfunc/_envsec
 
 # Fish (add to ~/.config/fish/config.fish)
 envsec --completions fish | source`}

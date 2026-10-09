@@ -18,7 +18,7 @@ const LINES = [
   { prompt: false, text: "  myapp.prod     5 secrets" },
   { prompt: true, text: "envsec -c myapp.dev env-file --output .env.local" },
   { prompt: false, text: "✓ Wrote 2 secrets to .env.local" },
-  { prompt: true, text: "eval $(envsec -c myapp.dev env)" },
+  { prompt: true, text: 'eval "$(envsec -c myapp.dev env)"' },
   { prompt: false, text: "✓ Exported API_KEY, DB_PASSWORD" },
   {
     prompt: true,

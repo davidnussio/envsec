@@ -18,7 +18,7 @@ Secure environment secrets management using native OS credential stores.
 - Run commands with secret interpolation
 - Save and rerun commands with `cmd` (search, list, run, delete)
 - Export secrets to `.env` files (with generation tracking via `audit`)
-- Export secrets as shell environment variables (`eval $(envsec env)`)
+- Export secrets as shell environment variables (`eval "$(envsec env)"`)
 - Load secrets from `.env` files (with conflict detection)
 - Rescue every plaintext `.env` file in a directory tree into the keychain (`envsec rescue ~/projects --import`)
 - Share secrets encrypted with GPG for team members
@@ -85,7 +85,7 @@ A running D-Bus session and a keyring daemon (e.g. `gnome-keyring-daemon`) must 
 
 ### Windows
 
-No extra dependencies. Uses the built-in Windows Credential Manager via `cmdkey` and PowerShell.
+No extra dependencies. Uses the built-in Windows Credential Manager, calling the Win32 `CredWriteW` / `CredReadW` / `CredDeleteW` APIs from PowerShell (P/Invoke).
 
 ## Installation
 
@@ -190,7 +190,8 @@ envsec -c myapp.dev add api.key
 # Set an expiry duration with --expires (-e)
 envsec -c myapp.dev add api.key -v "sk-abc123" --expires 30d
 
-# Supported duration units: m (minutes), h (hours), d (days), w (weeks), mo (months), y (years)
+# Supported duration units: m (minutes), h (hours), d (days), w (weeks),
+# mo (months, counted as 30 days), y (years, counted as 365 days)
 # Combinable: 1y6mo, 2w3d, 1d12h
 envsec -c myapp.dev add api.key -v "sk-abc123" -e 6mo
 ```
@@ -454,14 +455,14 @@ Output export statements for use with `eval` or shell sourcing.
 
 ```bash
 # Output export statements for eval (bash/zsh)
-eval $(envsec -c myapp.dev env)
+eval "$(envsec -c myapp.dev env)"
 
 # Specify target shell syntax
 envsec -c myapp.dev env --shell fish
 envsec -c myapp.dev env --shell powershell
 
 # Output unset commands to clean up exported variables
-eval $(envsec -c myapp.dev env --unset)
+eval "$(envsec -c myapp.dev env --unset)"
 
 # Combine shell and unset
 envsec -c myapp.dev env --unset --shell fish
@@ -583,7 +584,7 @@ envsec -c myapp.dev share --encrypt-to alice@example.com -o secrets.enc
 envsec -c myapp.dev --json share --encrypt-to alice@example.com -o secrets.enc
 ```
 
-The recipient can decrypt with `gpg --decrypt secrets.enc` and pipe the result into `envsec load`. By default the encrypted payload uses `.env` format (`KEY="value"`); with `--json` it uses a structured JSON object. Requires GPG to be installed and the recipient's public key to be in your keyring.
+The recipient can decrypt with `gpg --decrypt secrets.enc`. `load` reads a file path (`--input`), not stdin, so a plain pipe does not work: on macOS and Linux import the default `.env` payload with process substitution, `envsec -c myapp.dev load --input <(gpg --decrypt secrets.enc)`; on Windows decrypt to a file, load it, then delete it. By default the encrypted payload uses `.env` format (`KEY="value"`); with `--json` it uses a structured JSON object. Requires GPG to be installed and the recipient's public key to be in your keyring.
 
 ### Audit secrets for expiry
 
@@ -623,7 +624,7 @@ Generate a cryptographically secure random secret, optionally storing it.
 - `--expires`, `-e` — Expiry duration (e.g. `30m`, `2h`, `7d`, `4w`, `3mo`, `1y`)
 - `--alphanumeric`, `-a` — Use only alphanumeric characters `[a-zA-Z0-9]` (default)
 - `--special`, `-s` — Include common special characters `[a-zA-Z0-9!@#$%^&*]`
-- `--all-chars`, `-A` — Use all printable ASCII characters for maximum entropy
+- `--all-chars`, `-A` — Use 93 printable ASCII characters: letters, digits and all punctuation except backslash (no space)
 
 ```bash
 # Generate and store a 32-char alphanumeric secret
@@ -635,7 +636,7 @@ envsec -c myapp.dev secret api.key --prefix "sk_" --length 48
 # Character sets:
 #   --alphanumeric (-a)  [a-zA-Z0-9] (default)
 #   --special (-s)       [a-zA-Z0-9] + !@#$%^&*
-#   --all-chars (-A)     all printable ASCII
+#   --all-chars (-A)     printable ASCII except space and backslash (93 chars)
 envsec -c myapp.dev secret db.password --special --length 64
 
 # With expiry
@@ -646,7 +647,7 @@ envsec secret --length 32
 envsec secret --special --length 64 --prefix "pk_"
 ```
 
-When both context and key are provided, the generated value is stored and printed. Without either, the raw value goes to stdout — useful for piping to `pbcopy`, `xclip`, or other tools.
+When both context and key are provided, the generated value is stored and printed. If either one is missing, nothing is stored: the raw value goes to stdout with no warning — useful for piping to `pbcopy`, `xclip`, or other tools, but double-check both are set when you mean to store it.
 
 ### Interactive TUI
 
@@ -720,17 +721,24 @@ envsec supports dynamic tab completion for bash, zsh, and fish. Completions are 
 # Bash (add to ~/.bashrc)
 eval "$(envsec --completions bash)"
 
-# Zsh (add to ~/.zshrc)
-eval "$(envsec --completions zsh)"
+# Zsh: save the script in a directory on your fpath
+mkdir -p ~/.zfunc
+envsec --completions zsh > ~/.zfunc/_envsec
+# then add this to ~/.zshrc, before compinit runs:
+#   fpath=(~/.zfunc $fpath)
+#   autoload -Uz compinit && compinit
 
 # Fish (add to ~/.config/fish/config.fish)
 envsec --completions fish | source
 ```
 
+Homebrew installs the completion scripts for all three shells automatically.
+
 What gets completed dynamically:
 
 - `--context` / `-c` — lists all your contexts
-- Secret key arguments (`get`, `add`, `delete`) — lists keys for the current context
+- Secret key arguments (`get`, `add`, `delete`, `rename`, `secret`) and the key/pattern argument of `move` and `copy` — lists keys for the current context
+- `move` / `copy` `--to` — lists contexts
 - `cmd run` / `cmd delete` — lists saved command names
 - Subcommands, flags, and static choices (shells, etc.) are also completed
 
@@ -742,31 +750,30 @@ How does envsec compare to other tools for managing environment secrets?
 | --- | --- | --- | --- |
 | Secret storage | OS credential store (Keychain, Secret Service, Credential Manager) | `.env` files on disk (dotenvx adds encryption) | 1Password cloud vault |
 | Encryption at rest | Delegated to OS (Keychain, GNOME Keyring, DPAPI) | None (dotenv) / ECIES per-file (dotenvx) | AES-256 in 1Password cloud |
-| Secrets on disk | Never — values go straight to OS credential store | Always — `.env` files are plaintext by default | Never locally (fetched at runtime from cloud) |
+| Secrets on disk | Not by default — values go to the OS credential store; `env-file` writes a plaintext `.env` only when you ask | Always — `.env` files are plaintext by default | Never locally (fetched at runtime from cloud) |
 | Offline access | Full — secrets are local in OS store | Full — files are local | Requires network (cached items available offline in app) |
-| Account / subscription | None — free, open source, no signup | Free (dotenv) / free open source (dotenvx) | Paid subscription (from ~$3/mo individual, ~$8/user/mo business) |
+| Account / subscription | None — free, open source, no signup | Free (dotenv) / free open source (dotenvx) | Paid subscription |
 | Cross-platform | macOS, Linux, Windows | Any platform with Node.js / any runtime (dotenvx) | macOS, Linux, Windows |
 | Context / environment organization | Contexts (e.g. `myapp.dev`, `stripe.prod`) | Separate `.env` files per environment | Vaults and items |
 | Run commands with secrets | `envsec run` — placeholder interpolation + `--inject` env vars | `dotenvx run -- cmd` — injects from encrypted `.env` | `op run -- cmd` — injects via secret references |
 | Export to `.env` file | `envsec env-file` (tracked for audit) | Native format — `.env` files are the source of truth | `op inject --out-file` |
 | Import from `.env` file | `envsec load` (with conflict detection) | N/A — `.env` is the primary store | Manual item creation |
-| Shell env export | `eval $(envsec env)` — bash, zsh, fish, powershell | `dotenvx run` or `node -r dotenv/config` | `op run --env-file` |
+| Shell env export | `eval "$(envsec env)"` — bash, zsh, fish, powershell | `dotenvx run` or `node -r dotenv/config` | `op run --env-file` |
 | Interactive shell session | `envsec shell` — scoped subshell with auto-cleanup | Not built-in | Not built-in |
 | Secret search | Glob patterns on keys and contexts | Not built-in | `op item list --tags/--category` filtering |
-| Expiry / rotation audit | `envsec audit` — expired, expiring, tracked `.env` files | Not built-in | Watchtower (in app, not CLI) |
+| Expiry audit | `envsec audit` — expired, expiring, tracked `.env` files | Not built-in | Watchtower (in app, not CLI) |
 | Saved commands | `envsec cmd` — save, list, search, run, delete | Not built-in | Not built-in |
 | Move / copy secrets | `envsec move` and `envsec copy` between contexts | Manual file copy | `op item move` between vaults |
 | Rename secrets | `envsec rename` (preserves value and metadata) | Manual edit of `.env` file | `op item edit` |
-| GPG-encrypted sharing | `envsec share --encrypt-to` | Encrypted `.env` files committed to git (dotenvx) | Built-in vault sharing, team provisioning |
+| GPG-encrypted sharing | `envsec share --encrypt-to` (export only; import with `load`) | Encrypted `.env` files committed to git (dotenvx) | Built-in vault sharing, team provisioning |
 | Interactive TUI | `envsec tui` — full-screen terminal UI | Not built-in | Not built-in |
 | Health diagnostics | `envsec doctor` — checks platform, keychain, DB integrity | Not built-in | Not built-in |
-| Shell completions | Dynamic (contexts, keys, commands) for bash, zsh, fish | Not built-in | Static completions for bash, zsh, fish, powershell |
+| Shell completions | Dynamic (contexts, keys, commands) for bash, zsh, fish | Not built-in | `op completion` for bash, zsh, fish, powershell |
 | SDK / programmatic access | `@envsec/sdk` for Node.js / Bun | `require('dotenv').config()` — core use case | 1Password SDKs (Node.js, Python, Go, etc.) |
 | Team / multi-user | GPG sharing (manual) | Git-based sharing with encrypted `.env` (dotenvx) | Built-in team management, RBAC, audit logs |
+| Metadata tracking | SQLite (key names, timestamps — never values) | None | Cloud-based item history and audit logs |
 
 <!-- | CI/CD integration | Standard CLI — works anywhere Node.js runs | `dotenvx run` in any CI pipeline | Service accounts, native CI/CD integrations | -->
-
-| Biometric auth | Inherits OS biometrics (e.g. macOS Keychain unlock) | None | Fingerprint / Touch ID via app integration | | Metadata tracking | SQLite (key names, timestamps — never values) | None | Cloud-based item history and audit logs |
 
 In short: dotenv is the simplest approach (files on disk), 1Password CLI is the most feature-rich for teams with cloud sync and RBAC, and envsec sits in between — offering OS-native encryption with zero accounts, zero cloud dependencies, and a developer-focused workflow that goes beyond what `.env` files can do.
 
@@ -774,13 +781,13 @@ In short: dotenv is the simplest approach (files on disk), 1Password CLI is the 
 
 Secrets are stored in the native OS credential store. The backend is selected automatically based on the platform:
 
-| OS      | Backend                    | Tool / API                       |
-| ------- | -------------------------- | -------------------------------- |
-| macOS   | Keychain                   | `security` CLI                   |
-| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
-| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
+| OS | Backend | Tool / API |
+| --- | --- | --- |
+| macOS | Keychain | `security` CLI |
+| Linux | Secret Service API (D-Bus) | `secret-tool` (libsecret) |
+| Windows | Credential Manager | PowerShell P/Invoke (advapi32 `CredWriteW` / `CredReadW` / `CredDeleteW`) |
 
-Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys must contain at least one dot separator (e.g., `service.account`) which maps to the credential store's service/account structure.
+Metadata (key names, timestamps) is kept in a SQLite database at `~/.envsec/store.sqlite` (configurable via `--db` or `ENVSEC_DB`). Keys are one or more dot-separated segments (e.g. `token`, `api.key`, `db.prod.password`), up to 256 characters. Each segment starts with a letter or digit and may contain letters, digits, hyphens and underscores. The last segment becomes the credential store's account; the context and any earlier segments form the service.
 
 ## Security
 
@@ -792,11 +799,11 @@ envsec is built around a simple principle: your secrets belong in your OS, not i
 
 **Full Unicode support.** Secret values can contain any Unicode characters, including emoji and accented letters. Values are base64-encoded before being stored in the OS credential store, avoiding platform-specific encoding quirks (e.g. macOS `security` CLI hex-encoding non-ASCII output). Legacy plaintext secrets are read transparently for backward compatibility.
 
-**Secrets never touch disk as plaintext.** Values go straight from your terminal into the OS credential store. They are never written to config files, logs, or intermediate storage.
+**Secrets don't touch disk as plaintext.** Values go straight from your terminal into the OS credential store. envsec never writes them to config files, logs, or intermediate storage; the only exception is `env-file`, which writes a `.env` file because you asked for one.
 
 **No secrets in terminal output.** The `list` and `search` commands display key names only — values are never printed. This keeps secrets out of scrollback buffers, screen recordings, and shoulder-surfing range.
 
-**Safe command execution.** The `run` command injects secrets as environment variables of the child process rather than interpolating them into the command string. This means secret values don't appear in `ps` output or shell history. If any referenced secret is missing, the command is blocked entirely — no partial execution with incomplete credentials.
+**Safe command execution.** The `run` command passes secrets as environment variables of the child process: each `{key}` placeholder becomes a reference to such a variable, never the literal value. Secret values therefore stay out of the command string and your shell history. If any referenced secret is missing, the command is blocked entirely — no partial execution with incomplete credentials.
 
 **Input validation and injection prevention.** Context names are validated against a strict allowlist (alphanumeric, dots, hyphens, underscores) with path traversal and prototype pollution checks. All SQLite queries use prepared statements with bind parameters, preventing SQL injection. PowerShell arguments on Windows are escaped to guard against command injection.
 
@@ -815,6 +822,16 @@ We believe in being upfront about what envsec does not yet cover. These are real
 **No cross-context access control.** Any process running as your OS user can read all secrets across all contexts. envsec relies on OS-level user isolation — it does not add its own authorization layer between contexts.
 
 **Linux headless environments.** On Linux, envsec depends on an active D-Bus session and a keyring daemon (e.g. `gnome-keyring-daemon`). In containers or headless servers without a graphical session, the keyring may be unavailable or may store secrets with weaker protection.
+
+**Values briefly appear in the process list on macOS and Windows.** Storing a secret runs `security` (macOS) or `powershell.exe` (Windows) with the base64-encoded value as a command-line argument, so it is visible in `ps` or Task Manager for as long as that write runs. On Linux the value goes to `secret-tool` on stdin instead. Separately, a `{key}` placeholder used as a program argument (e.g. `curl {api.url}`) is expanded by the shell into that program's arguments, which `ps` shows.
+
+**Child processes inherit secrets.** Secrets injected by `run`, `cmd run` and `shell` are environment variables, so every process the child starts inherits them too.
+
+**`env-file` uses the default file mode.** The file is created with your umask (usually `0644`), so other local users may be able to read it. Restrict it with `chmod 600` if that matters.
+
+**Expiry is advisory.** `get`, `list` and `audit` warn about expired secrets, but envsec still returns and uses them. Rotate a secret yourself when it expires.
+
+**`share` trusts any matching key.** GPG is called with `--trust-model always`, so `share` encrypts to whatever key in your keyring matches `--encrypt-to` without checking its trust level. Verify the recipient's fingerprint before sharing.
 
 **Encryption depends on your OS.** envsec adds no additional at-rest encryption beyond what the native credential store provides. On systems without full-disk encryption, an attacker with physical access could potentially extract secrets from the keychain. We recommend enabling full-disk encryption (FileVault, LUKS, BitLocker) for the strongest protection.
 
@@ -865,10 +882,9 @@ pnpm run test:unit
 
 # Run the CLI end-to-end suite with isolated database and credential fixtures
 pnpm --filter envsec test
-
-# Release (build + changeset publish)
-pnpm run release
 ```
+
+Releases are published by CI, not from a local machine: publishing a GitHub release for a `vX.Y.Z` tag (or `vX.Y.Z-beta.N` for the beta channel) runs `.github/workflows/release.yml`. It builds and smoke-tests the standalone binaries, sets every package version from the tag, publishes `@envsec/core`, `@envsec/sdk`, `@envsec/tui` and `envsec` to npm (dist-tag `latest`, `beta`, `alpha` or `next`, depending on the tag), attaches the binaries and `SHA256SUMS` to the release and updates the Homebrew formula.
 
 The isolated E2E suite never accesses the native credential store. To exercise the real OS adapter on macOS or Linux, build first and opt in explicitly:
 
@@ -911,9 +927,10 @@ After building and setting up the alias, load the completions in your current se
 alias envsec="node $(pwd)/packages/cli/dist/main.js"
 eval "$(envsec --completions bash)"
 
-# Zsh
+# Zsh (completion functions are loaded from fpath)
 alias envsec="node $(pwd)/packages/cli/dist/main.js"
-eval "$(envsec --completions zsh)"
+mkdir -p ~/.zfunc && envsec --completions zsh > ~/.zfunc/_envsec
+fpath=(~/.zfunc $fpath) && autoload -Uz compinit && compinit
 
 # Fish
 alias envsec "node (pwd)/packages/cli/dist/main.js"
@@ -937,7 +954,7 @@ bash packages/cli/test/e2e-test.sh
 pwsh packages/cli/test/e2e-test.ps1
 ```
 
-CI runs automatically on push/PR to `main` via GitHub Actions, executing `e2e-test.sh` on macOS and Ubuntu, and `e2e-test.ps1` on Windows.
+CI runs on GitHub Actions for every push and pull request to `main` and `beta`: `ci.yml` runs `pnpm run check`, typechecks, unit tests and a standalone binary build; `e2e.yml` runs (when `packages/**` or the workspace manifests change) `e2e-test.sh` on macOS and Ubuntu and `e2e-test.ps1` on Windows.
 
 ## License
 

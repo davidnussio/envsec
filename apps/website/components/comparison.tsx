@@ -16,13 +16,14 @@ const COMPARISON_ROWS = [
   },
   {
     dotenv: ".env files are plaintext by default",
-    envsec: "Never — values go straight to OS credential store",
+    envsec:
+      "Not by default — values go to the OS credential store; env-file writes a plaintext .env only on request",
     feature: "Secrets on disk",
     onepassword: "Never locally — fetched at runtime from cloud",
   },
   {
     dotenv: "High — requires .gitignore discipline",
-    envsec: "Zero — secrets never exist as files",
+    envsec: "Low — no files by default; env-file output needs .gitignore",
     feature: "Git leak risk",
     onepassword: "Zero — secrets live in cloud vault",
   },
@@ -36,7 +37,7 @@ const COMPARISON_ROWS = [
     dotenv: "Free and open source",
     envsec: "None — free, open source, no signup",
     feature: "Account / subscription",
-    onepassword: "Paid — from ~$3/mo individual, ~$8/user/mo business",
+    onepassword: "Paid subscription",
   },
   {
     dotenv: "Manual file management (.env.dev, .env.prod, …)",
@@ -59,20 +60,20 @@ const COMPARISON_ROWS = [
   },
   {
     dotenv: "Git-based sharing with encrypted .env (dotenvx)",
-    envsec: "GPG-encrypted export/import",
+    envsec: "GPG-encrypted export (envsec share)",
     feature: "Team sharing",
     onepassword: "Built-in vault sharing, RBAC, team provisioning, audit logs",
   },
   {
     dotenv: "source .env or framework-specific loaders",
-    envsec: "eval $(envsec env) — supports bash, zsh, fish, PowerShell",
+    envsec: 'eval "$(envsec env)" — supports bash, zsh, fish, PowerShell',
     feature: "Shell integration",
     onepassword: "op run --env-file, shell plugins with biometric auth",
   },
   {
     dotenv: "dotenvx run -- cmd injects from encrypted .env",
     envsec:
-      "{key} placeholders + --inject env vars — secrets never in ps output or history",
+      "{key} placeholders + --inject env vars — values stay out of shell history",
     feature: "Command runner",
     onepassword:
       "op run -- cmd injects via secret references (op://Vault/Item/field)",
@@ -111,7 +112,7 @@ const COMPARISON_ROWS = [
     dotenv: "Not built-in",
     envsec: "Dynamic — contexts, keys, commands for bash, zsh, fish",
     feature: "Shell completions",
-    onepassword: "Static completions for bash, zsh, fish, PowerShell",
+    onepassword: "op completion for bash, zsh, fish, PowerShell",
   },
   {
     dotenv: "require('dotenv').config() — core use case",
@@ -138,12 +139,6 @@ const COMPARISON_ROWS = [
   //   onepassword:
   //     "Service accounts, native CI/CD integrations (GitHub Actions, etc.)",
   // },
-  {
-    dotenv: "None",
-    envsec: "Inherits OS biometrics (e.g. macOS Keychain unlock)",
-    feature: "Biometric auth",
-    onepassword: "Fingerprint / Touch ID via app integration and shell plugins",
-  },
 ] as const;
 
 type CheckValue = true | false | "partial" | "asterisk";
@@ -163,7 +158,7 @@ const CHECKLIST: readonly {
   {
     dotenv: false,
     envsec: true,
-    label: "No plaintext files on disk",
+    label: "No plaintext files on disk by default",
     onepassword: true,
   },
   {
@@ -187,7 +182,7 @@ const CHECKLIST: readonly {
   {
     dotenv: false,
     envsec: true,
-    label: "Built-in secret rotation audit",
+    label: "Built-in secret expiry audit",
     onepassword: "partial",
   },
   {
@@ -341,8 +336,10 @@ export const Comparison = () => (
             = partial support or requires additional setup.
           </p>
           <p className="text-muted-foreground text-xs">
-            envsec requires Node.js &ge; 22. dotenv supports Node.js &ge; 12.
-            1Password CLI is a standalone binary.
+            envsec needs Node.js &ge; 22.13 when installed from npm; the
+            Homebrew formula and standalone binaries embed their own runtime.
+            dotenv supports Node.js &ge; 12. 1Password CLI is a standalone
+            binary.
           </p>
         </div>
       </div>
@@ -418,7 +415,7 @@ export const Comparison = () => (
               <span className="text-zinc-200">envsec -c myapp.dev shell</span>
             </p>
             <p className="text-zinc-500">
-              ● envsec shell — context: myapp.dev (12 secrets loaded)
+              ▶ envsec shell — context: myapp.dev (12 secrets loaded)
             </p>
             <p>
               <span className="text-emerald-400">$</span>{" "}

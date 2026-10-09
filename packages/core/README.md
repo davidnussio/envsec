@@ -31,11 +31,11 @@ Built with [Effect 4](https://effect.website) (`effect@4.0.0`) using the layered
 
 ## Supported Platforms
 
-| OS      | Backend                    | Tool / API                       |
-| ------- | -------------------------- | -------------------------------- |
-| macOS   | Keychain                   | `security` CLI                   |
-| Linux   | Secret Service API (D-Bus) | `secret-tool` (libsecret)        |
-| Windows | Credential Manager         | `cmdkey` + PowerShell (advapi32) |
+| OS | Backend | Tool / API |
+| --- | --- | --- |
+| macOS | Keychain | `security` CLI |
+| Linux | Secret Service API (D-Bus) | `secret-tool` (libsecret) |
+| Windows | Credential Manager | PowerShell P/Invoke (advapi32 `CredWriteW` / `CredReadW` / `CredDeleteW`) |
 
 ## License
 
