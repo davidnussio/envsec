@@ -4,29 +4,36 @@ export const zshCompletions = (bin: string): string =>
 
 autoload -U is-at-least
 
+_envsec_complete() {
+    ${bin} __complete "$@" 2>/dev/null
+}
+
 _envsec_contexts() {
     local -a contexts
-    contexts=("\${(@f)$(${bin} __complete contexts 2>/dev/null)}")
+    contexts=("\${(@f)$(_envsec_complete contexts)}")
     _describe 'context' contexts
 }
 
+# _envsec_ctx is a local of _envsec, captured from the top-level options
+# before the nested _arguments calls reset opt_args.
 _envsec_keys() {
-    local ctx="\${opt_args[-c]:-\${opt_args[--context]:-$ENVSEC_CONTEXT}}"
+    local ctx="\${_envsec_ctx:-$ENVSEC_CONTEXT}"
     if [[ -n "$ctx" ]]; then
         local -a keys
-        keys=("\${(@f)$(${bin} __complete keys "$ctx" 2>/dev/null)}")
+        keys=("\${(@f)$(_envsec_complete keys "$ctx")}")
         _describe 'key' keys
     fi
 }
 
 _envsec_commands() {
     local -a cmds
-    cmds=("\${(@f)$(${bin} __complete commands 2>/dev/null)}")
+    cmds=("\${(@f)$(_envsec_complete commands)}")
     _describe 'command name' cmds
 }
 
 _envsec() {
     local context curcontext="$curcontext" state line
+    local _envsec_ctx
     typeset -A opt_args
 
     _arguments -C \\
@@ -40,6 +47,8 @@ _envsec() {
         '1: :->command' \\
         '*:: :->args' \\
         && return 0
+
+    _envsec_ctx="\${(Q)\${opt_args[-c]:-\${opt_args[--context]}}}"
 
     case $state in
         command)
